@@ -1,13 +1,14 @@
-// src/components/shared/date-selector/ModernDateSelector.tsx
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { FiCalendar, FiChevronDown } from 'react-icons/fi';
 import { DateSelectorPanel } from './DateSelectorPanel';
+import { useDateRange } from '@/contexts/DateRangeContext';
 
 export function ModernDateSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { displayLabel, comparisonDisplayLabel, isComparisonEnabled } = useDateRange();
   
   // Fermer le dropdown si on clique en dehors
   useEffect(() => {
@@ -34,11 +35,17 @@ export function ModernDateSelector() {
             <FiCalendar size={18} />
           </span>
           <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-            Ce mois-ci
+            {displayLabel || 'Ce mois-ci'}
           </span>
-          <span className="text-xs px-2 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 flex items-center">
-            vs Année précédente
-          </span>
+          {(isComparisonEnabled && comparisonDisplayLabel) ? (
+            <span className="text-xs px-2 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 flex items-center">
+              vs {comparisonDisplayLabel}
+            </span>
+          ) : (
+            <span className="text-xs px-2 text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 flex items-center">
+              vs Année précédente
+            </span>
+          )}
         </div>
         <div className="ml-2 text-gray-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors duration-150">
           <FiChevronDown size={16} className={isOpen ? "transform rotate-180" : ""} />

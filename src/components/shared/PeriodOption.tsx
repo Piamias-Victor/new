@@ -1,4 +1,3 @@
-// src/components/shared/date-selector/PeriodOption.tsx
 import React from 'react';
 import { FiArrowRight } from 'react-icons/fi';
 

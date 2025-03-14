@@ -1,4 +1,3 @@
-// src/components/shared/date-selector/TabButton.tsx
 import React from 'react';
 
 interface TabButtonProps { 
