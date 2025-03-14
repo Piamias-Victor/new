@@ -1,0 +1,59 @@
+import Link from 'next/link';
+import { FiBarChart2, FiLogOut, FiUser } from 'react-icons/fi';
+
+interface DesktopNavProps {
+  isDashboard: boolean;
+  status: string;
+  sessionData?: any;
+  handleSignOut: () => Promise<void>;
+}
+
+export function DesktopNav({ isDashboard, status, sessionData, handleSignOut }: DesktopNavProps) {
+  return (
+    <nav className="hidden md:flex items-center space-x-4">
+      {!isDashboard && (
+        <>
+          <Link href="/#features" className="text-gray-600 dark:text-gray-300 hover:text-sky-600 dark:hover:text-sky-400 px-3 py-2 rounded-md text-sm font-medium">
+            Fonctionnalités
+          </Link>
+          <Link href="/#about" className="text-gray-600 dark:text-gray-300 hover:text-sky-600 dark:hover:text-sky-400 px-3 py-2 rounded-md text-sm font-medium">
+            À propos
+          </Link>
+          <Link href="/#contact" className="text-gray-600 dark:text-gray-300 hover:text-sky-600 dark:hover:text-sky-400 px-3 py-2 rounded-md text-sm font-medium">
+            Contact
+          </Link>
+        </>
+      )}
+      
+      {/* Actions utilisateur */}
+      {status === 'authenticated' ? (
+        <div className="flex items-center space-x-2">
+          <div className="text-gray-700 dark:text-gray-300 text-sm font-medium px-3 py-1">
+            <FiUser className="mr-2 inline-block" />
+            Bonjour, {sessionData?.user?.name || 'Utilisateur'}
+          </div>
+          {!isDashboard && (
+            <Link href="/dashboard" className="flex items-center px-4 py-2 rounded-md bg-sky-600 text-white hover:bg-sky-700 transition-colors duration-200 text-sm font-medium">
+              <FiBarChart2 className="mr-2" />
+              Dashboard
+            </Link>
+          )}
+          <button 
+            onClick={handleSignOut} 
+            className="flex items-center px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 text-sm font-medium"
+          >
+            <FiLogOut className="mr-2" />
+            Déconnexion
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center space-x-2">
+          <Link href="/auth/login" className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 text-sm font-medium">
+            <FiUser className="mr-2" />
+            Connexion
+          </Link>
+        </div>
+      )}
+    </nav>
+  );
+}
