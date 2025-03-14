@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "./globals.css";
+import { DateRangeProvider } from "@/contexts/DateRangeContext";
 
 // Load fonts
 const inter = Inter({
@@ -32,14 +33,16 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <AuthProvider>
-          {/* Global header */}
-          <Header />
-          
-          {/* Main content */}
-          {children}
+          <DateRangeProvider>
+            {/* Global header */}
+            <Header />
+            
+            {/* Main content */}
+            {children}
 
-          {/* Global footer */}
-          <Footer />
+            {/* Global footer */}
+            <Footer />
+          </DateRangeProvider>
         </AuthProvider>
       </body>
     </html>

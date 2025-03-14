@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { FiMenu, FiX } from 'react-icons/fi';
 import { MobileMenu } from './header/MobileMenu';
 import { DesktopNav } from './header/DesktopNav';
+import { ModernDateSelector } from '../shared/DateRangeSelector';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -38,16 +39,29 @@ export function Header() {
   };
 
   return (
-    <header className={`sticky top-0 z-50 w-full transition-all duration-300 ${isScrolled || isDashboard ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm' : 'bg-transparent'}`}>
+    <header 
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        isScrolled || isDashboard 
+          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-sm' 
+          : 'bg-transparent'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Logo / Lien d'accueil */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center">
+          <div className="flex items-center space-x-6">
+            <Link href="/" className="flex items-center flex-shrink-0">
               <span className="text-2xl font-bold bg-gradient-to-r from-sky-600 to-teal-600 dark:from-sky-400 dark:to-teal-400 bg-clip-text text-transparent">
                 Apo Data
               </span>
             </Link>
+            
+            {/* Sélecteur de date (visible uniquement sur le dashboard) */}
+            {isDashboard && (
+              <div className="hidden md:block">
+                <ModernDateSelector />
+              </div>
+            )}
           </div>
           
           {/* Navigation desktop */}
@@ -74,13 +88,22 @@ export function Header() {
       
       {/* Menu mobile */}
       {isMenuOpen && (
-        <MobileMenu 
-          isDashboard={isDashboard} 
-          status={status} 
-          sessionData={session}
-          closeMenu={closeMenu}
-          handleSignOut={handleSignOut} 
-        />
+        <div className="md:hidden">
+          <MobileMenu 
+            isDashboard={isDashboard} 
+            status={status} 
+            sessionData={session}
+            closeMenu={closeMenu}
+            handleSignOut={handleSignOut} 
+          />
+          
+          {/* Afficher le sélecteur de date dans le menu mobile sur le dashboard */}
+          {isDashboard && (
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+              <ModernDateSelector />
+            </div>
+          )}
+        </div>
       )}
     </header>
   );
