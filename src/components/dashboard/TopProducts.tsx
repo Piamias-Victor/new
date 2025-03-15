@@ -4,11 +4,28 @@ import { FiPackage, FiBarChart2, FiShoppingCart, FiTrendingUp } from 'react-icon
 import { useTopProducts, SortByType, TopProduct } from '@/hooks/useTopProducts';
 
 // Composant pour afficher le badge du taux de TVA
-const TvaBadge: React.FC<{ tva: number }> = ({ tva }) => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-    {tva}%
-  </span>
-);
+const TvaBadge: React.FC<{ tva: number }> = ({ tva }) => {
+  // Déterminer si le taux est déjà en pourcentage ou en décimal
+  // Si le taux est > 1, on suppose qu'il est déjà en pourcentage (ex: 5.5, 20)
+  // Sinon, on le considère comme un décimal (ex: 0.055, 0.2) et on le convertit
+  const formatTVA = (tvaRate: number) => {
+    if (tvaRate === 0) return "0%";
+    
+    // Si déjà en pourcentage (ex: 5.5, 20)
+    if (tvaRate > 1) {
+      return `${tvaRate.toFixed(1).replace(/\.0$/, '')}%`;
+    }
+    
+    // Si en décimal (ex: 0.055, 0.2), convertir en pourcentage
+    return `${(tvaRate * 100)}%`;
+  };
+
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+      {formatTVA(tva)}
+    </span>
+  );
+};
 
 // Composant pour afficher une ligne de produit
 interface ProductRowProps {
