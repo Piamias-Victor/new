@@ -1,4 +1,4 @@
-// src/hooks/useRevenue.ts - version mise à jour
+// src/hooks/useRevenue.ts - mise à jour
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
@@ -9,10 +9,15 @@ interface RevenueEvolution {
   isPositive: boolean;
 }
 
+interface MarginPercentageEvolution {
+  points: number;      // Différence en points de pourcentage
+  isPositive: boolean;
+}
+
 interface Evolution {
   revenue: RevenueEvolution;
   margin: RevenueEvolution;
-  marginPercentage: RevenueEvolution;
+  marginPercentage: MarginPercentageEvolution;
 }
 
 interface RevenueData {
