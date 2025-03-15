@@ -1,6 +1,6 @@
 // src/components/shared/PharmacyDropdownMenu.tsx
 import React, { useState } from 'react';
-import { FiUsers, FiFilter, FiX, FiCheckCircle } from 'react-icons/fi';
+import { FiUsers, FiFilter, FiCheckCircle } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { PharmaciesTab } from './PharmaciesTab';
 import { FiltersTab } from './FiltersTab';
@@ -13,30 +13,27 @@ interface PharmacyDropdownMenuProps {
 export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
   const [activeTab, setActiveTab] = useState<'pharmacies' | 'filters'>('pharmacies');
   const { 
-    lastFilterType, 
-    selectedFilter, 
-    setLastFilterType, 
-    setSelectedFilter,
-    selectedPharmacyIds,
-    setSelectedPharmacyIds,
-    pharmacies
+    tempLastFilterType, 
+    tempSelectedFilter, 
+    setTempLastFilterType, 
+    setTempSelectedFilter,
+    tempSelectedPharmacyIds,
+    setTempSelectedPharmacyIds,
+    applyPharmacyChanges
   } = usePharmacySelection();
 
-  // Fonction pour réinitialiser les filtres sans cause de boucle infinie
+  // Fonction pour réinitialiser les filtres temporaires
   const handleResetFilters = () => {
-    const resetFilters = () => {
-      setLastFilterType('none');
-      setSelectedFilter(null);
-      setSelectedPharmacyIds([]);
-    };
-    resetFilters();
+    setTempLastFilterType('none');
+    setTempSelectedFilter(null);
+    setTempSelectedPharmacyIds([]);
   };
 
-  // Fonction pour sélectionner toutes les pharmacies
-  const handleSelectAll = () => {
-    setSelectedPharmacyIds(pharmacies.map(p => p.id));
-    setLastFilterType('none');
-    setSelectedFilter(null);
+  
+  // Handler pour appliquer les changements
+  const handleApply = () => {
+    applyPharmacyChanges();
+    onClose();
   };
 
   return (
@@ -82,21 +79,21 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
       {/* Footer commun - Avec les composants Button réutilisables */}
       <div className="p-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex-shrink-0">
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          {selectedPharmacyIds.length > 0 && (
+          {tempSelectedPharmacyIds.length > 0 && (
             <span className="text-teal-600 dark:text-teal-400 font-medium">
-              {selectedPharmacyIds.length} pharmacie(s) sélectionnée(s)
+              {tempSelectedPharmacyIds.length} pharmacie(s) sélectionnée(s)
             </span>
           )}
-          {lastFilterType !== 'none' && selectedFilter && (
+          {tempLastFilterType !== 'none' && tempSelectedFilter && (
             <span className="text-teal-600 dark:text-teal-400 font-medium ml-1">
-              {selectedPharmacyIds.length > 0 ? ' · ' : ''}{selectedFilter}
+              {tempSelectedPharmacyIds.length > 0 ? ' · ' : ''}{tempSelectedFilter}
             </span>
           )}
         </div>
         
         <div className="flex space-x-2">
           {/* Bouton pour réinitialiser/effacer - Utiliser GhostButton */}
-          {(lastFilterType !== 'none' || selectedPharmacyIds.length > 0) && (
+          {(tempLastFilterType !== 'none' || tempSelectedPharmacyIds.length > 0) && (
             <GhostButton
               size="sm"
               onClick={handleResetFilters}
@@ -111,7 +108,7 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
             size="sm"
             variant="teal"
             rightIcon={<FiCheckCircle size={12} />}
-            onClick={onClose}
+            onClick={handleApply}
           >
             Appliquer
           </Button>

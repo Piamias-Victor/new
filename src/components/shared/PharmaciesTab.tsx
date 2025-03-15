@@ -19,8 +19,8 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
   
   const { 
     pharmacies, 
-    selectedPharmacyIds, 
-    setSelectedPharmacyIds 
+    tempSelectedPharmacyIds, 
+    setTempSelectedPharmacyIds 
   } = usePharmacySelection();
 
   // Filtrer les pharmacies en fonction de la recherche - avec useMemo pour éviter des recalculs inutiles
@@ -31,14 +31,14 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
   }, [pharmacies, searchQuery]);
 
   // Vérifier si toutes les pharmacies sont sélectionnées
-  const allSelected = selectedPharmacyIds.length === pharmacies.length;
+  const allSelected = tempSelectedPharmacyIds.length === pharmacies.length;
   
   // Sélectionner ou désélectionner toutes les pharmacies
   const toggleSelectAll = () => {
     if (allSelected) {
-      setSelectedPharmacyIds([]);
+      setTempSelectedPharmacyIds([]);
     } else {
-      setSelectedPharmacyIds(pharmacies.map(p => p.id));
+      setTempSelectedPharmacyIds(pharmacies.map(p => p.id));
     }
   };
   
@@ -97,7 +97,7 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
     
     const pharmaciesInGroup = groupedPharmacies[groupKey];
     const allInGroupSelected = pharmaciesInGroup.every((p: any) => 
-      selectedPharmacyIds.includes(p.id)
+      tempSelectedPharmacyIds.includes(p.id)
     );
     
     return (
@@ -116,16 +116,16 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
             onClick={() => {
               if (allInGroupSelected) {
                 // Désélectionner toutes les pharmacies du groupe
-                setSelectedPharmacyIds(selectedPharmacyIds.filter(id => 
+                setTempSelectedPharmacyIds(tempSelectedPharmacyIds.filter(id => 
                   !pharmaciesInGroup.some((p: any) => p.id === id)
                 ));
               } else {
                 // Sélectionner toutes les pharmacies du groupe
                 const idsToAdd = pharmaciesInGroup
                   .map((p: any) => p.id)
-                  .filter((id: string) => !selectedPharmacyIds.includes(id));
+                  .filter((id: string) => !tempSelectedPharmacyIds.includes(id));
                   
-                setSelectedPharmacyIds([...selectedPharmacyIds, ...idsToAdd]);
+                setTempSelectedPharmacyIds([...tempSelectedPharmacyIds, ...idsToAdd]);
               }
             }}
             className={`text-xs font-medium px-2 py-1 rounded ${

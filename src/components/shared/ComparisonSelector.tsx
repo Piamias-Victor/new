@@ -9,32 +9,32 @@ import { COMPARISON_OPTIONS } from './date-constants';
 
 export function ComparisonSelector() {
   const { 
-    comparisonRange, 
-    comparisonStartDate, 
-    comparisonEndDate, 
-    setComparisonDateRange
+    tempComparisonRange, 
+    tempComparisonStartDate, 
+    tempComparisonEndDate, 
+    setTempComparisonDateRange
   } = useDateRange();
   
   const [selectedPeriod, setSelectedPeriod] = useState<ComparisonRangeType>(
-    comparisonRange || 'previousYear'
+    tempComparisonRange || 'previousYear'
   );
-  const [customStartDate, setCustomStartDate] = useState(comparisonStartDate || '');
-  const [customEndDate, setCustomEndDate] = useState(comparisonEndDate || '');
+  const [customStartDate, setCustomStartDate] = useState(tempComparisonStartDate || '');
+  const [customEndDate, setCustomEndDate] = useState(tempComparisonEndDate || '');
   
   // Synchroniser l'état local avec le contexte
   useEffect(() => {
-    if (comparisonRange) {
-      setSelectedPeriod(comparisonRange);
+    if (tempComparisonRange) {
+      setSelectedPeriod(tempComparisonRange);
     }
-    if (comparisonStartDate) {
-      setCustomStartDate(comparisonStartDate);
+    if (tempComparisonStartDate) {
+      setCustomStartDate(tempComparisonStartDate);
     }
-    if (comparisonEndDate) {
-      setCustomEndDate(comparisonEndDate);
+    if (tempComparisonEndDate) {
+      setCustomEndDate(tempComparisonEndDate);
     }
-  }, [comparisonRange, comparisonStartDate, comparisonEndDate]);
+  }, [tempComparisonRange, tempComparisonStartDate, tempComparisonEndDate]);
   
-  // Mettre à jour le contexte lorsqu'une option est sélectionnée
+  // Mettre à jour le contexte temporaire lorsqu'une option est sélectionnée
   const handlePeriodSelect = (value: string) => {
     const periodType = value as ComparisonRangeType;
     setSelectedPeriod(periodType);
@@ -45,14 +45,14 @@ export function ComparisonSelector() {
     }
     
     // Pour les périodes prédéfinies, mettre à jour immédiatement
-    setComparisonDateRange(periodType);
+    setTempComparisonDateRange(periodType);
   };
   
   // Mettre à jour la date de début personnalisée
   const handleStartDateChange = (date: string) => {
     setCustomStartDate(date);
     if (selectedPeriod === 'custom') {
-      setComparisonDateRange('custom', date, customEndDate);
+      setTempComparisonDateRange('custom', date, customEndDate);
     }
   };
   
@@ -60,7 +60,7 @@ export function ComparisonSelector() {
   const handleEndDateChange = (date: string) => {
     setCustomEndDate(date);
     if (selectedPeriod === 'custom') {
-      setComparisonDateRange('custom', customStartDate, date);
+      setTempComparisonDateRange('custom', customStartDate, date);
     }
   };
   
@@ -88,8 +88,8 @@ export function ComparisonSelector() {
         <div className="flex items-center mt-3 p-3 bg-gray-50 dark:bg-gray-900/30 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
           <span className="mr-2">Période calculée :</span>
           <span className="font-medium text-gray-700 dark:text-gray-300">
-            {comparisonStartDate && comparisonEndDate ? (
-              `${formatDateForDisplay(comparisonStartDate)} - ${formatDateForDisplay(comparisonEndDate)}`
+            {tempComparisonStartDate && tempComparisonEndDate ? (
+              `${formatDateForDisplay(tempComparisonStartDate)} - ${formatDateForDisplay(tempComparisonEndDate)}`
             ) : (
               '01/03/2024 - 31/03/2024'
             )}

@@ -8,14 +8,13 @@ interface PharmacyListProps {
 }
 
 export function PharmacyList({ pharmacies }: PharmacyListProps) {
-  const { selectedPharmacyIds, setSelectedPharmacyIds } = usePharmacySelection();
-
-  // Sélectionner ou désélectionner une pharmacie
+  const { tempSelectedPharmacyIds, setTempSelectedPharmacyIds } = usePharmacySelection();
+  // Sélectionner ou désélectionner une pharmacie temporairement
   const togglePharmacy = (id: string) => {
-    if (selectedPharmacyIds.includes(id)) {
-      setSelectedPharmacyIds(selectedPharmacyIds.filter(pharmId => pharmId !== id));
+    if (tempSelectedPharmacyIds.includes(id)) {
+      setTempSelectedPharmacyIds(tempSelectedPharmacyIds.filter(pharmId => pharmId !== id));
     } else {
-      setSelectedPharmacyIds([...selectedPharmacyIds, id]);
+      setTempSelectedPharmacyIds([...tempSelectedPharmacyIds, id]);
     }
   };
 
@@ -40,7 +39,7 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
           key={pharmacy.id} 
           onClick={() => togglePharmacy(pharmacy.id)}
           className={`cursor-pointer transition-all duration-200 p-3 mb-2 border-l-4 ${
-            selectedPharmacyIds.includes(pharmacy.id) 
+            tempSelectedPharmacyIds.includes(pharmacy.id) 
               ? 'bg-teal-50 dark:bg-teal-900/20 border-l-teal-500' 
               : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border-l-transparent'
           } rounded-md hover:shadow-sm`}
@@ -48,11 +47,11 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
           <div className="flex items-center">
             {/* Case à cocher stylisée */}
             <div className={`flex-shrink-0 w-5 h-5 rounded-md ${
-              selectedPharmacyIds.includes(pharmacy.id) 
+              tempSelectedPharmacyIds.includes(pharmacy.id) 
                 ? 'bg-teal-500 text-white' 
                 : 'border-2 border-gray-300 dark:border-gray-600'
             } mr-3 flex items-center justify-center`}>
-              {selectedPharmacyIds.includes(pharmacy.id) && <FiCheck size={14} />}
+              {tempSelectedPharmacyIds.includes(pharmacy.id) && <FiCheck size={14} />}
             </div>
             
             {/* Informations de la pharmacie */}

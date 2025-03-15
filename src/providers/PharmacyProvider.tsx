@@ -30,6 +30,17 @@ interface PharmacyContextProps {
   setLastFilterType: (type: FilterType) => void;
   setSelectedFilter: (filter: string | null) => void;
   refreshPharmacies: () => Promise<void>;
+  
+  // Valeurs temporaires avant validation
+  tempSelectedPharmacyIds: string[];
+  setTempSelectedPharmacyIds: (ids: string[]) => void;
+  tempLastFilterType: FilterType;
+  tempSelectedFilter: string | null;
+  setTempLastFilterType: (type: FilterType) => void;
+  setTempSelectedFilter: (filter: string | null) => void;
+  
+  // Méthode pour appliquer les changements
+  applyPharmacyChanges: () => void;
 }
 
 // Valeur spéciale pour "toutes les pharmacies"
@@ -46,7 +57,15 @@ const PharmacyContext = createContext<PharmacyContextProps>({
   selectedFilter: null,
   setLastFilterType: () => {},
   setSelectedFilter: () => {},
-  refreshPharmacies: async () => {}
+  refreshPharmacies: async () => {},
+  
+  tempSelectedPharmacyIds: [],
+  setTempSelectedPharmacyIds: () => {},
+  tempLastFilterType: 'none',
+  tempSelectedFilter: null,
+  setTempLastFilterType: () => {},
+  setTempSelectedFilter: () => {},
+  applyPharmacyChanges: () => {}
 });
 
 // Hook personnalisé
@@ -64,6 +83,18 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
   const [selectedPharmacyIds, setSelectedPharmacyIds] = useState<string[]>([]);
   const [lastFilterType, setLastFilterType] = useState<FilterType>('none');
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  
+  // Nouveaux états pour les valeurs temporaires
+  const [tempSelectedPharmacyIds, setTempSelectedPharmacyIds] = useState<string[]>([]);
+  const [tempLastFilterType, setTempLastFilterType] = useState<FilterType>('none');
+  const [tempSelectedFilter, setTempSelectedFilter] = useState<string | null>(null);
+
+  // Fonction pour appliquer les changements temporaires
+  const applyPharmacyChanges = () => {
+    setSelectedPharmacyIds(tempSelectedPharmacyIds);
+    setLastFilterType(tempLastFilterType);
+    setSelectedFilter(tempSelectedFilter);
+  };
 
   const refreshPharmacies = async () => {
     setIsLoading(true);
@@ -89,6 +120,7 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
             selectedPharmacyIds.length !== allPharmacyIds.length ||
             !allPharmacyIds.every(id => selectedPharmacyIds.includes(id))) {
           setSelectedPharmacyIds(allPharmacyIds);
+          setTempSelectedPharmacyIds(allPharmacyIds);
         }
       }
     } catch (err) {
@@ -102,12 +134,14 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
   // Charger les pharmacies au montage du composant
   useEffect(() => {
     refreshPharmacies();
-    
-    // Également, lorsque la liste des pharmacies change, met à jour la sélection
-    return () => {
-      // Nettoyage si nécessaire
-    };
   }, []);
+  
+  // Initialiser les valeurs temporaires lorsque les valeurs réelles changent
+  useEffect(() => {
+    setTempSelectedPharmacyIds(selectedPharmacyIds);
+    setTempLastFilterType(lastFilterType);
+    setTempSelectedFilter(selectedFilter);
+  }, [selectedPharmacyIds, lastFilterType, selectedFilter]);
 
   return (
     <PharmacyContext.Provider
@@ -121,7 +155,15 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
         selectedFilter,
         setLastFilterType,
         setSelectedFilter,
-        refreshPharmacies
+        refreshPharmacies,
+        
+        tempSelectedPharmacyIds,
+        setTempSelectedPharmacyIds,
+        tempLastFilterType,
+        tempSelectedFilter,
+        setTempLastFilterType,
+        setTempSelectedFilter,
+        applyPharmacyChanges
       }}
     >
       {children}

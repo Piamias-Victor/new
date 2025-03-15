@@ -37,6 +37,21 @@ interface DateRangeContextType {
 
   // Méthode pour savoir si la comparaison est activée
   isComparisonEnabled: boolean;
+  
+  // Valeurs temporaires avant validation
+  tempRange: DateRangeType;
+  tempStartDate: string;
+  tempEndDate: string;
+  tempComparisonRange: ComparisonRangeType;
+  tempComparisonStartDate: string | null;
+  tempComparisonEndDate: string | null;
+  
+  // Méthode pour appliquer les changements temporaires
+  applyChanges: () => void;
+  
+  // Méthodes pour mettre à jour les valeurs temporaires
+  setTempDateRange: (range: DateRangeType, startDate?: string, endDate?: string) => void;
+  setTempComparisonDateRange: (range: ComparisonRangeType, startDate?: string, endDate?: string) => void;
 }
 
 // Valeurs initiales des plages
@@ -59,7 +74,18 @@ const defaultContext: DateRangeContextType = {
   setComparisonDateRange: () => {},
   disableComparison: () => {},
   resetToDefaults: () => {},
-  isComparisonEnabled: true
+  isComparisonEnabled: true,
+  
+  tempRange: initialRange,
+  tempStartDate: '',
+  tempEndDate: '',
+  tempComparisonRange: initialComparisonRange,
+  tempComparisonStartDate: null,
+  tempComparisonEndDate: null,
+  
+  applyChanges: () => {},
+  setTempDateRange: () => {},
+  setTempComparisonDateRange: () => {}
 };
 
 // Création du contexte
@@ -86,6 +112,14 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
   const [comparisonEndDate, setComparisonEndDate] = useState<string | null>(null);
   const [comparisonDisplayLabel, setComparisonDisplayLabel] = useState<string | null>(null);
   const [isComparisonEnabled, setIsComparisonEnabled] = useState<boolean>(true);
+
+  // Nouveaux états pour les valeurs temporaires
+  const [tempRange, setTempRange] = useState<DateRangeType>(initialRange);
+  const [tempStartDate, setTempStartDate] = useState<string>('');
+  const [tempEndDate, setTempEndDate] = useState<string>('');
+  const [tempComparisonRange, setTempComparisonRange] = useState<ComparisonRangeType>(initialComparisonRange);
+  const [tempComparisonStartDate, setTempComparisonStartDate] = useState<string | null>(null);
+  const [tempComparisonEndDate, setTempComparisonEndDate] = useState<string | null>(null);
 
   // Initialiser les dates au chargement du composant
   useEffect(() => {
@@ -153,24 +187,117 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
     setComparisonEndDate(null);
     setComparisonDisplayLabel(null);
     setIsComparisonEnabled(false);
+    
+    // Mettre aussi à jour les valeurs temporaires
+    setTempComparisonRange(null);
+    setTempComparisonStartDate(null);
+    setTempComparisonEndDate(null);
   };
 
   // Fonction pour réinitialiser aux valeurs par défaut
   const resetToDefaults = () => {
     const { start, end, label } = calculateDateRange(initialRange);
+    // Valeurs réelles
     setRange(initialRange);
     setStartDate(start);
     setEndDate(end);
     setDisplayLabel(label);
     
+    // Valeurs temporaires
+    setTempRange(initialRange);
+    setTempStartDate(start);
+    setTempEndDate(end);
+    
     const comparisonResult = calculateComparisonDateRange(initialComparisonRange, { start, end });
     if (comparisonResult) {
+      // Valeurs réelles
       setComparisonRange(initialComparisonRange);
       setComparisonStartDate(comparisonResult.start);
       setComparisonEndDate(comparisonResult.end);
       setComparisonDisplayLabel(comparisonResult.label);
+      
+      // Valeurs temporaires
+      setTempComparisonRange(initialComparisonRange);
+      setTempComparisonStartDate(comparisonResult.start);
+      setTempComparisonEndDate(comparisonResult.end);
+      
       setIsComparisonEnabled(true);
     }
+  };
+  
+  // Fonction pour mettre à jour temporairement la plage de dates principale
+  const updateTempDateRange = (newRange: DateRangeType, newStartDate?: string, newEndDate?: string) => {
+    setTempRange(newRange);
+    
+    // Si c'est une plage personnalisée, utiliser les dates fournies
+    if (newRange === 'custom' && newStartDate && newEndDate) {
+      setTempStartDate(newStartDate);
+      setTempEndDate(newEndDate);
+    } else {
+      // Pour les plages prédéfinies, calculer les dates
+      const { start, end } = calculateDateRange(newRange);
+      setTempStartDate(start);
+      setTempEndDate(end);
+    }
+  };
+  
+  // Fonction pour mettre à jour temporairement la plage de comparaison
+  const updateTempComparisonDateRange = (newRange: ComparisonRangeType, newStartDate?: string, newEndDate?: string) => {
+    setTempComparisonRange(newRange);
+    
+    if (newRange === null) {
+      setTempComparisonStartDate(null);
+      setTempComparisonEndDate(null);
+      return;
+    }
+    
+    if (newRange === 'custom' && newStartDate && newEndDate) {
+      setTempComparisonStartDate(newStartDate);
+      setTempComparisonEndDate(newEndDate);
+    } else {
+      const comparisonResult = calculateComparisonDateRange(newRange, { start: tempStartDate, end: tempEndDate });
+      
+      if (comparisonResult) {
+        setTempComparisonStartDate(comparisonResult.start);
+        setTempComparisonEndDate(comparisonResult.end);
+      }
+    }
+  };
+  
+  // Fonction pour appliquer les changements temporaires
+  const applyChanges = () => {
+    // Mettre à jour la plage principale
+    setRange(tempRange);
+    setStartDate(tempStartDate);
+    setEndDate(tempEndDate);
+    
+    // Calculer le label d'affichage
+    if (tempRange === 'custom') {
+      setDisplayLabel(`${formatDateForDisplay(tempStartDate)} - ${formatDateForDisplay(tempEndDate)}`);
+    } else {
+      const { label } = calculateDateRange(tempRange);
+      setDisplayLabel(label);
+    }
+    
+    // Mettre à jour la comparaison
+    setComparisonRange(tempComparisonRange);
+    setComparisonStartDate(tempComparisonStartDate);
+    setComparisonEndDate(tempComparisonEndDate);
+    
+    // Mettre à jour le label d'affichage de comparaison
+    if (tempComparisonRange === 'custom' && tempComparisonStartDate && tempComparisonEndDate) {
+      setComparisonDisplayLabel(`${formatDateForDisplay(tempComparisonStartDate)} - ${formatDateForDisplay(tempComparisonEndDate)}`);
+    } else if (tempComparisonRange) {
+      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, { start: tempStartDate, end: tempEndDate });
+      if (comparisonResult) {
+        setComparisonDisplayLabel(comparisonResult.label);
+      }
+    } else {
+      setComparisonDisplayLabel(null);
+    }
+    
+    // Mettre à jour si la comparaison est activée
+    setIsComparisonEnabled(tempComparisonRange !== null);
   };
 
   return (
@@ -188,7 +315,18 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
         setComparisonDateRange: updateComparisonDateRange,
         disableComparison,
         resetToDefaults,
-        isComparisonEnabled
+        isComparisonEnabled,
+        
+        // Nouvelles valeurs
+        tempRange,
+        tempStartDate,
+        tempEndDate,
+        tempComparisonRange,
+        tempComparisonStartDate,
+        tempComparisonEndDate,
+        setTempDateRange: updateTempDateRange,
+        setTempComparisonDateRange: updateTempComparisonDateRange,
+        applyChanges
       }}
     >
       {children}

@@ -17,10 +17,9 @@ interface FilterOption {
 export function FiltersTab({ onClose }: FiltersTabProps) {
   const { 
     pharmacies, 
-    setSelectedPharmacyIds, 
-    setLastFilterType, 
-    setSelectedFilter,
-    selectedPharmacyIds
+    setTempSelectedPharmacyIds, 
+    setTempLastFilterType, 
+    setTempSelectedFilter,
   } = usePharmacySelection();
   
   const [regions, setRegions] = useState<FilterOption[]>([]);
@@ -149,31 +148,31 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
       }
     }
     
-    // Mettre à jour les pharmacies sélectionnées
-    setSelectedPharmacyIds(filteredIds);
+    // Mettre à jour les pharmacies temporairement sélectionnées
+    setTempSelectedPharmacyIds(filteredIds);
     
-    // Mettre à jour le type de filtre et le libellé
+    // Mettre à jour le type de filtre et le libellé temporaires
     if (selectedRegions.length > 0 && selectedRevenues.length > 0) {
-      setLastFilterType('region');
+      setTempLastFilterType('region');
       const regionLabels = selectedRegions.join(', ');
       const revenueLabels = selectedRevenues.map(id => {
         const bracket = revenueBrackets.find(b => b.id === id);
         return bracket ? bracket.label : id;
       }).join(', ');
-      setSelectedFilter(`${regionLabels} + ${revenueLabels}`);
+      setTempSelectedFilter(`${regionLabels} + ${revenueLabels}`);
     } else if (selectedRegions.length > 0) {
-      setLastFilterType('region');
-      setSelectedFilter(selectedRegions.join(', '));
+      setTempLastFilterType('region');
+      setTempSelectedFilter(selectedRegions.join(', '));
     } else if (selectedRevenues.length > 0) {
-      setLastFilterType('revenue');
+      setTempLastFilterType('revenue');
       const labels = selectedRevenues.map(id => {
         const bracket = revenueBrackets.find(b => b.id === id);
         return bracket ? bracket.label : id;
       }).join(', ');
-      setSelectedFilter(labels);
+      setTempSelectedFilter(labels);
     }
     
-  }, [selectedRegions, selectedRevenues, pharmacies, setSelectedPharmacyIds, setLastFilterType, setSelectedFilter, revenueBrackets]);
+  }, [selectedRegions, selectedRevenues, pharmacies, setTempSelectedPharmacyIds, setTempLastFilterType, setTempSelectedFilter, revenueBrackets]);
 
   // Toggle la sélection d'une région
   const toggleRegionFilter = (region: string) => {
@@ -195,15 +194,6 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
         return [...prev, revenueId];
       }
     });
-  };
-
-  // Réinitialiser les filtres
-  const resetFilters = () => {
-    setSelectedRegions([]);
-    setSelectedRevenues([]);
-    setSelectedPharmacyIds([]);
-    setLastFilterType('none');
-    setSelectedFilter(null);
   };
 
   return (

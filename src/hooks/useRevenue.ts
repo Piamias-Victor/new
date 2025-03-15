@@ -1,7 +1,7 @@
 // src/hooks/useRevenue.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
-import { usePharmacy } from '@/contexts/PharmacyContext';
+import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 interface RevenueData {
   totalRevenue: number;
@@ -22,7 +22,7 @@ export function useRevenue(): RevenueData {
   });
   
   const { startDate, endDate } = useDateRange();
-  const { selectedPharmacyId } = usePharmacy();
+  const { selectedPharmacyIds } = usePharmacySelection();
   
   // Fonction pour récupérer les données de revenue
   const fetchRevenue = async () => {
@@ -35,14 +35,24 @@ export function useRevenue(): RevenueData {
       // Mettre à jour l'état pour indiquer le chargement
       setData(prev => ({ ...prev, isLoading: true, error: null }));
       
+      // Utiliser selectedPharmacyIds au lieu de selectedPharmacyId
+      const isAllPharmacies = selectedPharmacyIds.length === 0;
+      
       // Préparer les paramètres de la requête
       const params = new URLSearchParams({
         startDate,
-        endDate,
-        pharmacyId: selectedPharmacyId
+        endDate
       });
       
-      console.log(`Fetching revenue data for pharmacy: ${selectedPharmacyId}, period: ${startDate} to ${endDate}`);
+      // Si on a une sélection spécifique, on l'ajoute aux paramètres
+      if (!isAllPharmacies) {
+        // Ajouter chaque ID de pharmacie sélectionnée
+        selectedPharmacyIds.forEach(id => {
+          params.append('pharmacyIds', id);
+        });
+      }
+      
+      console.log(`Fetching revenue data for ${selectedPharmacyIds.length} pharmacies, period: ${startDate} to ${endDate}`);
       
       // Effectuer la requête avec cache: 'no-store' pour éviter les problèmes de cache
       const response = await fetch(`/api/sales/revenue?${params}`, {
@@ -81,7 +91,7 @@ export function useRevenue(): RevenueData {
   // Déclencher la requête lorsque les dépendances changent
   useEffect(() => {
     fetchRevenue();
-  }, [startDate, endDate, selectedPharmacyId]);
+  }, [startDate, endDate, selectedPharmacyIds]); // Inclure selectedPharmacyIds comme dépendance
   
   return data;
 }

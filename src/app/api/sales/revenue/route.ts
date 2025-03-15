@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const startDate = searchParams.get('startDate');
   const endDate = searchParams.get('endDate');
-  const pharmacyId = searchParams.get('pharmacyId');
+  const pharmacyIds = searchParams.getAll('pharmacyIds'); // Récupère tous les pharmacyIds
   
   // Validation des paramètres
   if (!startDate || !endDate) {
@@ -21,15 +21,18 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     
     let query = '';
-    const params = [startDate, endDate];
+    let params = [startDate, endDate];
     
-    if (pharmacyId && pharmacyId !== 'all') {
-      // Requête pour une pharmacie spécifique
+    if (pharmacyIds.length > 0) {
+      // Requête pour des pharmacies spécifiques
+      // Créer des placeholders pour la requête SQL ($3, $4, $5, etc.)
+      const pharmacyPlaceholders = pharmacyIds.map((_, index) => `$${index + 3}`).join(',');
+      
       query = `
         WITH filtered_products AS (
           SELECT id 
           FROM data_internalproduct 
-          WHERE pharmacy_id = $3
+          WHERE pharmacy_id IN (${pharmacyPlaceholders})
         ),
         filtered_snapshots AS (
           SELECT id, product_id, price_with_tax
@@ -48,7 +51,7 @@ export async function GET(request: Request) {
         WHERE 
           s.date BETWEEN $1 AND $2
       `;
-      params.push(pharmacyId);
+      params = [...params, ...pharmacyIds];
     } else {
       // Requête pour toutes les pharmacies
       query = `
@@ -85,7 +88,7 @@ export async function GET(request: Request) {
         max: maxDate,
         days: daysCount
       },
-      pharmacyId: pharmacyId || 'all',
+      pharmacyIds: pharmacyIds.length > 0 ? pharmacyIds : 'all',
       totalRevenue: parseFloat(totalRevenue) || 0
     });
   } catch (error) {

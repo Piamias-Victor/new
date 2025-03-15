@@ -6,6 +6,7 @@ import { ComparisonSelector } from './ComparisonSelector';
 import { TabButton } from './TabButton';
 import { PeriodSelector } from './PeriodSelector';
 import { Button, GhostButton } from '@/components/ui/Button';
+import { useDateRange } from '@/contexts/DateRangeContext';
 
 interface DateSelectorPanelProps {
   onClose: () => void;
@@ -13,10 +14,11 @@ interface DateSelectorPanelProps {
 
 export function DateSelectorPanel({ onClose }: DateSelectorPanelProps) {
   const [tab, setTab] = useState<'primary' | 'comparison'>('primary');
+  const { applyChanges } = useDateRange();
   
   // Handler pour appliquer les changements et fermer le panneau
   const handleApply = () => {
-    // Les modifications sont déjà appliquées dans les sous-composants
+    applyChanges(); // Appliquer les changements
     onClose();
   };
   

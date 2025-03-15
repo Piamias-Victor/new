@@ -7,19 +7,19 @@ import { useDateRange, DateRangeType } from '@/contexts/DateRangeContext';
 import { PERIOD_OPTIONS } from './date-constants';
 
 export function PeriodSelector() {
-  const { range, startDate, endDate, setDateRange } = useDateRange();
-  const [selectedPeriod, setSelectedPeriod] = useState<DateRangeType>(range);
-  const [customStartDate, setCustomStartDate] = useState(startDate);
-  const [customEndDate, setCustomEndDate] = useState(endDate);
+  const { tempRange, tempStartDate, tempEndDate, setTempDateRange } = useDateRange();
+  const [selectedPeriod, setSelectedPeriod] = useState<DateRangeType>(tempRange);
+  const [customStartDate, setCustomStartDate] = useState(tempStartDate);
+  const [customEndDate, setCustomEndDate] = useState(tempEndDate);
   
   // Synchroniser l'état local avec le contexte
   useEffect(() => {
-    setSelectedPeriod(range);
-    setCustomStartDate(startDate);
-    setCustomEndDate(endDate);
-  }, [range, startDate, endDate]);
+    setSelectedPeriod(tempRange);
+    setCustomStartDate(tempStartDate);
+    setCustomEndDate(tempEndDate);
+  }, [tempRange, tempStartDate, tempEndDate]);
   
-  // Mettre à jour le contexte lorsqu'une option est sélectionnée
+  // Mettre à jour le contexte temporaire lorsqu'une option est sélectionnée
   const handlePeriodSelect = (value: string) => {
     const periodType = value as DateRangeType;
     setSelectedPeriod(periodType);
@@ -30,14 +30,14 @@ export function PeriodSelector() {
     }
     
     // Pour les périodes prédéfinies, mettre à jour immédiatement
-    setDateRange(periodType);
+    setTempDateRange(periodType);
   };
   
   // Mettre à jour la date de début personnalisée
   const handleStartDateChange = (date: string) => {
     setCustomStartDate(date);
     if (selectedPeriod === 'custom') {
-      setDateRange('custom', date, customEndDate);
+      setTempDateRange('custom', date, customEndDate);
     }
   };
   
@@ -45,7 +45,7 @@ export function PeriodSelector() {
   const handleEndDateChange = (date: string) => {
     setCustomEndDate(date);
     if (selectedPeriod === 'custom') {
-      setDateRange('custom', customStartDate, date);
+      setTempDateRange('custom', customStartDate, date);
     }
   };
   
