@@ -2,12 +2,26 @@
 'use client';
 
 import React from 'react';
-import { FiHome, FiUsers, FiMap, FiDollarSign } from 'react-icons/fi';
+import { FiHome, FiUsers, FiMap, FiDollarSign, FiTrendingUp, FiCalendar } from 'react-icons/fi';
 import { usePharmacy } from '@/contexts/PharmacyContext';
+import { useDateRange } from '@/contexts/DateRangeContext';
+import { useRevenue } from '@/hooks/useRevenue';
 
 export function PharmacyDataCard() {
-
-const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
+  const { selectedPharmacy, selectedPharmacyId, isLoading: isLoadingPharmacy } = usePharmacy();
+  const { totalRevenue, isLoading: isLoadingRevenue, error: revenueError, actualDateRange } = useRevenue();
+  const { displayLabel } = useDateRange();
+  
+  const isLoading = isLoadingPharmacy || isLoadingRevenue;
+  
+  // Formatter pour les montants
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency', 
+      currency: 'EUR',
+      maximumFractionDigits: 0 
+    }).format(amount);
+  };
   
   if (isLoading) {
     return (
@@ -16,6 +30,23 @@ const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 w-full"></div>
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2 w-3/4"></div>
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+      </div>
+    );
+  }
+  
+  // Si erreur de chargement des revenus
+  if (revenueError) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <div className="flex items-center mb-4 text-red-500 dark:text-red-400">
+          <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300 mr-3">
+            <FiDollarSign size={20} />
+          </div>
+          <h3 className="text-lg font-medium">Erreur de chargement des données</h3>
+        </div>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
+          {revenueError}
+        </p>
       </div>
     );
   }
@@ -31,8 +62,25 @@ const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Toutes les pharmacies</h3>
         </div>
         <p className="text-gray-600 dark:text-gray-300 mb-4">
-          Les données affichées correspondent à l'ensemble des pharmacies. Sélectionnez une pharmacie spécifique pour voir ses détails.
+          Les données affichées correspondent à l'ensemble des pharmacies.
         </p>
+        
+        {/* Affichage du CA actuel */}
+        <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 mt-4">
+          <div className="flex items-center mb-2">
+            <FiDollarSign className="text-emerald-500 mr-2" size={16} />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Chiffre d'Affaires ({displayLabel})</span>
+          </div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">
+            {formatCurrency(totalRevenue)}
+          </div>
+          {actualDateRange && (
+            <div className="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <FiCalendar size={12} className="mr-1" />
+              Période: {actualDateRange.min} - {actualDateRange.max} ({actualDateRange.days} jours)
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -52,7 +100,7 @@ const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
       </div>
       
       <div className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center mb-2">
               <FiMap className="text-sky-500 mr-2" size={16} />
@@ -70,7 +118,7 @@ const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
             </div>
             <div className="text-lg font-semibold text-gray-900 dark:text-white">
               {selectedPharmacy?.ca 
-                ? `${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(selectedPharmacy.ca)}`
+                ? formatCurrency(selectedPharmacy.ca)
                 : 'Non spécifié'}
             </div>
           </div>
@@ -86,8 +134,25 @@ const { selectedPharmacy, selectedPharmacyId, isLoading } = usePharmacy();
                 : 'Non spécifié'}
             </div>
           </div>
+          
+          {/* Nouvelle carte pour le CA de la période */}
+          <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center mb-2">
+              <FiTrendingUp className="text-sky-500 mr-2" size={16} />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">CA ({displayLabel})</span>
+            </div>
+            <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              {formatCurrency(totalRevenue)}
+            </div>
+            {actualDateRange && (
+              <div className="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <FiCalendar size={12} className="mr-1" />
+                {actualDateRange.days} jours
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
-    );
+  );
 }

@@ -76,7 +76,21 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
       }
       
       const data = await response.json();
-      setPharmacies(data.pharmacies || []);
+      const loadedPharmacies = data.pharmacies || [];
+      setPharmacies(loadedPharmacies);
+      
+      // Toujours initialiser avec toutes les pharmacies si des données sont chargées
+      if (loadedPharmacies.length > 0) {
+        // Utiliser les IDs des pharmacies chargées
+        const allPharmacyIds = loadedPharmacies.map(p => p.id);
+        
+        // Ne mettre à jour que si la sélection est vide ou différente
+        if (selectedPharmacyIds.length === 0 || 
+            selectedPharmacyIds.length !== allPharmacyIds.length ||
+            !allPharmacyIds.every(id => selectedPharmacyIds.includes(id))) {
+          setSelectedPharmacyIds(allPharmacyIds);
+        }
+      }
     } catch (err) {
       console.error('Erreur lors du chargement des pharmacies:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
@@ -88,6 +102,11 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
   // Charger les pharmacies au montage du composant
   useEffect(() => {
     refreshPharmacies();
+    
+    // Également, lorsque la liste des pharmacies change, met à jour la sélection
+    return () => {
+      // Nettoyage si nécessaire
+    };
   }, []);
 
   return (

@@ -1,3 +1,4 @@
+// src/app/dashboard/page.tsx
 'use client';
 
 import { useSession } from 'next-auth/react';
@@ -5,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { PharmacyDataCard } from '@/components/dashboard/PharmacyDataCard';
 import { DatePeriodDisplay } from '@/components/shared/DatePeriodDisplay';
-import { FiBarChart2, FiPackage, FiTrendingUp, FiActivity } from 'react-icons/fi';
+import { KpiCards } from '@/components/dashboard/KpiCards';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -53,70 +54,9 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
-                <FiBarChart2 size={24} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Ventes</h3>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              23,458€
-            </div>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-green-500 dark:text-green-400 font-medium mr-1">+5.3%</span>
-              <span className="text-gray-500 dark:text-gray-400">vs période précédente</span>
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 mr-3">
-                <FiTrendingUp size={24} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Marge</h3>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              32.4%
-            </div>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-green-500 dark:text-green-400 font-medium mr-1">+1.2%</span>
-              <span className="text-gray-500 dark:text-gray-400">vs période précédente</span>
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300 mr-3">
-                <FiPackage size={24} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Stock</h3>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              45K€
-            </div>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-red-500 dark:text-red-400 font-medium mr-1">-2.1%</span>
-              <span className="text-gray-500 dark:text-gray-400">vs période précédente</span>
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center mb-4">
-              <div className="p-3 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 mr-3">
-                <FiActivity size={24} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Rotation</h3>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              6.8x
-            </div>
-            <div className="mt-2 flex items-center text-sm">
-              <span className="text-green-500 dark:text-green-400 font-medium mr-1">+0.5x</span>
-              <span className="text-gray-500 dark:text-gray-400">vs période précédente</span>
-            </div>
-          </div>
+        {/* Utilisation du nouveau composant KpiCards */}
+        <div className="mb-8">
+          <KpiCards />
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">

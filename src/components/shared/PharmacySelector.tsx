@@ -33,33 +33,48 @@ export function PharmacySelector() {
 
   // Formater le texte d'affichage du bouton
   const getDisplayText = () => {
+    // Si la liste des pharmacies est vide (données pas encore chargées)
+    if (pharmacies.length === 0) {
+      return 'Chargement...';
+    }
+    
+    // Si aucune pharmacie n'est sélectionnée
     if (selectedPharmacyIds.length === 0) {
       return 'Aucune pharmacie';
-    } else if (selectedPharmacyIds.length === pharmacies.length) {
+    } 
+    
+    // Si toutes les pharmacies sont sélectionnées
+    if (selectedPharmacyIds.length === pharmacies.length) {
       return 'Toutes les pharmacies';
-    } else if (selectedPharmacyIds.length === 1) {
+    } 
+    
+    // Si une seule pharmacie est sélectionnée
+    if (selectedPharmacyIds.length === 1) {
       const selected = pharmacies.find(p => p.id === selectedPharmacyIds[0]);
       return selected ? selected.name : 'Une pharmacie';
-    } else {
-      // Afficher un texte basé sur le filtre si disponible
-      if (lastFilterType !== 'none' && selectedFilter) {
-        switch (lastFilterType) {
-          case 'region': return `${selectedPharmacyIds.length} pharmacies · ${selectedFilter}`;
-          case 'revenue': return `${selectedPharmacyIds.length} pharmacies · CA: ${selectedFilter}`;
-          case 'size': return `${selectedPharmacyIds.length} pharmacies · ${selectedFilter}`;
-        }
+    } 
+    
+    // Si plusieurs pharmacies sont sélectionnées avec un filtre
+    if (lastFilterType !== 'none' && selectedFilter) {
+      switch (lastFilterType) {
+        case 'region': return `${selectedPharmacyIds.length} pharmacies · ${selectedFilter}`;
+        case 'revenue': return `${selectedPharmacyIds.length} pharmacies · CA: ${selectedFilter}`;
+        case 'size': return `${selectedPharmacyIds.length} pharmacies · ${selectedFilter}`;
+        default: return `${selectedPharmacyIds.length} pharmacies`;
       }
-      return `${selectedPharmacyIds.length} pharmacies`;
     }
+    
+    // Par défaut, si plusieurs pharmacies sont sélectionnées sans filtre
+    return `${selectedPharmacyIds.length} pharmacies`;
   };
 
   // Obtenir l'icône en fonction du type de filtre actif
   const getFilterIcon = () => {
     switch (lastFilterType) {
       case 'region': return <FiMap className="mr-2 text-teal-600" size={16} />;
-      case 'revenue': return <FiDollarSign className="mr-2  text-teal-600" size={16} />;
-      case 'size': return <FiMaximize className="mr-2  text-teal-600" size={16} />;
-      default: return <FiHome className="mr-2  text-teal-600" size={16} />;
+      case 'revenue': return <FiDollarSign className="mr-2 text-teal-600" size={16} />;
+      case 'size': return <FiMaximize className="mr-2 text-teal-600" size={16} />;
+      default: return <FiHome className="mr-2 text-teal-600" size={16} />;
     }
   };
 
@@ -81,7 +96,7 @@ export function PharmacySelector() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-150 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700">
+        <div className="absolute right-0 mt-2 w-150 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700 overflow-hidden">
           <PharmacyDropdownMenu onClose={() => setIsOpen(false)} />
         </div>
       )}
