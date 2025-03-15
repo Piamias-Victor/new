@@ -103,7 +103,7 @@ export function Header() {
           {isDashboard && (
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <ModernDateSelector />
-              <AdvancedPharmacySelector />
+              <PharmacySelector />
             </div>
           )}
         </div>

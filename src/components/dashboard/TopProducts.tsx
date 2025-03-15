@@ -13,7 +13,7 @@ const TvaBadge: React.FC<{ tva: number }> = ({ tva }) => {
     
     // Si déjà en pourcentage (ex: 5.5, 20)
     if (tvaRate > 1) {
-      return `${tvaRate.toFixed(1).replace(/\.0$/, '')}%`;
+      return `${tvaRate}%`;
     }
     
     // Si en décimal (ex: 0.055, 0.2), convertir en pourcentage
@@ -64,7 +64,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product, index, sortBy }) => {
           <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
             {formatCurrency(product.total_margin)}
             <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-              ({product.margin_percentage.toFixed(1)}%)
+              ({product.margin_percentage}%)
             </span>
           </div>
         );
@@ -129,7 +129,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product, index, sortBy }) => {
             <span>Qté: {formatNumber(product.total_quantity)}</span>
           )}
           {sortBy !== 'margin' && (
-            <span>Marge: {formatCurrency(product.total_margin)} ({product.margin_percentage.toFixed(1)}%)</span>
+            <span>Marge: {formatCurrency(product.total_margin)} ({product.margin_percentage}%)</span>
           )}
           <span className={`mt-1 ${
             product.current_stock <= 0 ? 'text-red-500 font-medium' : 

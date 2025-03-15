@@ -1,5 +1,4 @@
 import NextAuth from 'next-auth';
-import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 // Utilisateurs de test (à remplacer par une API vers le backend)
@@ -15,7 +14,7 @@ const users = [
 ];
 
 // Définir les options d'authentification
-const authOptions: NextAuthOptions = {
+const authOptions = {
   providers: [
     CredentialsProvider({
       name: 'Credentials',
