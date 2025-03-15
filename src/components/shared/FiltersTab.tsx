@@ -1,6 +1,6 @@
-// src/components/shared/pharmacy-selector/FiltersTab.tsx
+// src/components/shared/FiltersTab.tsx
 import React, { useEffect, useState } from 'react';
-import { FiInfo, FiMap, FiDollarSign } from 'react-icons/fi';
+import { FiInfo, FiMap, FiDollarSign, FiCheckCircle, FiX } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 interface FiltersTabProps {
@@ -19,11 +19,16 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
     pharmacies, 
     setSelectedPharmacyIds, 
     setLastFilterType, 
-    setSelectedFilter 
+    setSelectedFilter,
+    selectedPharmacyIds
   } = usePharmacySelection();
   
   const [regions, setRegions] = useState<FilterOption[]>([]);
   const [revenueBrackets, setRevenueBrackets] = useState<FilterOption[]>([]);
+  
+  // State pour suivre les filtres sélectionnés (plusieurs possibles)
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedRevenues, setSelectedRevenues] = useState<string[]>([]);
 
   // Extraire les valeurs uniques pour les filtres au chargement
   useEffect(() => {
@@ -94,56 +99,121 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
     setRevenueBrackets(revenueOptions);
   }, [pharmacies]);
 
-  // Appliquer un filtre de région
-  const applyRegionFilter = (region: string) => {
-    const pharmaciesInRegion = pharmacies
-      .filter(p => p.area === region)
-      .map(p => p.id);
-      
-    setSelectedPharmacyIds(pharmaciesInRegion);
-    setLastFilterType('region');
-    setSelectedFilter(region);
-    onClose();
-  };
-  
-  // Appliquer un filtre de CA
-  const applyRevenueFilter = (revenueId: string) => {
-    let caMin = 0;
-    let caMax = Number.MAX_SAFE_INTEGER;
+  // Appliquer les filtres sélectionnés
+  useEffect(() => {
+    // Si aucun filtre sélectionné, ne rien faire
+    if (selectedRegions.length === 0 && selectedRevenues.length === 0) {
+      return;
+    }
+
+    // Collecter toutes les pharmacies correspondant aux filtres
+    let filteredIds: string[] = [];
     
-    if (revenueId === 'low') {
-      caMax = 999999;
-    } else if (revenueId === 'medium') {
-      caMin = 1000000;
-      caMax = 1999999;
-    } else if (revenueId === 'high') {
-      caMin = 2000000;
-      caMax = 2999999;
-    } else if (revenueId === 'vhigh') {
-      caMin = 3000000;
+    // Ajouter les pharmacies par région
+    if (selectedRegions.length > 0) {
+      const regionPharmacies = pharmacies
+        .filter(p => p.area && selectedRegions.includes(p.area))
+        .map(p => p.id);
+      
+      filteredIds = [...regionPharmacies];
     }
     
-    const pharmaciesInRange = pharmacies
-      .filter(p => p.ca && p.ca >= caMin && p.ca <= caMax)
-      .map(p => p.id);
+    // Ajouter les pharmacies par CA
+    if (selectedRevenues.length > 0) {
+      const revenuePharmacies: string[] = [];
       
-    setSelectedPharmacyIds(pharmaciesInRange);
-    setLastFilterType('revenue');
+      pharmacies.forEach(p => {
+        if (!p.ca) return;
+        
+        let bracket: string;
+        if (p.ca < 1000000) {
+          bracket = "low";
+        } else if (p.ca < 2000000) {
+          bracket = "medium";
+        } else if (p.ca < 3000000) {
+          bracket = "high";
+        } else {
+          bracket = "vhigh";
+        }
+        
+        if (selectedRevenues.includes(bracket)) {
+          revenuePharmacies.push(p.id);
+        }
+      });
+      
+      // Si nous avons déjà des pharmacies par région, faire l'intersection
+      if (filteredIds.length > 0 && selectedRegions.length > 0) {
+        filteredIds = filteredIds.filter(id => revenuePharmacies.includes(id));
+      } else {
+        filteredIds = [...revenuePharmacies];
+      }
+    }
     
-    // Trouver le label correspondant
-    const option = revenueBrackets.find(o => o.id === revenueId);
-    setSelectedFilter(option?.label || revenueId);
-    onClose();
+    // Mettre à jour les pharmacies sélectionnées
+    setSelectedPharmacyIds(filteredIds);
+    
+    // Mettre à jour le type de filtre et le libellé
+    if (selectedRegions.length > 0 && selectedRevenues.length > 0) {
+      setLastFilterType('region');
+      const regionLabels = selectedRegions.join(', ');
+      const revenueLabels = selectedRevenues.map(id => {
+        const bracket = revenueBrackets.find(b => b.id === id);
+        return bracket ? bracket.label : id;
+      }).join(', ');
+      setSelectedFilter(`${regionLabels} + ${revenueLabels}`);
+    } else if (selectedRegions.length > 0) {
+      setLastFilterType('region');
+      setSelectedFilter(selectedRegions.join(', '));
+    } else if (selectedRevenues.length > 0) {
+      setLastFilterType('revenue');
+      const labels = selectedRevenues.map(id => {
+        const bracket = revenueBrackets.find(b => b.id === id);
+        return bracket ? bracket.label : id;
+      }).join(', ');
+      setSelectedFilter(labels);
+    }
+    
+  }, [selectedRegions, selectedRevenues, pharmacies, setSelectedPharmacyIds, setLastFilterType, setSelectedFilter, revenueBrackets]);
+
+  // Toggle la sélection d'une région
+  const toggleRegionFilter = (region: string) => {
+    setSelectedRegions(prev => {
+      if (prev.includes(region)) {
+        return prev.filter(r => r !== region);
+      } else {
+        return [...prev, region];
+      }
+    });
+  };
+  
+  // Toggle la sélection d'une tranche de CA
+  const toggleRevenueFilter = (revenueId: string) => {
+    setSelectedRevenues(prev => {
+      if (prev.includes(revenueId)) {
+        return prev.filter(r => r !== revenueId);
+      } else {
+        return [...prev, revenueId];
+      }
+    });
+  };
+
+  // Réinitialiser les filtres
+  const resetFilters = () => {
+    setSelectedRegions([]);
+    setSelectedRevenues([]);
+    setSelectedPharmacyIds([]);
+    setLastFilterType('none');
+    setSelectedFilter(null);
   };
 
   return (
-    <div className="overflow-y-auto flex-grow p-3">
+    <div className="p-3">
       {/* Info explicative */}
       <div className="mb-4 bg-teal-50 dark:bg-teal-900/20 p-3 rounded-lg">
         <div className="flex items-start">
           <FiInfo className="text-teal-500 dark:text-teal-400 mt-0.5 mr-2 flex-shrink-0" size={16} />
           <p className="text-xs text-teal-700 dark:text-teal-300">
-            Sélectionnez un filtre pour rapidement afficher un groupe de pharmacies ayant les mêmes caractéristiques.
+            Sélectionnez un ou plusieurs filtres pour afficher un groupe de pharmacies ayant des caractéristiques communes.
           </p>
         </div>
       </div>
@@ -159,12 +229,25 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
             {regions.map(region => (
               <button
                 key={region.id}
-                onClick={() => applyRegionFilter(region.id)}
-                className="flex items-center justify-between p-2 rounded-lg text-left text-sm border border-gray-200 dark:border-gray-700 hover:bg-teal-50 hover:border-teal-200 dark:hover:bg-teal-900/20 dark:hover:border-teal-700 transition-colors"
+                onClick={() => toggleRegionFilter(region.id)}
+                className={`flex items-center justify-between p-2 rounded-lg text-left text-sm border
+                  ${selectedRegions.includes(region.id) 
+                    ? 'bg-teal-50 border-teal-300 dark:bg-teal-900/30 dark:border-teal-700' 
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-teal-50 hover:border-teal-200 dark:hover:bg-teal-900/20 dark:hover:border-teal-700'
+                  } transition-colors`}
               >
                 <div className="font-medium text-gray-700 dark:text-gray-300 truncate">{region.label}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                  {region.count}
+                <div className="flex items-center">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                    {region.count}
+                  </div>
+                  {selectedRegions.includes(region.id) && (
+                    <div className="ml-2 h-4 w-4 bg-teal-500 dark:bg-teal-400 rounded-full flex items-center justify-center">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </button>
             ))}
@@ -183,12 +266,25 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
             {revenueBrackets.map(bracket => (
               <button
                 key={bracket.id}
-                onClick={() => applyRevenueFilter(bracket.id)}
-                className="flex items-center justify-between w-full p-2 rounded-lg text-left text-sm border border-gray-200 dark:border-gray-700 hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 transition-colors"
+                onClick={() => toggleRevenueFilter(bracket.id)}
+                className={`flex items-center justify-between w-full p-2 rounded-lg text-left text-sm border
+                  ${selectedRevenues.includes(bracket.id) 
+                    ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-700' 
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700'
+                  } transition-colors`}
               >
                 <div className="font-medium text-gray-700 dark:text-gray-300">{bracket.label}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                  {bracket.count}
+                <div className="flex items-center">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                    {bracket.count}
+                  </div>
+                  {selectedRevenues.includes(bracket.id) && (
+                    <div className="ml-2 h-4 w-4 bg-emerald-500 dark:bg-emerald-400 rounded-full flex items-center justify-center">
+                      <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </button>
             ))}

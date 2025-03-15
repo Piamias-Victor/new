@@ -1,4 +1,4 @@
-// src/components/shared/pharmacy-selector/PharmacyDropdownMenu.tsx
+// src/components/shared/PharmacyDropdownMenu.tsx
 import React, { useState } from 'react';
 import { FiUsers, FiFilter, FiX, FiCheckCircle } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
@@ -11,12 +11,37 @@ interface PharmacyDropdownMenuProps {
 
 export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
   const [activeTab, setActiveTab] = useState<'pharmacies' | 'filters'>('pharmacies');
-  const { lastFilterType, selectedFilter, setLastFilterType, setSelectedFilter } = usePharmacySelection();
+  const { 
+    lastFilterType, 
+    selectedFilter, 
+    setLastFilterType, 
+    setSelectedFilter,
+    selectedPharmacyIds,
+    setSelectedPharmacyIds,
+    pharmacies
+  } = usePharmacySelection();
+
+  // Fonction pour réinitialiser les filtres sans cause de boucle infinie
+  const handleResetFilters = () => {
+    const resetFilters = () => {
+      setLastFilterType('none');
+      setSelectedFilter(null);
+      setSelectedPharmacyIds([]);
+    };
+    resetFilters();
+  };
+
+  // Fonction pour sélectionner toutes les pharmacies
+  const handleSelectAll = () => {
+    setSelectedPharmacyIds(pharmacies.map(p => p.id));
+    setLastFilterType('none');
+    setSelectedFilter(null);
+  };
 
   return (
-    <div className="absolute right-0 mt-2 w-150 max-h-[70vh] overflow-hidden bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700 flex flex-col">
+    <div className="flex flex-col max-h-[500px]">
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button
           onClick={() => setActiveTab('pharmacies')}
           className={`flex-1 py-3 text-sm font-medium ${
@@ -45,31 +70,38 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
         </button>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'pharmacies' ? <PharmaciesTab /> : <FiltersTab onClose={onClose} />}
+      {/* Tab Content - avec un seul scroll contrôlé */}
+      <div className="overflow-y-auto flex-grow">
+        {activeTab === 'pharmacies' ? 
+          <PharmaciesTab onClose={onClose} /> : 
+          <FiltersTab onClose={onClose} />
+        }
+      </div>
       
-      {/* Footer */}
-      <div className="p-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
+      {/* Footer commun */}
+      <div className="p-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex-shrink-0">
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          {lastFilterType !== 'none' && selectedFilter && (
+          {selectedPharmacyIds.length > 0 && (
             <span className="text-teal-600 dark:text-teal-400 font-medium">
-              Filtre actif: {selectedFilter}
+              {selectedPharmacyIds.length} pharmacie(s) sélectionnée(s)
+            </span>
+          )}
+          {lastFilterType !== 'none' && selectedFilter && (
+            <span className="text-teal-600 dark:text-teal-400 font-medium ml-1">
+              {selectedPharmacyIds.length > 0 ? ' · ' : ''}{selectedFilter}
             </span>
           )}
         </div>
         
         <div className="flex space-x-2">
-          {/* Bouton pour réinitialiser les filtres */}
-          {lastFilterType !== 'none' && (
+          {/* Bouton pour réinitialiser/effacer */}
+          {(lastFilterType !== 'none' || selectedPharmacyIds.length > 0) && (
             <button
-              onClick={() => {
-                setLastFilterType('none');
-                setSelectedFilter(null);
-              }}
+              onClick={handleResetFilters}
               className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               <FiX className="inline-block mr-1" size={12} />
-              Effacer filtre
+              Effacer
             </button>
           )}
           

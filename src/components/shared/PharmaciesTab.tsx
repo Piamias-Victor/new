@@ -1,13 +1,17 @@
-// src/components/shared/pharmacy-selector/PharmaciesTab.tsx
+// src/components/shared/PharmaciesTab.tsx
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FiSearch, FiX, FiMap, FiDollarSign, FiCheck } from 'react-icons/fi';
 import { PharmacyList } from './PharmacyList';
 
 // Type pour les options de regroupement
 type GroupingType = 'none' | 'region' | 'ca';
 
-export function PharmaciesTab() {
+interface PharmaciesTabProps {
+  onClose: () => void;
+}
+
+export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [groupBy, setGroupBy] = useState<GroupingType>('none');
   const [groupedPharmacies, setGroupedPharmacies] = useState<{ [key: string]: any }>({});
@@ -19,10 +23,12 @@ export function PharmaciesTab() {
     setSelectedPharmacyIds 
   } = usePharmacySelection();
 
-  // Filtrer les pharmacies en fonction de la recherche
-  const filteredPharmacies = pharmacies.filter(pharmacy => 
-    pharmacy.name && pharmacy.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filtrer les pharmacies en fonction de la recherche - avec useMemo pour éviter des recalculs inutiles
+  const filteredPharmacies = useMemo(() => {
+    return pharmacies.filter(pharmacy => 
+      pharmacy.name && pharmacy.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [pharmacies, searchQuery]);
 
   // Vérifier si toutes les pharmacies sont sélectionnées
   const allSelected = selectedPharmacyIds.length === pharmacies.length;
@@ -53,7 +59,7 @@ export function PharmaciesTab() {
       valueKey = 'ca';
     }
     
-    // Regrouper par la clé appropriée
+    // Utiliser le résultat mémorisé de filteredPharmacies
     filteredPharmacies.forEach(pharmacy => {
       const value = pharmacy[valueKey];
       
@@ -83,7 +89,7 @@ export function PharmaciesTab() {
     
     setGroupedPharmacies(result);
     setGroupKeys(Object.keys(result).sort());
-  }, [groupBy, filteredPharmacies]);
+  }, [groupBy, filteredPharmacies]); // Dépendances correctes
 
   // Afficher un groupe spécifique de pharmacies
   const renderGroup = (groupKey: string) => {
@@ -138,7 +144,7 @@ export function PharmaciesTab() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       {/* Barre de recherche */}
       <div className="p-3 border-b border-gray-200 dark:border-gray-700">
         <div className="relative">
@@ -214,7 +220,7 @@ export function PharmaciesTab() {
       </div>
       
       {/* Liste des pharmacies */}
-      <div className="overflow-y-auto flex-grow p-3">
+      <div className="p-3">
         {groupBy === 'none' ? (
           <PharmacyList pharmacies={filteredPharmacies} />
         ) : (

@@ -1,4 +1,4 @@
-// src/components/shared/pharmacy-selector/PharmacyList.tsx
+// src/components/shared/PharmacyList.tsx
 import React from 'react';
 import { FiCheck, FiMapPin, FiDollarSign } from 'react-icons/fi';
 import { usePharmacySelection, Pharmacy } from '@/providers/PharmacyProvider';
@@ -34,7 +34,7 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
   }
 
   return (
-    <div className="overflow-y-auto max-h-80">
+    <div>
       {pharmacies.map((pharmacy) => (
         <div 
           key={pharmacy.id} 

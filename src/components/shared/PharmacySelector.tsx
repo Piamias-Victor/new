@@ -1,11 +1,10 @@
-// src/components/shared/AdvancedPharmacySelector.tsx
+// src/components/shared/PharmacySelector.tsx
 'use client';
 
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import React, { useState, useRef, useEffect } from 'react';
 import { FiHome, FiChevronDown, FiChevronUp, FiMap, FiDollarSign, FiMaximize } from 'react-icons/fi';
 import { PharmacyDropdownMenu } from './PharmacyDropdownMenu';
-
 
 export function PharmacySelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -68,16 +67,24 @@ export function PharmacySelector() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center px-3 py-2 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+        className="flex items-center px-3 py-2 w-56 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
       >
-        {getFilterIcon()}
-        <span className={lastFilterType !== 'none' ? "text-teal-600 dark:text-teal-400" : "text-gray-700 dark:text-gray-300"}>
-          {getDisplayText()}
-        </span>
-        {isOpen ? <FiChevronUp className="ml-2" /> : <FiChevronDown className="ml-2" />}
+        <div className="flex items-center min-w-0 flex-1">
+          {getFilterIcon()}
+          <span className={`truncate ${lastFilterType !== 'none' ? "text-teal-600 dark:text-teal-400" : "text-gray-700 dark:text-gray-300"}`}>
+            {getDisplayText()}
+          </span>
+        </div>
+        <div className="flex-shrink-0 ml-2">
+          {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+        </div>
       </button>
 
-      {isOpen && <PharmacyDropdownMenu onClose={() => setIsOpen(false)} />}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-150 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700">
+          <PharmacyDropdownMenu onClose={() => setIsOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }
