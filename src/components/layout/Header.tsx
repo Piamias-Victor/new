@@ -8,6 +8,7 @@ import { FiMenu, FiX } from 'react-icons/fi';
 import { MobileMenu } from './header/MobileMenu';
 import { DesktopNav } from './header/DesktopNav';
 import { ModernDateSelector } from '../shared/DateRangeSelector';
+import { PharmacySelector } from '../shared/PharmacySelector';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -56,10 +57,11 @@ export function Header() {
               </span>
             </Link>
             
-            {/* Sélecteur de date (visible uniquement sur le dashboard) */}
+            {/* Sélecteurs visibles uniquement sur le dashboard */}
             {isDashboard && (
-              <div className="hidden md:block">
+              <div className="hidden md:flex items-center space-x-4">
                 <ModernDateSelector />
+                <PharmacySelector />
               </div>
             )}
           </div>
@@ -97,10 +99,11 @@ export function Header() {
             handleSignOut={handleSignOut} 
           />
           
-          {/* Afficher le sélecteur de date dans le menu mobile sur le dashboard */}
+          {/* Afficher les sélecteurs dans le menu mobile sur le dashboard */}
           {isDashboard && (
-            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <ModernDateSelector />
+              <AdvancedPharmacySelector />
             </div>
           )}
         </div>

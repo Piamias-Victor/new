@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { AuthProvider } from "@/providers/AuthProvider";
 import "./globals.css";
-import { DateRangeProvider } from "@/contexts/DateRangeContext";
+import ClientLayout from "@/components/layout/ClientLayout";
 
 // Load fonts
 const inter = Inter({
@@ -31,19 +28,11 @@ export default function RootLayout({
     <html lang="fr" className="scroll-smooth">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+        suppressHydrationWarning
       >
-        <AuthProvider>
-          <DateRangeProvider>
-            {/* Global header */}
-            <Header />
-            
-            {/* Main content */}
-            {children}
-
-            {/* Global footer */}
-            <Footer />
-          </DateRangeProvider>
-        </AuthProvider>
+        <ClientLayout>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   );
