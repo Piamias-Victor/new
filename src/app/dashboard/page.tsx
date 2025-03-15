@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { PharmacyDataCard } from '@/components/dashboard/PharmacyDataCard';
 import { DatePeriodDisplay } from '@/components/shared/DatePeriodDisplay';
 import { KpiCards } from '@/components/dashboard/KpiCards';
+import { SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -54,22 +55,13 @@ export default function Dashboard() {
           </div>
         </div>
         
-        {/* Utilisation du nouveau composant KpiCards */}
+        {/* KPI Cards */}
         <div className="mb-8">
           <KpiCards />
         </div>
         
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            Évolution des ventes
-          </h2>
-          
-          <div className="h-64 flex items-center justify-center">
-            <p className="text-gray-500 dark:text-gray-400">
-              Le graphique d'évolution des ventes sera intégré ici.
-            </p>
-          </div>
-        </div>
+        {/* Nouveau composant d'évolution des ventes */}
+        <SalesEvolutionChart />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
