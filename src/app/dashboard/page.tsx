@@ -8,6 +8,7 @@ import { PharmacyDataCard } from '@/components/dashboard/PharmacyDataCard';
 import { DatePeriodDisplay } from '@/components/shared/DatePeriodDisplay';
 import { KpiCards } from '@/components/dashboard/KpiCards';
 import { SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
+import { TopProducts } from '@/components/dashboard/TopProducts';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -69,11 +70,7 @@ export default function Dashboard() {
               Top produits
             </h2>
             
-            <div className="h-64 flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">
-                Le tableau des meilleurs produits sera intégré ici.
-              </p>
-            </div>
+            <TopProducts />
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
