@@ -1,6 +1,6 @@
 // src/components/shared/pharmacy-selector/PharmacyList.tsx
 import React from 'react';
-import { FiCheck, FiMapPin, FiUsers, FiDollarSign } from 'react-icons/fi';
+import { FiCheck, FiMapPin, FiDollarSign } from 'react-icons/fi';
 import { usePharmacySelection, Pharmacy } from '@/providers/PharmacyProvider';
 
 interface PharmacyListProps {
@@ -34,53 +34,52 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
   }
 
   return (
-    <div className="p-2">
+    <div className="overflow-y-auto max-h-80">
       {pharmacies.map((pharmacy) => (
-        <div key={pharmacy.id} className="mb-2 last:mb-0">
-          <div 
-            onClick={() => togglePharmacy(pharmacy.id)}
-            className={`cursor-pointer transition-all duration-200 rounded-lg overflow-hidden ${
+        <div 
+          key={pharmacy.id} 
+          onClick={() => togglePharmacy(pharmacy.id)}
+          className={`cursor-pointer transition-all duration-200 p-3 mb-2 border-l-4 ${
+            selectedPharmacyIds.includes(pharmacy.id) 
+              ? 'bg-teal-50 dark:bg-teal-900/20 border-l-teal-500' 
+              : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 border-l-transparent'
+          } rounded-md hover:shadow-sm`}
+        >
+          <div className="flex items-center">
+            {/* Case à cocher stylisée */}
+            <div className={`flex-shrink-0 w-5 h-5 rounded-md ${
               selectedPharmacyIds.includes(pharmacy.id) 
-                ? 'bg-teal-50 border-teal-200 dark:bg-teal-900/30 dark:border-teal-800/50' 
-                : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750'
-            } border shadow-sm hover:shadow`}
-          >
-            <div className="flex items-center p-3">
-              {/* Case à cocher */}
-              <div className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md border ${
-                selectedPharmacyIds.includes(pharmacy.id) 
-                  ? 'bg-teal-600 border-teal-600 dark:bg-teal-500 dark:border-teal-500' 
-                  : 'border-gray-300 dark:border-gray-600'
-              }`}>
-                {selectedPharmacyIds.includes(pharmacy.id) && <FiCheck className="text-white" size={14} />}
+                ? 'bg-teal-500 text-white' 
+                : 'border-2 border-gray-300 dark:border-gray-600'
+            } mr-3 flex items-center justify-center`}>
+              {selectedPharmacyIds.includes(pharmacy.id) && <FiCheck size={14} />}
+            </div>
+            
+            {/* Informations de la pharmacie */}
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-900 dark:text-white">{pharmacy.name}</h3>
+                {pharmacy.id_nat && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+                    {pharmacy.id_nat}
+                  </span>
+                )}
               </div>
-
-              {/* Informations de la pharmacie */}
-              <div className="ml-3 flex-1">
-                <div className="font-medium text-gray-900 dark:text-white">{pharmacy.name}</div>
+              
+              <div className="mt-1 flex flex-wrap gap-3 text-xs">
+                {pharmacy.area && (
+                  <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
+                    <FiMapPin size={12} className="mr-1 text-teal-500 dark:text-teal-400" />
+                    {pharmacy.area}
+                  </div>
+                )}
                 
-                <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                  {(pharmacy.region || pharmacy.area) && (
-                    <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
-                      <FiMapPin size={12} className="mr-1 text-teal-500 dark:text-teal-400" />
-                      {pharmacy.region || pharmacy.area}
-                    </div>
-                  )}
-                  
-                  {pharmacy.ca && (
-                    <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
-                      <FiDollarSign size={12} className="mr-1 text-emerald-500 dark:text-emerald-400" />
-                      {formatCurrency(pharmacy.ca)}
-                    </div>
-                  )}
-                  
-                  {pharmacy.employees_count && (
-                    <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
-                      <FiUsers size={12} className="mr-1 text-blue-500 dark:text-blue-400" />
-                      {pharmacy.employees_count} employés
-                    </div>
-                  )}
-                </div>
+                {pharmacy.ca && (
+                  <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
+                    <FiDollarSign size={12} className="mr-1 text-emerald-500 dark:text-emerald-400" />
+                    {formatCurrency(pharmacy.ca)}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -92,10 +91,9 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
 
 // Fonction utilitaire pour formater les montants
 function formatCurrency(amount: number): string {
-  if (amount >= 1000000) {
-    return `${(amount / 1000000).toFixed(1)}M€`;
-  } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(0)}K€`;
-  }
-  return `${amount}€`;
+  return new Intl.NumberFormat('fr-FR', { 
+    style: 'currency', 
+    currency: 'EUR',
+    maximumFractionDigits: 0
+  }).format(amount);
 }

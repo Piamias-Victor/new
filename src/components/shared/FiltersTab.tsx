@@ -1,10 +1,17 @@
 // src/components/shared/pharmacy-selector/FiltersTab.tsx
-import React from 'react';
-import { FiInfo, FiMap, FiDollarSign, FiMaximize } from 'react-icons/fi';
+import React, { useEffect, useState } from 'react';
+import { FiInfo, FiMap, FiDollarSign } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 interface FiltersTabProps {
   onClose: () => void;
+}
+
+// Types pour les données de filtre
+interface FilterOption {
+  id: string;
+  label: string;
+  count: number;
 }
 
 export function FiltersTab({ onClose }: FiltersTabProps) {
@@ -14,15 +21,85 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
     setLastFilterType, 
     setSelectedFilter 
   } = usePharmacySelection();
+  
+  const [regions, setRegions] = useState<FilterOption[]>([]);
+  const [revenueBrackets, setRevenueBrackets] = useState<FilterOption[]>([]);
 
-  // Extraction des valeurs uniques pour les filtres
-  const regions = [...new Set(pharmacies.map(p => p.region).filter(Boolean))];
-  const revenueBrackets = [...new Set(pharmacies.map(p => p.revenue).filter(Boolean))];
-  const sizes = [...new Set(pharmacies.map(p => p.size).filter(Boolean))];
+  // Extraire les valeurs uniques pour les filtres au chargement
+  useEffect(() => {
+    // Pour les régions
+    const uniqueRegions = new Map<string, number>();
+    pharmacies.forEach(p => {
+      if (p.area) {
+        uniqueRegions.set(p.area, (uniqueRegions.get(p.area) || 0) + 1);
+      }
+    });
+    
+    const regionOptions: FilterOption[] = Array.from(uniqueRegions.entries())
+      .map(([area, count]) => ({
+        id: area,
+        label: area,
+        count: count
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    
+    setRegions(regionOptions);
+    
+    // Pour les tranches de CA
+    const revenueBrackets = new Map<string, { label: string, pharmacies: string[] }>();
+    
+    pharmacies.forEach(p => {
+      if (p.ca) {
+        let bracket: string;
+        
+        if (p.ca < 1000000) {
+          bracket = "low";
+        } else if (p.ca < 2000000) {
+          bracket = "medium";
+        } else if (p.ca < 3000000) {
+          bracket = "high";
+        } else {
+          bracket = "vhigh";
+        }
+        
+        if (!revenueBrackets.has(bracket)) {
+          const labels: Record<string, string> = {
+            low: "< 1M€",
+            medium: "1M€ - 2M€",
+            high: "2M€ - 3M€",
+            vhigh: "> 3M€"
+          };
+          
+          revenueBrackets.set(bracket, { 
+            label: labels[bracket],
+            pharmacies: []
+          });
+        }
+        
+        revenueBrackets.get(bracket)?.pharmacies.push(p.id);
+      }
+    });
+    
+    const revenueOptions: FilterOption[] = Array.from(revenueBrackets.entries())
+      .map(([id, { label, pharmacies }]) => ({
+        id,
+        label,
+        count: pharmacies.length
+      }))
+      .sort((a, b) => {
+        const order = { low: 0, medium: 1, high: 2, vhigh: 3 };
+        return order[a.id as keyof typeof order] - order[b.id as keyof typeof order];
+      });
+    
+    setRevenueBrackets(revenueOptions);
+  }, [pharmacies]);
 
   // Appliquer un filtre de région
   const applyRegionFilter = (region: string) => {
-    const pharmaciesInRegion = pharmacies.filter(p => p.region === region).map(p => p.id);
+    const pharmaciesInRegion = pharmacies
+      .filter(p => p.area === region)
+      .map(p => p.id);
+      
     setSelectedPharmacyIds(pharmaciesInRegion);
     setLastFilterType('region');
     setSelectedFilter(region);
@@ -30,20 +107,32 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
   };
   
   // Appliquer un filtre de CA
-  const applyRevenueFilter = (revenue: string) => {
-    const pharmaciesWithRevenue = pharmacies.filter(p => p.revenue === revenue).map(p => p.id);
-    setSelectedPharmacyIds(pharmaciesWithRevenue);
+  const applyRevenueFilter = (revenueId: string) => {
+    let caMin = 0;
+    let caMax = Number.MAX_SAFE_INTEGER;
+    
+    if (revenueId === 'low') {
+      caMax = 999999;
+    } else if (revenueId === 'medium') {
+      caMin = 1000000;
+      caMax = 1999999;
+    } else if (revenueId === 'high') {
+      caMin = 2000000;
+      caMax = 2999999;
+    } else if (revenueId === 'vhigh') {
+      caMin = 3000000;
+    }
+    
+    const pharmaciesInRange = pharmacies
+      .filter(p => p.ca && p.ca >= caMin && p.ca <= caMax)
+      .map(p => p.id);
+      
+    setSelectedPharmacyIds(pharmaciesInRange);
     setLastFilterType('revenue');
-    setSelectedFilter(revenue);
-    onClose();
-  };
-  
-  // Appliquer un filtre de taille
-  const applySizeFilter = (size: string) => {
-    const pharmaciesWithSize = pharmacies.filter(p => p.size === size).map(p => p.id);
-    setSelectedPharmacyIds(pharmaciesWithSize);
-    setLastFilterType('size');
-    setSelectedFilter(size);
+    
+    // Trouver le label correspondant
+    const option = revenueBrackets.find(o => o.id === revenueId);
+    setSelectedFilter(option?.label || revenueId);
     onClose();
   };
 
@@ -61,21 +150,21 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
       
       {/* Filtres par région */}
       {regions.length > 0 && (
-        <div className="mb-4">
-          <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="mb-6">
+          <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             <FiMap className="mr-2 text-teal-500 dark:text-teal-400" size={16} />
             Régions
           </h4>
           <div className="grid grid-cols-2 gap-2">
-            {regions.map(region => region && (
+            {regions.map(region => (
               <button
-                key={region}
-                onClick={() => applyRegionFilter(region)}
+                key={region.id}
+                onClick={() => applyRegionFilter(region.id)}
                 className="flex items-center justify-between p-2 rounded-lg text-left text-sm border border-gray-200 dark:border-gray-700 hover:bg-teal-50 hover:border-teal-200 dark:hover:bg-teal-900/20 dark:hover:border-teal-700 transition-colors"
               >
-                <div className="font-medium text-gray-700 dark:text-gray-300 truncate">{region}</div>
+                <div className="font-medium text-gray-700 dark:text-gray-300 truncate">{region.label}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                  {pharmacies.filter(p => p.region === region).length}
+                  {region.count}
                 </div>
               </button>
             ))}
@@ -86,20 +175,20 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
       {/* Filtres par CA */}
       {revenueBrackets.length > 0 && (
         <div className="mb-4">
-          <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             <FiDollarSign className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />
             Chiffre d'affaires
           </h4>
           <div className="space-y-2">
-            {revenueBrackets.map(revenue => revenue && (
+            {revenueBrackets.map(bracket => (
               <button
-                key={revenue}
-                onClick={() => applyRevenueFilter(revenue)}
+                key={bracket.id}
+                onClick={() => applyRevenueFilter(bracket.id)}
                 className="flex items-center justify-between w-full p-2 rounded-lg text-left text-sm border border-gray-200 dark:border-gray-700 hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-900/20 dark:hover:border-emerald-700 transition-colors"
               >
-                <div className="font-medium text-gray-700 dark:text-gray-300">{revenue}</div>
+                <div className="font-medium text-gray-700 dark:text-gray-300">{bracket.label}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                  {pharmacies.filter(p => p.revenue === revenue).length}
+                  {bracket.count}
                 </div>
               </button>
             ))}
@@ -107,27 +196,10 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
         </div>
       )}
       
-      {/* Filtres par taille */}
-      {sizes.length > 0 && (
-        <div>
-          <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            <FiMaximize className="mr-2 text-amber-500 dark:text-amber-400" size={16} />
-            Superficie
-          </h4>
-          <div className="grid grid-cols-3 gap-2">
-            {sizes.map(size => size && (
-              <button
-                key={size}
-                onClick={() => applySizeFilter(size)}
-                className="flex flex-col items-center justify-center p-2 rounded-lg text-center text-sm border border-gray-200 dark:border-gray-700 hover:bg-amber-50 hover:border-amber-200 dark:hover:bg-amber-900/20 dark:hover:border-amber-700 transition-colors"
-              >
-                <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">{size}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                  {pharmacies.filter(p => p.size === size).length}
-                </div>
-              </button>
-            ))}
-          </div>
+      {regions.length === 0 && revenueBrackets.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>Aucun filtre disponible</p>
+          <p className="text-sm mt-1">Les données des pharmacies ne contiennent pas d'informations filtrables</p>
         </div>
       )}
     </div>
