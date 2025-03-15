@@ -1,6 +1,4 @@
-// src/components/dashboard/KpiCards.tsx
-// Mise à jour du composant KpiCard pour afficher la valeur de la période de comparaison
-
+// src/components/dashboard/KpiCards.tsx - version mise à jour
 import { useRevenue } from "@/hooks/useRevenue";
 import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity } from "react-icons/fi";
 
@@ -65,7 +63,13 @@ interface KpiCardProps {
 
 // Mise à jour de KpiCards pour passer les valeurs de période précédente
 export function KpiCards() {
-  const { totalRevenue, comparison, isLoading } = useRevenue();
+  const { 
+    totalRevenue, 
+    totalMargin, 
+    marginPercentage, 
+    comparison, 
+    isLoading 
+  } = useRevenue();
   
   // Formatter pour la monnaie
   const formatCurrency = (amount: number) => {
@@ -78,24 +82,19 @@ export function KpiCards() {
   
   // CA - Données réelles
   const revenueChange = comparison ? {
-    value: `${comparison.evolution.percentage.toFixed(1)}%`,
+    value: `${comparison.evolution.revenue.percentage}%`,
     previousValue: formatCurrency(comparison.totalRevenue),
-    isPositive: comparison.evolution.isPositive
+    isPositive: comparison.evolution.revenue.isPositive
   } : undefined;
   
-  // Marge - Simulation basée sur le CA réel
-  const margin = totalRevenue * 0.324; // simulation: 32.4% de marge
-  const marginPrevious = comparison 
-    ? comparison.totalRevenue * 0.321 // simulation: légère différence de taux
-    : margin * 0.988;
+  // Marge - Maintenant avec des données réelles
+  const marginChange = comparison ? {
+    value: `${comparison.evolution.marginPercentage.percentage}%`,
+    previousValue: `${comparison.marginPercentage}%`,
+    isPositive: comparison.evolution.marginPercentage.isPositive
+  } : undefined;
   
-  const marginChange = {
-    value: `${((margin / (marginPrevious || 1) - 1) * 100).toFixed(1)}%`,
-    previousValue: `${((marginPrevious / (comparison?.totalRevenue || 1)) * 100).toFixed(1)}%`,
-    isPositive: margin > (marginPrevious || 0)
-  };
-  
-  // Stock - Simulation complète
+  // Stock - Simulation complète (pas encore de données réelles)
   const stock = 45000; // valeur simulée  
   const stockPrevious = stock * 1.021; // simulation: 2.1% de plus
   const stockChange = {
@@ -104,7 +103,7 @@ export function KpiCards() {
     isPositive: stock < stockPrevious // Moins de stock est positif (moins d'immobilisation)
   };
   
-  // Rotation - Simulation complète
+  // Rotation - Simulation complète (pas encore de données réelles)
   const rotation = 6.8; // valeur simulée
   const rotationPrevious = rotation - 0.5; // simulation: 0.5 de moins
   const rotationChange = {
@@ -126,7 +125,7 @@ export function KpiCards() {
       <KpiCard
         icon={<FiTrendingUp size={24} />}
         title="Marge"
-        value={`${((margin / totalRevenue) * 100).toFixed(1)}%`}
+        value={`${marginPercentage.toFixed(1)}%`}
         change={marginChange}
         isLoading={isLoading}
       />

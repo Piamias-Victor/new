@@ -1,4 +1,4 @@
-// src/hooks/useRevenue.ts
+// src/hooks/useRevenue.ts - version mise à jour
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
@@ -9,8 +9,16 @@ interface RevenueEvolution {
   isPositive: boolean;
 }
 
+interface Evolution {
+  revenue: RevenueEvolution;
+  margin: RevenueEvolution;
+  marginPercentage: RevenueEvolution;
+}
+
 interface RevenueData {
   totalRevenue: number;
+  totalMargin: number;
+  marginPercentage: number;
   isLoading: boolean;
   error: string | null;
   actualDateRange?: {
@@ -20,7 +28,9 @@ interface RevenueData {
   };
   comparison?: {
     totalRevenue: number;
-    evolution: RevenueEvolution;
+    totalMargin: number;
+    marginPercentage: number;
+    evolution: Evolution;
     actualDateRange?: {
       min: string;
       max: string;
@@ -32,6 +42,8 @@ interface RevenueData {
 export function useRevenue(): RevenueData {
   const [data, setData] = useState<RevenueData>({
     totalRevenue: 0,
+    totalMargin: 0,
+    marginPercentage: 0,
     isLoading: true,
     error: null
   });
@@ -39,7 +51,7 @@ export function useRevenue(): RevenueData {
   const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  // Fonction pour récupérer les données de revenue
+  // Fonction pour récupérer les données de revenue et de marge
   const fetchRevenue = async () => {
     // Vérifier que les dates sont disponibles
     if (!startDate || !endDate) {
@@ -89,6 +101,8 @@ export function useRevenue(): RevenueData {
       // Mettre à jour l'état avec les données reçues
       setData({
         totalRevenue: result.totalRevenue,
+        totalMargin: result.totalMargin,
+        marginPercentage: result.marginPercentage,
         actualDateRange: result.actualDateRange,
         comparison: result.comparison,
         isLoading: false,
@@ -98,6 +112,8 @@ export function useRevenue(): RevenueData {
       console.error('Erreur dans useRevenue:', error);
       setData({
         totalRevenue: 0,
+        totalMargin: 0,
+        marginPercentage: 0,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue'
       });
