@@ -56,10 +56,10 @@ export function PharmacySelector() {
   // Obtenir l'icône en fonction du type de filtre actif
   const getFilterIcon = () => {
     switch (lastFilterType) {
-      case 'region': return <FiMap className="mr-2" size={16} />;
-      case 'revenue': return <FiDollarSign className="mr-2" size={16} />;
-      case 'size': return <FiMaximize className="mr-2" size={16} />;
-      default: return <FiHome className="mr-2" size={16} />;
+      case 'region': return <FiMap className="mr-2 text-teal-600" size={16} />;
+      case 'revenue': return <FiDollarSign className="mr-2  text-teal-600" size={16} />;
+      case 'size': return <FiMaximize className="mr-2  text-teal-600" size={16} />;
+      default: return <FiHome className="mr-2  text-teal-600" size={16} />;
     }
   };
 

@@ -4,6 +4,7 @@ import { FiUsers, FiFilter, FiX, FiCheckCircle } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { PharmaciesTab } from './PharmaciesTab';
 import { FiltersTab } from './FiltersTab';
+import { Button, GhostButton } from '@/components/ui/Button';
 
 interface PharmacyDropdownMenuProps {
   onClose: () => void;
@@ -39,7 +40,7 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
   };
 
   return (
-    <div className="flex flex-col max-h-[500px]">
+    <div className="flex flex-col" style={{ height: '500px' }}>
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <button
@@ -70,7 +71,7 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
         </button>
       </div>
 
-      {/* Tab Content - avec un seul scroll contrôlé */}
+      {/* Tab Content - avec un seul scroll */}
       <div className="overflow-y-auto flex-grow">
         {activeTab === 'pharmacies' ? 
           <PharmaciesTab onClose={onClose} /> : 
@@ -78,7 +79,7 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
         }
       </div>
       
-      {/* Footer commun */}
+      {/* Footer commun - Avec les composants Button réutilisables */}
       <div className="p-3 flex justify-between items-center border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex-shrink-0">
         <div className="text-xs text-gray-500 dark:text-gray-400">
           {selectedPharmacyIds.length > 0 && (
@@ -94,25 +95,26 @@ export function PharmacyDropdownMenu({ onClose }: PharmacyDropdownMenuProps) {
         </div>
         
         <div className="flex space-x-2">
-          {/* Bouton pour réinitialiser/effacer */}
+          {/* Bouton pour réinitialiser/effacer - Utiliser GhostButton */}
           {(lastFilterType !== 'none' || selectedPharmacyIds.length > 0) && (
-            <button
+            <GhostButton
+              size="sm"
               onClick={handleResetFilters}
-              className="px-3 py-1.5 text-xs bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
-              <FiX className="inline-block mr-1" size={12} />
               Effacer
-            </button>
+            </GhostButton>
           )}
           
-          {/* Bouton pour appliquer les sélections */}
-          <button
+          
+          {/* Bouton pour appliquer les sélections - Utiliser Button */}
+          <Button
+            size="sm"
+            variant="teal"
+            rightIcon={<FiCheckCircle size={12} />}
             onClick={onClose}
-            className="px-3 py-1.5 text-xs bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors"
           >
-            <FiCheckCircle className="inline-block mr-1" size={12} />
             Appliquer
-          </button>
+          </Button>
         </div>
       </div>
     </div>

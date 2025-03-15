@@ -14,6 +14,7 @@ const buttonVariants = cva(
         ghost: "bg-transparent hover:bg-gray-100 text-gray-700 dark:text-gray-300 dark:hover:bg-gray-800",
         link: "bg-transparent text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 underline-offset-4 hover:underline p-0 h-auto shadow-none",
         danger: "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700 shadow-md hover:shadow",
+        teal: "bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 shadow-md hover:shadow active:shadow-inner"
       },
       size: {
         xs: "py-1 px-2.5 text-xs",
