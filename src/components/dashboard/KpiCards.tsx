@@ -1,22 +1,9 @@
 // src/components/dashboard/KpiCards.tsx
-'use client';
+// Mise à jour du composant KpiCard pour afficher la valeur de la période de comparaison
 
-import React from 'react';
-import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity } from 'react-icons/fi';
-import { useRevenue } from '@/hooks/useRevenue';
+import { useRevenue } from "@/hooks/useRevenue";
+import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity } from "react-icons/fi";
 
-interface KpiCardProps {
-  icon: React.ReactNode;
-  title: string;
-  value: string;
-  change?: {
-    value: string;
-    isPositive: boolean;
-  };
-  isLoading: boolean;
-}
-
-// Composant pour une carte KPI individuelle
 function KpiCard({ icon, title, value, change, isLoading }: KpiCardProps) {
   if (isLoading) {
     return (
@@ -42,23 +29,43 @@ function KpiCard({ icon, title, value, change, isLoading }: KpiCardProps) {
       </div>
       {change && (
         <div className="mt-2 flex items-center text-sm">
-          <span className={`font-medium mr-1 ${
+          {/* Affichage du pourcentage d'évolution */}
+          <span className={`font-medium ${
             change.isPositive 
               ? 'text-green-500 dark:text-green-400' 
               : 'text-red-500 dark:text-red-400'
           }`}>
-            {change.value}
+            {change.isPositive ? '+' : ''}{change.value}
           </span>
-          <span className="text-gray-500 dark:text-gray-400">vs période précédente</span>
+          
+          {/* Affichage du montant de la période précédente */}
+          {change.previousValue && (
+            <span className="text-gray-500 dark:text-gray-400 ml-2">
+              ({change.previousValue})
+            </span>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// Composant principal pour les KPIs
+// Mise à jour de l'interface pour inclure la valeur précédente
+interface KpiCardProps {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  change?: {
+    value: string;
+    previousValue?: string;
+    isPositive: boolean;
+  };
+  isLoading: boolean;
+}
+
+// Mise à jour de KpiCards pour passer les valeurs de période précédente
 export function KpiCards() {
-  const { totalRevenue, isLoading } = useRevenue();
+  const { totalRevenue, comparison, isLoading } = useRevenue();
   
   // Formatter pour la monnaie
   const formatCurrency = (amount: number) => {
@@ -69,17 +76,42 @@ export function KpiCards() {
     }).format(amount);
   };
   
-  // Pour le moment, nous n'avons que les données de CA réelles
-  // Les autres valeurs sont simulées (à remplacer par des hooks réels plus tard)
-  const margin = totalRevenue * 0.324; // simulation: 32.4% de marge
-  const stock = 45000; // valeur simulée
-  const rotation = 6.8; // valeur simulée
+  // CA - Données réelles
+  const revenueChange = comparison ? {
+    value: `${comparison.evolution.percentage.toFixed(1)}%`,
+    previousValue: formatCurrency(comparison.totalRevenue),
+    isPositive: comparison.evolution.isPositive
+  } : undefined;
   
-  // Données de comparaison simulées (à remplacer par des données réelles)
-  const revenuePrevious = totalRevenue * 0.95; // simulation: 5% de moins
-  const marginPrevious = margin * 0.988; // simulation: 1.2% de moins
+  // Marge - Simulation basée sur le CA réel
+  const margin = totalRevenue * 0.324; // simulation: 32.4% de marge
+  const marginPrevious = comparison 
+    ? comparison.totalRevenue * 0.321 // simulation: légère différence de taux
+    : margin * 0.988;
+  
+  const marginChange = {
+    value: `${((margin / (marginPrevious || 1) - 1) * 100).toFixed(1)}%`,
+    previousValue: `${((marginPrevious / (comparison?.totalRevenue || 1)) * 100).toFixed(1)}%`,
+    isPositive: margin > (marginPrevious || 0)
+  };
+  
+  // Stock - Simulation complète
+  const stock = 45000; // valeur simulée  
   const stockPrevious = stock * 1.021; // simulation: 2.1% de plus
+  const stockChange = {
+    value: `${((stock / stockPrevious - 1) * 100).toFixed(1)}%`,
+    previousValue: formatCurrency(stockPrevious),
+    isPositive: stock < stockPrevious // Moins de stock est positif (moins d'immobilisation)
+  };
+  
+  // Rotation - Simulation complète
+  const rotation = 6.8; // valeur simulée
   const rotationPrevious = rotation - 0.5; // simulation: 0.5 de moins
+  const rotationChange = {
+    value: `${(rotation - rotationPrevious).toFixed(1)}x`,
+    previousValue: `${rotationPrevious.toFixed(1)}x`,
+    isPositive: rotation > rotationPrevious
+  };
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -87,10 +119,7 @@ export function KpiCards() {
         icon={<FiBarChart2 size={24} />}
         title="Ventes"
         value={formatCurrency(totalRevenue)}
-        change={{
-          value: `${((totalRevenue / revenuePrevious - 1) * 100).toFixed(1)}%`,
-          isPositive: totalRevenue > revenuePrevious
-        }}
+        change={revenueChange}
         isLoading={isLoading}
       />
       
@@ -98,10 +127,7 @@ export function KpiCards() {
         icon={<FiTrendingUp size={24} />}
         title="Marge"
         value={`${((margin / totalRevenue) * 100).toFixed(1)}%`}
-        change={{
-          value: `${((margin / marginPrevious - 1) * 100).toFixed(1)}%`,
-          isPositive: margin > marginPrevious
-        }}
+        change={marginChange}
         isLoading={isLoading}
       />
       
@@ -109,10 +135,7 @@ export function KpiCards() {
         icon={<FiPackage size={24} />}
         title="Stock"
         value={formatCurrency(stock)}
-        change={{
-          value: `${((stock / stockPrevious - 1) * 100).toFixed(1)}%`,
-          isPositive: stock < stockPrevious
-        }}
+        change={stockChange}
         isLoading={isLoading}
       />
       
@@ -120,10 +143,7 @@ export function KpiCards() {
         icon={<FiActivity size={24} />}
         title="Rotation"
         value={`${rotation.toFixed(1)}x`}
-        change={{
-          value: `+${(rotation - rotationPrevious).toFixed(1)}x`,
-          isPositive: rotation > rotationPrevious
-        }}
+        change={rotationChange}
         isLoading={isLoading}
       />
     </div>

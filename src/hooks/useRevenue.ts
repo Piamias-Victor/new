@@ -3,6 +3,12 @@ import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
+interface RevenueEvolution {
+  absolute: number;
+  percentage: number;
+  isPositive: boolean;
+}
+
 interface RevenueData {
   totalRevenue: number;
   isLoading: boolean;
@@ -11,6 +17,15 @@ interface RevenueData {
     min: string;
     max: string;
     days: number;
+  };
+  comparison?: {
+    totalRevenue: number;
+    evolution: RevenueEvolution;
+    actualDateRange?: {
+      min: string;
+      max: string;
+      days: number;
+    };
   };
 }
 
@@ -21,7 +36,7 @@ export function useRevenue(): RevenueData {
     error: null
   });
   
-  const { startDate, endDate } = useDateRange();
+  const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
   // Fonction pour récupérer les données de revenue
@@ -35,26 +50,27 @@ export function useRevenue(): RevenueData {
       // Mettre à jour l'état pour indiquer le chargement
       setData(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Utiliser selectedPharmacyIds au lieu de selectedPharmacyId
-      const isAllPharmacies = selectedPharmacyIds.length === 0;
-      
       // Préparer les paramètres de la requête
       const params = new URLSearchParams({
         startDate,
         endDate
       });
       
+      // Ajouter les dates de comparaison si activées
+      if (isComparisonEnabled && comparisonStartDate && comparisonEndDate) {
+        params.append('comparisonStartDate', comparisonStartDate);
+        params.append('comparisonEndDate', comparisonEndDate);
+      }
+      
       // Si on a une sélection spécifique, on l'ajoute aux paramètres
-      if (!isAllPharmacies) {
+      if (selectedPharmacyIds.length > 0) {
         // Ajouter chaque ID de pharmacie sélectionnée
         selectedPharmacyIds.forEach(id => {
           params.append('pharmacyIds', id);
         });
       }
       
-      console.log(`Fetching revenue data for ${selectedPharmacyIds.length} pharmacies, period: ${startDate} to ${endDate}`);
-      
-      // Effectuer la requête avec cache: 'no-store' pour éviter les problèmes de cache
+      // Effectuer la requête
       const response = await fetch(`/api/sales/revenue?${params}`, {
         cache: 'no-store',
         method: 'GET',
@@ -69,12 +85,12 @@ export function useRevenue(): RevenueData {
       }
       
       const result = await response.json();
-      console.log('Revenue data received:', result);
       
       // Mettre à jour l'état avec les données reçues
       setData({
         totalRevenue: result.totalRevenue,
         actualDateRange: result.actualDateRange,
+        comparison: result.comparison,
         isLoading: false,
         error: null
       });
@@ -91,7 +107,7 @@ export function useRevenue(): RevenueData {
   // Déclencher la requête lorsque les dépendances changent
   useEffect(() => {
     fetchRevenue();
-  }, [startDate, endDate, selectedPharmacyIds]); // Inclure selectedPharmacyIds comme dépendance
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled]);
   
   return data;
 }
