@@ -1,4 +1,4 @@
-// src/hooks/useProductSearch.ts
+// src/hooks/useProductSearch.ts (mise à jour)
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import productService, { Product, SearchParams } from '@/services/productService';
@@ -11,31 +11,45 @@ interface UseProductSearchResult {
   clearResults: () => void;
 }
 
-/**
- * Hook personnalisé pour la recherche de produits
- */
 export function useProductSearch(initialLimit = 20): UseProductSearchResult {
   const [results, setResults] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Récupérer les pharmacies sélectionnées
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  // Fonction pour effectuer la recherche
   const searchProducts = useCallback(async (params: Omit<SearchParams, 'pharmacyIds'>) => {
     try {
+      // Validation des paramètres
+      if (!params.term || params.term.trim() === '') {
+        setError('Veuillez entrer un terme de recherche');
+        return;
+      }
+      
       setIsLoading(true);
       setError(null);
+      
+      // Nettoyer le terme de recherche
+      const cleanTerm = params.term.trim();
       
       // Préparer les paramètres de recherche avec les pharmacies sélectionnées
       const searchParams: SearchParams = {
         ...params,
+        term: cleanTerm,
         pharmacyIds: selectedPharmacyIds,
         limit: params.limit || initialLimit
       };
       
-      console.log('Recherche avec les paramètres:', searchParams);
+      // Traitement spécial pour le mode liste
+      if (params.type === 'list') {
+        // Vérifier s'il y a du contenu après nettoyage
+        const codes = cleanTerm.split(/[\n,;]/).map(code => code.trim()).filter(Boolean);
+        if (codes.length === 0) {
+          setError('Veuillez entrer au moins un code valide');
+          setIsLoading(false);
+          return;
+        }
+      }
       
       // Appeler le service de recherche
       const data = await productService.searchProducts(searchParams);
@@ -49,7 +63,6 @@ export function useProductSearch(initialLimit = 20): UseProductSearchResult {
     }
   }, [selectedPharmacyIds, initialLimit]);
   
-  // Fonction pour effacer les résultats
   const clearResults = useCallback(() => {
     setResults([]);
     setError(null);

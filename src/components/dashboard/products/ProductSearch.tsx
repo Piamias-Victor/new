@@ -9,7 +9,6 @@ interface ProductSearchProps {
 }
 
 export function ProductSearch({ onSearch, isLoading = false }: ProductSearchProps) {
-  // Utiliser notre contexte pour partager l'état de recherche
   const { 
     searchState,
     setSearchTerm,
@@ -20,54 +19,42 @@ export function ProductSearch({ onSearch, isLoading = false }: ProductSearchProp
   
   const { searchTerm, searchType, isListMode } = searchState;
 
-  // Déterminer le type de recherche à partir de la valeur
-  const detectSearchType = (value: string): 'name' | 'code' | 'suffix' | 'list' => {
-    if (isListMode) {
-      return 'list';
-    } else if (value.startsWith('*')) {
-      return 'suffix';
-    } else if (/^\d+$/.test(value)) {
-      return 'code';
-    } else {
-      return 'name';
+  // Détecter automatiquement le type de recherche
+  useEffect(() => {
+    if (!isListMode) {
+      let newType: 'name' | 'code' | 'suffix' = 'name';
+      
+      if (searchTerm.startsWith('*')) {
+        newType = 'suffix';
+      } else if (/^\d+$/.test(searchTerm)) {
+        newType = 'code';
+      }
+      
+      // Seulement mettre à jour si le type a changé
+      if (newType !== searchType) {
+        setSearchType(newType);
+      }
     }
-  };
+  }, [searchTerm, isListMode, searchType, setSearchType]);
 
   // Gérer le changement dans le champ de recherche
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    // Mettre à jour le type de recherche en fonction de la valeur
-    if (!isListMode) {
-      setSearchType(detectSearchType(value));
+    setSearchTerm(e.target.value);
+  };
+
+  // Soumettre avec touche Entrée pour une meilleure UX
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && searchTerm.trim()) {
+      e.preventDefault();
+      onSearch();
     }
   };
 
-  // Soumettre la recherche
-  const handleSearchSubmit = async () => {
-    if (searchTerm.trim()) {
-      try {
-        // Appeler la fonction onSearch fournie par le parent,
-        // qui utilisera le hook useProductSearch pour effectuer la recherche
-        await onSearch();
-      } catch (error) {
-        console.error("Erreur lors de la recherche:", error);
-      }
-    }
-  };
-
-  // Basculer entre le mode de recherche simple et le mode liste
+  // Toggle mode liste
   const toggleListMode = () => {
-    const newListMode = !isListMode;
-    setIsListMode(newListMode);
-    setSearchType(newListMode ? 'list' : 'name');
-    setSearchTerm(''); // Effacer le champ lors du changement de mode
-  };
-
-  // Effacer la recherche
-  const handleClearSearch = () => {
-    clearSearch();
+    setIsListMode(!isListMode);
+    setSearchTerm('');
+    setSearchType(isListMode ? 'name' : 'list');
   };
 
   return (
@@ -100,6 +87,7 @@ export function ProductSearch({ onSearch, isLoading = false }: ProductSearchProp
           <textarea
             value={searchTerm}
             onChange={handleSearchChange}
+            onKeyDown={handleKeyDown}
             rows={5}
             className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-sky-500 focus:border-sky-500"
             placeholder="Collez une liste de codes EAN (séparés par des sauts de ligne, virgules ou points-virgules)"
@@ -118,19 +106,20 @@ export function ProductSearch({ onSearch, isLoading = false }: ProductSearchProp
               type="text"
               value={searchTerm}
               onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
               className="pl-10 w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-sky-500 focus:border-sky-500"
               placeholder={
                 searchType === 'suffix' 
                   ? "Recherche par fin de code (*1234)" 
                   : searchType === 'code' 
                     ? "Recherche par code EAN13" 
-                    : "Recherche par nom de produit"
+                    : "Recherche par nom, labo ou catégorie"
               }
             />
             {searchTerm && (
               <button 
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500"
-                onClick={handleClearSearch}
+                onClick={clearSearch}
               >
                 <FiX className="h-5 w-5" />
               </button>
@@ -139,8 +128,8 @@ export function ProductSearch({ onSearch, isLoading = false }: ProductSearchProp
         )}
         
         <button
-          onClick={handleSearchSubmit}
-          disabled={isLoading}
+          onClick={() => onSearch()}
+          disabled={isLoading || !searchTerm.trim()}
           className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
