@@ -1,3 +1,4 @@
+// src/app/dashboard/detailed/products/page.tsx
 'use client';
 
 import React, { useEffect } from 'react';
@@ -9,6 +10,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { ProductSearch } from '@/components/dashboard/products/ProductSearch';
 import { ProductResultsList } from '@/components/dashboard/products/ProductResultsList';
 import { ProductSearchSummary } from '@/components/dashboard/products/ProductSearchSummary';
+import { ProductSalesEvolution } from '@/components/dashboard/products/ProductSalesEvolution';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { ProductSearchProvider, useProductSearchContext } from '@/contexts/ProductSearchContext';
@@ -46,6 +48,14 @@ function ProductAnalysisContent() {
     }
   }, [status, router]);
 
+  // Effet pour exécuter la recherche lorsque les dates changent
+  useEffect(() => {
+    // Si des résultats existent déjà, refaire la recherche avec les nouvelles dates
+    if (results.length > 0) {
+      handleSearch();
+    }
+  }, [startDate, endDate]);
+
   // Afficher un état de chargement si la session est en cours de chargement
   if (status === 'loading') {
     return (
@@ -78,6 +88,11 @@ function ProductAnalysisContent() {
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-300">
             Recherchez et analysez les performances de produits spécifiques
+            {startDate && endDate && (
+              <span className="ml-1 text-sm text-sky-600 dark:text-sky-400">
+                du {new Date(startDate).toLocaleDateString('fr-FR')} au {new Date(endDate).toLocaleDateString('fr-FR')}
+              </span>
+            )}
           </p>
         </div>
         
@@ -88,7 +103,15 @@ function ProductAnalysisContent() {
             isLoading={isLoading}
           />
           
-          {/* Synthèse des résultats (si des résultats existent) */}
+          {/* Graphique d'évolution des ventes si des produits sont sélectionnés */}
+          {results.length > 0 && (
+            <ProductSalesEvolution 
+              products={results} 
+              isLoading={isLoading} 
+            />
+          )}
+          
+          {/* Synthèse des résultats */}
           {results.length > 0 && (
             <ProductSearchSummary products={results} />
           )}
