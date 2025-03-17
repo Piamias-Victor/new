@@ -10,6 +10,12 @@ import { AnalysisCategoryCard } from '@/components/dashboard/analysis/AnalysisCa
 import { StatisticsSection } from '@/components/dashboard/analysis/StatisticsSection';
 import { useGlobalStatistics } from '@/hooks/useGlobalStatistics';
 
+
+export const formatNumber = (num: number): string => {
+  return new Intl.NumberFormat('fr-FR').format(num);
+};
+
+
 /**
  * Page d'analyse détaillée
  * 
@@ -42,9 +48,6 @@ export default function DetailedAnalysisPage() {
   ];
 
   // Formatage des statistiques globales
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat('fr-FR').format(num);
-  };
 
   const globalStats = [
     { label: 'Produits analysés', value: formatNumber(statistics.uniqueProducts) },

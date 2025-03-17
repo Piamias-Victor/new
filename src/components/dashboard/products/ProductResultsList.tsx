@@ -1,8 +1,9 @@
 // src/components/dashboard/products/ProductResultsList.tsx
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FiPackage, FiTrendingUp, FiBox, FiDollarSign, FiEye, FiFilter, FiAlertCircle, FiCheck, FiSearch, FiChevronDown, FiChevronUp, FiHome } from 'react-icons/fi';
+import { FiPackage, FiTrendingUp, FiBox, FiDollarSign, FiEye, FiFilter, FiAlertCircle, FiCheck, FiSearch, FiChevronDown, FiChevronUp, FiHome, FiShoppingCart } from 'react-icons/fi';
 import { Product } from '@/services/productService';
+import { formatNumber } from '@/app/dashboard/detailed/page';
 
 interface ProductResultsListProps {
   products: Product[];
@@ -104,6 +105,9 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
         break;
       case 'stock':
         comparison = ((a.current_stock || 0) - (b.current_stock || 0));
+        break;
+      case 'sales':
+        comparison = ((a.total_sales || 0) - (b.total_sales || 0));
         break;
       default:
         // Par défaut, trier par nom
@@ -222,6 +226,16 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
               >
                 Stock {sortBy === 'stock' && (sortOrder === 'asc' ? '↑' : '↓')}
               </button>
+              <button
+          onClick={() => handleSort('sales')}
+          className={`px-3 py-1.5 text-sm rounded-r-lg ${
+            sortBy === 'sales' 
+              ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' 
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Ventes {sortBy === 'sales' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </button>
             </div>
           </div>
         </div>
@@ -316,6 +330,15 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
                       {product.pharmacies_with_stock || 0} / {product.pharmacy_count || 0}
                     </div>
                   </div>
+
+                  <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+            <FiShoppingCart className="mr-1" size={12} /> Ventes
+          </div>
+          <div className="font-medium text-sky-600 dark:text-sky-400">
+            {formatNumber(product.total_sales)}
+          </div>
+        </div>
                   
                   
                 </div>
