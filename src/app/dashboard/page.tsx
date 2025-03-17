@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 'use client';
 
 import { useSession } from 'next-auth/react';
@@ -6,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { PharmacyDataCard } from '@/components/dashboard/PharmacyDataCard';
 import { DatePeriodDisplay } from '@/components/shared/DatePeriodDisplay';
+import { NavigationCards } from '@/components/dashboard/NavigationCards';
 import { KpiCards } from '@/components/dashboard/KpiCards';
 import { SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
 import { TopProducts } from '@/components/dashboard/TopProducts';
@@ -48,19 +48,13 @@ export default function Dashboard() {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="md:col-span-2">
-            <PharmacyDataCard />
-          </div>
-          <div>
-            <DatePeriodDisplay />
-          </div>
-        </div>
-        
         {/* KPI Cards */}
         <div className="mb-8">
           <KpiCards />
         </div>
+
+        {/* Navigation Cards */}
+        <NavigationCards />
         
         {/* Nouveau composant d'évolution des ventes */}
         <SalesEvolutionChart />
