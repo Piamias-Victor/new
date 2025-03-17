@@ -1,14 +1,14 @@
-// src/app/dashboard/products/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
+
 import { ProductSearch } from '@/components/dashboard/products/ProductSearch';
 import { ProductResultsList } from '@/components/dashboard/products/ProductResultsList';
+import { ProductSearchSummary } from '@/components/dashboard/products/ProductSearchSummary';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { ProductSearchProvider, useProductSearchContext } from '@/contexts/ProductSearchContext';
@@ -87,6 +87,11 @@ function ProductAnalysisContent() {
             onSearch={handleSearch}
             isLoading={isLoading}
           />
+          
+          {/* Synthèse des résultats (si des résultats existent) */}
+          {results.length > 0 && (
+            <ProductSearchSummary products={results} />
+          )}
           
           {/* Résultats de recherche */}
           <ProductResultsList 
