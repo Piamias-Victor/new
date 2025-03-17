@@ -10,10 +10,10 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { ProductSearch } from '@/components/dashboard/products/ProductSearch';
 import { ProductResultsList } from '@/components/dashboard/products/ProductResultsList';
 import { ProductSearchSummary } from '@/components/dashboard/products/ProductSearchSummary';
-import { ProductSalesEvolution } from '@/components/dashboard/products/ProductSalesEvolution';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { ProductSearchProvider, useProductSearchContext } from '@/contexts/ProductSearchContext';
+import { ProductSalesEvolutionChart } from '@/components/dashboard/products/ProductSalesEvolution';
 
 // Composant interne qui utilise les contextes
 function ProductAnalysisContent() {
@@ -103,20 +103,20 @@ function ProductAnalysisContent() {
             isLoading={isLoading}
           />
           
-          {/* Graphique d'évolution des ventes si des produits sont sélectionnés */}
+          {/* Synthèse des résultats - s'affiche uniquement si des résultats existent */}
           {results.length > 0 && (
-            <ProductSalesEvolution 
+            <ProductSearchSummary products={results} />
+          )}
+          
+          {/* Graphique d'évolution des ventes - s'affiche uniquement si des résultats existent */}
+          {results.length > 0 && (
+            <ProductSalesEvolutionChart 
               products={results} 
               isLoading={isLoading} 
             />
           )}
           
-          {/* Synthèse des résultats */}
-          {results.length > 0 && (
-            <ProductSearchSummary products={results} />
-          )}
-          
-          {/* Résultats de recherche */}
+          {/* Résultats de recherche détaillés */}
           <ProductResultsList 
             products={results}
             isLoading={isLoading}

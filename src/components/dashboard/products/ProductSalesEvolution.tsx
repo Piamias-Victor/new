@@ -1,4 +1,4 @@
-// src/components/dashboard/products/ProductSalesEvolution.tsx
+// src/components/dashboard/products/ProductSalesEvolutionChart.tsx
 import { useState, useEffect, useMemo } from 'react';
 import {
   AreaChart,
@@ -7,17 +7,16 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
-import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
+import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight, FiBarChart2, FiTrendingDown, FiCalendar } from 'react-icons/fi';
 import { Product } from '@/services/productService';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 type IntervalType = 'day' | 'week' | 'month';
 
-interface ProductSalesEvolutionProps {
+interface ProductSalesEvolutionChartProps {
   products: Product[];
   isLoading?: boolean;
 }
@@ -25,13 +24,14 @@ interface ProductSalesEvolutionProps {
 // Interface pour les données d'un point dans le graphique
 interface ChartDataPoint {
   period: string;
-  total: number;
+  totalRevenue: number;
+  totalMargin: number;
   [key: string]: any; // Pour les ventes individuelles par produit
 }
 
-export function ProductSalesEvolution({ products, isLoading = false }: ProductSalesEvolutionProps) {
+export function ProductSalesEvolutionChart({ products, isLoading = false }: ProductSalesEvolutionChartProps) {
   const [interval, setInterval] = useState<IntervalType>('day');
-  const [showIndividualProducts, setShowIndividualProducts] = useState(false);
+  const [showDetailMode, setShowDetailMode] = useState(false);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [dataIsLoading, setDataIsLoading] = useState(false);
   
@@ -56,12 +56,6 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
           interval
         });
         
-        // Ajouter les IDs de produits
-        const productIds = products.map(p => p.id || p.product_id);
-        productIds.forEach(id => {
-          if (id) params.append('productIds', id);
-        });
-        
         // Ajouter les IDs de pharmacies sélectionnées
         if (selectedPharmacyIds.length > 0) {
           selectedPharmacyIds.forEach(id => {
@@ -69,17 +63,55 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
           });
         }
         
-        // Dans un environnement réel, vous feriez un appel API ici:
-        // const response = await fetch(`/api/products/sales-evolution?${params}`);
-        // const data = await response.json();
+        // Récupérer les données d'évolution globales via l'API
+        const response = await fetch(`/api/sales/evolution?${params}`);
         
-        // Simulons une réponse d'API avec des données fictives
-        const simulatedData = generateSimulatedData(products, interval, startDate, endDate);
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
         
-        setChartData(simulatedData);
+        const result = await response.json();
+        
+        // Transformer les données pour notre graphique
+        const formattedData = result.data.map((item: any) => {
+          // Point de données de base avec le total
+          const dataPoint: ChartDataPoint = {
+            period: item.period,
+            totalRevenue: Number(item.revenue) || 0,
+            totalMargin: Number(item.margin) || 0
+          };
+          
+          // Simuler des données individuelles pour chaque produit
+          // Dans une implémentation réelle, ces données viendraient d'une API spécifique
+          products.forEach((product, index) => {
+            const productId = product.id || product.product_id;
+            if (!productId) return;
+            
+            // Calculer un facteur de proportion pour ce produit
+            // Basé sur le prix relatif du produit par rapport aux autres
+            const price = Number(product.price_with_tax) || 50;
+            const totalPrice = products.reduce((sum, p) => sum + (Number(p.price_with_tax) || 50), 0);
+            const priceFactor = price / (totalPrice / products.length);
+            
+            // Simuler le revenu pour ce produit (proportionnel au prix avec un peu d'aléatoire)
+            const productShare = priceFactor * (0.5 + Math.random() * 0.5);
+            const individualRevenue = dataPoint.totalRevenue * productShare / products.length;
+            
+            // Simuler la marge (entre 20% et 40% du revenu selon le produit)
+            const marginRate = 0.2 + (index % 3) * 0.1;
+            const individualMargin = individualRevenue * marginRate;
+            
+            // Ajouter au point de données
+            dataPoint[`revenue_${productId}`] = Math.round(individualRevenue);
+            dataPoint[`margin_${productId}`] = Math.round(individualMargin);
+          });
+          
+          return dataPoint;
+        });
+        
+        setChartData(formattedData);
       } catch (error) {
         console.error('Erreur lors de la récupération des données d\'évolution:', error);
-        // En cas d'erreur, garder les données précédentes
       } finally {
         setDataIsLoading(false);
       }
@@ -87,93 +119,6 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
 
     fetchSalesData();
   }, [products, interval, startDate, endDate, selectedPharmacyIds]);
-
-  // Générer des données simulées (à remplacer par l'appel API réel)
-  const generateSimulatedData = (
-    products: Product[],
-    interval: IntervalType,
-    startDateStr: string,
-    endDateStr: string
-  ): ChartDataPoint[] => {
-    const result: ChartDataPoint[] = [];
-    
-    // Parse des dates
-    const startDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-    
-    // Générer les périodes en fonction de l'intervalle
-    const periods: string[] = [];
-    
-    if (interval === 'day') {
-      let currentDate = new Date(startDate);
-      while (currentDate <= endDate) {
-        periods.push(currentDate.toISOString().split('T')[0]);
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    } else if (interval === 'week') {
-      // Simplification: considère une semaine comme 7 jours à partir du début
-      let currentDate = new Date(startDate);
-      let weekIndex = 1;
-      while (currentDate <= endDate) {
-        periods.push(`${currentDate.getFullYear()}-${String(weekIndex).padStart(2, '0')}`);
-        currentDate.setDate(currentDate.getDate() + 7);
-        weekIndex++;
-      }
-    } else { // month
-      const startMonth = startDate.getMonth();
-      const startYear = startDate.getFullYear();
-      const endMonth = endDate.getMonth();
-      const endYear = endDate.getFullYear();
-      
-      let year = startYear;
-      let month = startMonth;
-      
-      while (year < endYear || (year === endYear && month <= endMonth)) {
-        periods.push(`${year}-${String(month + 1).padStart(2, '0')}`);
-        month++;
-        if (month > 11) {
-          month = 0;
-          year++;
-        }
-      }
-    }
-    
-    // Générer des données pour chaque période
-    periods.forEach((period, periodIndex) => {
-      const dataPoint: ChartDataPoint = { period, total: 0 };
-      
-      // Valeur de base pour cette période (croissance linéaire + un peu d'aléatoire)
-      const baseTrend = 1000 + (periodIndex * 100) + (Math.random() * 200 - 100);
-      
-      // Générer des données pour chaque produit
-      products.forEach(product => {
-        const productId = product.id || product.product_id;
-        if (!productId) return;
-        
-        // Simuler une valeur unique pour ce produit et cette période
-        // basée sur le prix et la popularité (quantité en stock comme proxy)
-        const price = product.price_with_tax || 50;
-        const popularity = Math.min(product.current_stock || 10, 100) / 100;
-        
-        // Valeur de vente simulée: prix × popularité × facteur périodique avec variation aléatoire
-        const sales = price * popularity * (0.8 + (periodIndex * 0.05)) * (0.9 + Math.random() * 0.4);
-        const roundedSales = Math.round(sales * 10) / 10;
-        
-        // Stocker la valeur individuelle du produit
-        dataPoint[productId] = roundedSales;
-        
-        // Ajouter au total
-        dataPoint.total += roundedSales;
-      });
-      
-      // Arrondir le total
-      dataPoint.total = Math.round(dataPoint.total);
-      
-      result.push(dataPoint);
-    });
-    
-    return result;
-  };
 
   // Formatter les dates selon l'intervalle choisi
   const formatXAxis = (tickItem: string) => {
@@ -222,25 +167,154 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
   
   // Générer des couleurs distinctes pour chaque produit
   const getProductColor = (index: number) => {
-    const colors = ['#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#14b8a6', '#a855f7', '#d97706'];
+    const colors = [
+      '#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', 
+      '#ec4899', '#06b6d4', '#14b8a6', '#a855f7', '#d97706'
+    ];
     return colors[index % colors.length];
   };
   
-  // Calculer la tendance (% d'évolution)
-  const trend = useMemo(() => {
-    if (chartData.length < 2) {
-      return { value: '0.0', isPositive: true };
+  // Personnaliser le tooltip du graphique
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    
+    const formattedLabel = formatXAxis(label);
+    
+    return (
+      <div className="p-3 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
+        <h5 className="font-medium text-gray-800 dark:text-gray-200 mb-2">{formattedLabel}</h5>
+        
+        <div className="space-y-1.5">
+          {!showDetailMode && (
+            <>
+              {payload.map((entry: any, index: number) => {
+                const { name, value, color } = entry;
+                
+                // Déterminer si c'est le revenu ou la marge
+                const isRevenue = name === 'CA';
+                const isMargin = name === 'Marge';
+                
+                return (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div 
+                        className="w-3 h-3 rounded-full mr-2" 
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{name}</span>
+                    </div>
+                    <span className={`text-sm font-medium ${
+                      isMargin ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-800 dark:text-gray-200'
+                    }`}>
+                      {formatTooltipValue(value)}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+          
+          {showDetailMode && (
+            <div className="max-h-60 overflow-y-auto space-y-1.5">
+              {payload.map((entry: any, index: number) => {
+                const { name, value, color, dataKey } = entry;
+                
+                // Ne traiter que les entrées de revenus des produits individuels
+                if (!dataKey.startsWith('revenue_')) return null;
+                
+                // Extraire l'ID du produit depuis dataKey
+                const productId = dataKey.replace('revenue_', '');
+                
+                // Trouver les données de marge correspondantes
+                const marginEntry = payload.find((p: any) => p.dataKey === `margin_${productId}`);
+                const marginValue = marginEntry ? marginEntry.value : 0;
+                
+                // Trouver le produit correspondant
+                const product = products.find(p => (p.id || p.product_id) === productId);
+                if (!product) return null;
+                
+                const displayName = product.display_name || product.name || 'Produit';
+                
+                return (
+                  <div key={index} className="flex flex-col pb-1.5 border-b border-gray-200 dark:border-gray-700 last:border-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center">
+                        <div 
+                          className="w-2.5 h-2.5 rounded-full mr-2" 
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate max-w-44">
+                          {displayName}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs ml-4">
+                      <span className="text-gray-500 dark:text-gray-400">CA:</span>
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        {formatTooltipValue(value)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs ml-4">
+                      <span className="text-gray-500 dark:text-gray-400">Marge:</span>
+                      <span className="text-emerald-500 dark:text-emerald-400 font-medium">
+                        {formatTooltipValue(marginValue)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+  
+  // Calculer des statistiques sur les données du graphique
+  const salesStats = useMemo(() => {
+    if (!chartData || chartData.length === 0) {
+      return {
+        trend: { value: '0.0', isPositive: true },
+        bestPeriod: null,
+        worstPeriod: null,
+        avgRevenue: 0
+      };
     }
     
-    const firstValue = chartData[0]?.total || 0;
-    const lastValue = chartData[chartData.length - 1]?.total || 0;
-    
+    // Calculer la tendance
+    const firstValue = chartData[0]?.totalRevenue || 0;
+    const lastValue = chartData[chartData.length - 1]?.totalRevenue || 0;
     const change = lastValue - firstValue;
     const percentChange = firstValue !== 0 ? (change / firstValue) * 100 : 0;
     
+    // Trouver la meilleure et la pire période
+    let bestPeriod = chartData[0];
+    let worstPeriod = chartData[0];
+    let totalRevenue = 0;
+    
+    chartData.forEach(item => {
+      totalRevenue += item.totalRevenue;
+      
+      if (item.totalRevenue > bestPeriod.totalRevenue) {
+        bestPeriod = item;
+      }
+      
+      if (item.totalRevenue < worstPeriod.totalRevenue) {
+        worstPeriod = item;
+      }
+    });
+    
+    // Calculer la moyenne
+    const avgRevenue = totalRevenue / chartData.length;
+    
     return {
-      value: Math.abs(percentChange).toFixed(1),
-      isPositive: percentChange >= 0
+      trend: {
+        value: Math.abs(percentChange).toFixed(1),
+        isPositive: percentChange >= 0
+      },
+      bestPeriod,
+      worstPeriod,
+      avgRevenue
     };
   }, [chartData]);
 
@@ -277,14 +351,14 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
               Évolution des ventes
             </h2>
             <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {products.length} produit(s) sélectionné(s) · Tendance : 
+              {products.length} produit(s) · Tendance : 
               <span className={`font-medium ml-1 flex items-center ${
-                trend.isPositive 
+                salesStats.trend.isPositive 
                   ? 'text-green-500 dark:text-green-400' 
                   : 'text-red-500 dark:text-red-400'
               }`}>
-                {trend.isPositive ? <FiArrowUpRight className="mr-1" /> : <FiArrowDownRight className="mr-1" />}
-                {trend.value}%
+                {salesStats.trend.isPositive ? <FiArrowUpRight className="mr-1" /> : <FiArrowDownRight className="mr-1" />}
+                {salesStats.trend.value}%
               </span>
             </div>
           </div>
@@ -292,17 +366,17 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
 
         {/* Options du graphique */}
         <div className="flex flex-wrap gap-3">
-          {/* Toggle pour afficher les produits individuellement */}
+          {/* Toggle pour afficher le détail */}
           <button
-            onClick={() => setShowIndividualProducts(!showIndividualProducts)}
+            onClick={() => setShowDetailMode(!showDetailMode)}
             className={`flex items-center px-3 py-1.5 text-xs rounded ${
-              showIndividualProducts 
+              showDetailMode 
                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
             }`}
           >
             <span className="w-3 h-3 rounded-full bg-purple-500 dark:bg-purple-400 mr-1"></span>
-            Détails par produit
+            Détail par produit
           </button>
           
           {/* Sélection de l'intervalle */}
@@ -356,21 +430,25 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
               margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
             >
               <defs>
-                {/* Gradient pour le total */}
-                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                {/* Gradients pour les totaux */}
+                <linearGradient id="colorTotalRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
                   <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.1}/>
                 </linearGradient>
+                <linearGradient id="colorTotalMargin" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                </linearGradient>
                 
                 {/* Gradients pour les produits individuels */}
-                {showIndividualProducts && products.slice(0, 10).map((product, index) => {
+                {products.map((product, index) => {
                   const productId = product.id || product.product_id;
                   if (!productId) return null;
                   
                   return (
                     <linearGradient 
-                      key={productId} 
-                      id={`color${productId}`} 
+                      key={`gradient-revenue-${productId}`} 
+                      id={`colorRevenue${productId}`} 
                       x1="0" 
                       y1="0" 
                       x2="0" 
@@ -382,7 +460,9 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
                   );
                 })}
               </defs>
+              
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
+              
               <XAxis 
                 dataKey="period" 
                 tickFormatter={formatXAxis} 
@@ -391,6 +471,7 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
                 tickMargin={10}
                 axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
               />
+              
               <YAxis 
                 tickFormatter={formatYAxis} 
                 tick={{ fontSize: 12 }}
@@ -399,85 +480,135 @@ export function ProductSalesEvolution({ products, isLoading = false }: ProductSa
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip 
-                formatter={(value: number) => [formatTooltipValue(value)]}
-                labelFormatter={formatXAxis}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  backgroundColor: '#FFFFFF'
-                }}
-              />
-              <Legend 
-                verticalAlign="top"
-                height={36}
-                iconType="circle"
-              />
               
-              {/* Afficher les produits individuels si l'option est activée */}
-              {showIndividualProducts && products.slice(0, 10).map((product, index) => {
-                const productId = product.id || product.product_id;
-                if (!productId) return null;
-                
-                return (
+              <Tooltip content={<CustomTooltip />} />
+              
+              {/* Afficher le total ou les produits individuels selon le mode */}
+              {!showDetailMode ? (
+                // Mode totaux
+                <>
                   <Area 
-                    key={productId}
                     type="monotone" 
-                    dataKey={productId} 
-                    name={product.display_name || product.name || `Produit ${index + 1}`} 
-                    stroke={getProductColor(index)} 
-                    fillOpacity={0.4}
-                    fill={`url(#color${productId})`} 
-                    strokeWidth={1.5}
-                    dot={{ stroke: getProductColor(index), fill: '#ffffff', strokeWidth: 2, r: 3 }}
-                    activeDot={{ stroke: getProductColor(index), fill: '#ffffff', strokeWidth: 2, r: 5 }}
+                    dataKey="totalRevenue" 
+                    name="CA" 
+                    stroke="#0ea5e9" 
+                    fillOpacity={0.6}
+                    fill="url(#colorTotalRevenue)" 
+                    strokeWidth={2}
+                    dot={{ stroke: '#0ea5e9', fill: '#ffffff', strokeWidth: 2, r: 4 }}
+                    activeDot={{ stroke: '#0ea5e9', fill: '#ffffff', strokeWidth: 2, r: 6 }}
                   />
-                );
-              })}
-              
-              {/* Toujours afficher le total */}
-              <Area 
-                type="monotone" 
-                dataKey="total" 
-                name="Total" 
-                stroke="#0ea5e9" 
-                fillOpacity={0.6}
-                fill="url(#colorTotal)" 
-                strokeWidth={2}
-                dot={{ stroke: '#0ea5e9', fill: '#ffffff', strokeWidth: 2, r: 4 }}
-                activeDot={{ stroke: '#0ea5e9', fill: '#ffffff', strokeWidth: 2, r: 6 }}
-              />
+                  <Area 
+                    type="monotone" 
+                    dataKey="totalMargin" 
+                    name="Marge" 
+                    stroke="#10b981" 
+                    fillOpacity={0.6}
+                    fill="url(#colorTotalMargin)" 
+                    strokeWidth={2}
+                    dot={{ stroke: '#10b981', fill: '#ffffff', strokeWidth: 2, r: 4 }}
+                    activeDot={{ stroke: '#10b981', fill: '#ffffff', strokeWidth: 2, r: 6 }}
+                  />
+                </>
+              ) : (
+                // Mode détail par produit - pas de légende
+                products.map((product, index) => {
+                  const productId = product.id || product.product_id;
+                  if (!productId) return null;
+                  
+                  const displayName = product.display_name || product.name || `Produit ${index + 1}`;
+                  
+                  return (
+                    <Area 
+                      key={`revenue-${productId}`}
+                      type="monotone" 
+                      dataKey={`revenue_${productId}`} 
+                      name={displayName}
+                      stroke={getProductColor(index)} 
+                      fillOpacity={0.5}
+                      fill={`url(#colorRevenue${productId})`} 
+                      strokeWidth={1.5}
+                      legendType="none" // Cacher de la légende
+                      dot={false}
+                      activeDot={{ stroke: getProductColor(index), fill: '#ffffff', strokeWidth: 2, r: 5 }}
+                    />
+                  );
+                })
+              )}
             </AreaChart>
           </ResponsiveContainer>
         )}
       </div>
 
-      {/* Statistiques récapitulatives */}
+      {/* Statistiques d'analyse des ventes */}
       {chartData.length > 0 && (
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total des ventes</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatTooltipValue(chartData.reduce((sum, item) => sum + item.total, 0))}
+          {/* Meilleure période */}
+          {salesStats.bestPeriod && (
+            <div className="bg-white dark:bg-gray-800/70 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center mb-2">
+                <div className="p-2 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 mr-2">
+                  <FiTrendingUp size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Meilleure {interval === 'day' ? 'journée' : interval === 'week' ? 'semaine' : 'mois'}
+                </h3>
+              </div>
+              <div className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                {formatTooltipValue(salesStats.bestPeriod.totalRevenue)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <FiCalendar size={12} className="inline mr-1" />
+                {formatXAxis(salesStats.bestPeriod.period)}
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Moyenne par période</div>
-            <div className="text-xl font-bold text-gray-900 dark:text-white">
-              {formatTooltipValue(chartData.reduce((sum, item) => sum + item.total, 0) / chartData.length)}
+          {/* Période la moins performante */}
+          {salesStats.worstPeriod && (
+            <div className="bg-white dark:bg-gray-800/70 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+              <div className="flex items-center mb-2">
+                <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 mr-2">
+                  <FiTrendingDown size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {interval === 'day' ? 'Journée' : interval === 'week' ? 'Semaine' : 'mois'} la moins performante
+                </h3>
+              </div>
+              <div className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                {formatTooltipValue(salesStats.worstPeriod.totalRevenue)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                <FiCalendar size={12} className="inline mr-1" />
+                {formatXAxis(salesStats.worstPeriod.period)}
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Évolution</div>
-            <div className={`text-xl font-bold ${
-              trend.isPositive 
-                ? 'text-green-500 dark:text-green-400' 
-                : 'text-red-500 dark:text-red-400'
-            }`}>
-              {trend.isPositive ? '+' : '-'}{trend.value}%
+          {/* Moyennes */}
+          <div className="bg-white dark:bg-gray-800/70 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center mb-2">
+              <div className="p-2 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400 mr-2">
+                <FiBarChart2 size={16} />
+              </div>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Moyennes sur la période
+              </h3>
+            </div>
+            <div className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+              {formatTooltipValue(salesStats.avgRevenue)}
+              <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-1">CA moyen</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                {formatTooltipValue(
+                  chartData.reduce((sum, item) => sum + item.totalMargin, 0) / chartData.length
+                )}
+                <span className="ml-1 text-xs font-normal">marge moyenne</span>
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {products.length} produit(s)
+              </div>
             </div>
           </div>
         </div>
