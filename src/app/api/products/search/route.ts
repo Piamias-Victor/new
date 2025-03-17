@@ -1,4 +1,5 @@
 // src/app/api/products/search/route.ts
+
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     const suffix = searchParams.get('suffix');
     const codes = searchParams.getAll('codes');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
-    const limit = parseInt(searchParams.get('limit') || '200'); // Augmenté à 200
+    const limit = parseInt(searchParams.get('limit') || '200');
     
     // Validation: au moins un critère de recherche doit être fourni
     if (!name && !code && !suffix && (!codes || codes.length === 0)) {
@@ -112,7 +113,8 @@ export async function GET(request: Request) {
             LEFT JOIN 
               data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
             WHERE 
-              (
+              p.code_13_ref_id IS NOT NULL  -- Filtrer les produits sans code EAN
+              AND (
                 LOWER(p.name) LIKE LOWER('%' || $1 || '%') 
                 OR LOWER(g.name) LIKE LOWER('%' || $1 || '%')
                 OR LOWER(g.brand_lab) LIKE LOWER('%' || $1 || '%')

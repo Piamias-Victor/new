@@ -66,6 +66,22 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
     }).format(amount);
   };
   
+  // Fonction pour calculer correctement la marge avec TVA
+  const calculateMarginPercentage = (priceTTC: number | undefined, priceHT: number | undefined, tvaRate: number | undefined) => {
+    if (!priceTTC || !priceHT || tvaRate === undefined || priceHT === 0) return 'N/A';
+    
+    // Prix de vente HT = Prix TTC / (1 + TVA/100)
+    const priceVenteHT = priceTTC / (1 + tvaRate / 100);
+    
+    // Marge HT = Prix de vente HT - Prix d'achat HT
+    const margeHT = priceVenteHT - priceHT;
+    
+    // Pourcentage de marge = (Marge HT / Prix d'achat HT) * 100
+    const pourcentageMarge = (margeHT / priceHT) * 100;
+    
+    return pourcentageMarge.toFixed(2) + '%';
+  };
+  
   // Fonction pour changer le tri
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -173,25 +189,7 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
             </h3>
           </div>
           
-          <div className="flex space-x-2">
-            {/* Bouton pour changer la vue (compacte/étendue) */}
-            <button
-              onClick={() => setExpandedView(!expandedView)}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              {expandedView ? (
-                <>
-                  <FiChevronUp className="mr-1" size={14} />
-                  Masquer détails
-                </>
-              ) : (
-                <>
-                  <FiChevronDown className="mr-1" size={14} />
-                  Voir détails
-                </>
-              )}
-            </button>
-            
+          <div className="flex space-x-2">            
             {/* Menu de tri */}
             <div className="relative inline-flex bg-gray-100 dark:bg-gray-700 rounded-lg">
               <button
@@ -295,7 +293,7 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
                   <div className="bg-gray-50 dark:bg-gray-700/50 px-3 py-2 rounded-lg">
                     <div className="text-xs text-gray-500 dark:text-gray-400">Marge</div>
                     <div className="font-medium text-emerald-600 dark:text-emerald-400">
-                      {product.margin_percentage ? `${product.margin_percentage}%` : 'N/A'}
+                      {calculateMarginPercentage(product.price_with_tax, product.weighted_average_price, product.tva_rate)}
                     </div>
                   </div>
                   
@@ -319,13 +317,7 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
                     </div>
                   </div>
                   
-                  <Link
-                    href={`/dashboard/products/${product.id}`}
-                    className="inline-flex items-center px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    <FiEye className="mr-1.5" size={16} />
-                    Détails
-                  </Link>
+                  
                 </div>
               </div>
             </div>
