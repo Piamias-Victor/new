@@ -1,4 +1,4 @@
-// src/hooks/useProductSearch.ts (mise à jour)
+// src/hooks/useProductSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import productService, { Product, SearchParams } from '@/services/productService';
@@ -11,7 +11,7 @@ interface UseProductSearchResult {
   clearResults: () => void;
 }
 
-export function useProductSearch(initialLimit = 20): UseProductSearchResult {
+export function useProductSearch(initialLimit = 200): UseProductSearchResult {
   const [results, setResults] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const suffix = searchParams.get('suffix');
     const codes = searchParams.getAll('codes');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '200'); // Augmenté à 200
     
     // Validation: au moins un critère de recherche doit être fourni
     if (!name && !code && !suffix && (!codes || codes.length === 0)) {
@@ -35,16 +35,21 @@ export async function GET(request: Request) {
       // Créer une table temporaire pour les pharmacies si nécessaire
       if (pharmacyIds.length > 0) {
         await client.query(`
-          CREATE TEMP TABLE temp_pharmacies (
+          CREATE TEMP TABLE IF NOT EXISTS temp_pharmacies (
             pharmacy_id UUID
           )
         `);
         
+        // Nettoyer la table temporaire avant d'insérer de nouvelles valeurs
+        await client.query(`DELETE FROM temp_pharmacies`);
+        
         const pharmacyValues = pharmacyIds.map(id => `('${id}')`).join(',');
-        await client.query(`
-          INSERT INTO temp_pharmacies (pharmacy_id)
-          VALUES ${pharmacyValues}
-        `);
+        if (pharmacyValues.length > 0) {
+          await client.query(`
+            INSERT INTO temp_pharmacies (pharmacy_id)
+            VALUES ${pharmacyValues}
+          `);
+        }
       }
       
       let query = '';
@@ -56,36 +61,44 @@ export async function GET(request: Request) {
         let relevanceQuery;
         
         if (usesTrgm) {
-          // Utiliser pg_trgm pour la similarité si disponible
+          // Utiliser pg_trgm pour la similarité si disponible avec priorité aux correspondances exactes
           relevanceQuery = `
             CASE 
-              WHEN LOWER(p.name) = LOWER($1) THEN 100
-              WHEN LOWER(p.name) LIKE LOWER($1 || '%') THEN 90
-              WHEN LOWER(p.name) LIKE LOWER('%' || $1 || '%') THEN 80
-              WHEN LOWER(g.name) = LOWER($1) THEN 70
-              WHEN LOWER(g.name) LIKE LOWER($1 || '%') THEN 60
-              WHEN LOWER(g.name) LIKE LOWER('%' || $1 || '%') THEN 50
-              WHEN similarity(LOWER(p.name), LOWER($1)) > 0.4 THEN 40 * similarity(LOWER(p.name), LOWER($1))
-              WHEN similarity(LOWER(g.name), LOWER($1)) > 0.4 THEN 30 * similarity(LOWER(g.name), LOWER($1))
+              WHEN LOWER(p.name) = LOWER($1) THEN 1000
+              WHEN LOWER(g.name) = LOWER($1) THEN 900
+              WHEN LOWER(p.name) LIKE LOWER($1 || ' %') THEN 800
+              WHEN LOWER(g.name) LIKE LOWER($1 || ' %') THEN 700
+              WHEN LOWER(p.name) LIKE LOWER('% ' || $1 || ' %') THEN 600
+              WHEN LOWER(g.name) LIKE LOWER('% ' || $1 || ' %') THEN 500
+              WHEN LOWER(p.name) LIKE LOWER($1 || '%') THEN 400
+              WHEN LOWER(g.name) LIKE LOWER($1 || '%') THEN 350
+              WHEN LOWER(p.name) LIKE LOWER('%' || $1 || '%') THEN 300
+              WHEN LOWER(g.name) LIKE LOWER('%' || $1 || '%') THEN 250
+              WHEN similarity(LOWER(p.name), LOWER($1)) > 0.4 THEN 200 * similarity(LOWER(p.name), LOWER($1))
+              WHEN similarity(LOWER(g.name), LOWER($1)) > 0.4 THEN 150 * similarity(LOWER(g.name), LOWER($1))
               ELSE 10
             END as relevance
           `;
         } else {
-          // Version sans pg_trgm
+          // Version sans pg_trgm avec priorité aux correspondances exactes
           relevanceQuery = `
             CASE 
-              WHEN LOWER(p.name) = LOWER($1) THEN 100
-              WHEN LOWER(p.name) LIKE LOWER($1 || '%') THEN 90
-              WHEN LOWER(p.name) LIKE LOWER('%' || $1 || '%') THEN 80
-              WHEN LOWER(g.name) = LOWER($1) THEN 70
-              WHEN LOWER(g.name) LIKE LOWER($1 || '%') THEN 60
-              WHEN LOWER(g.name) LIKE LOWER('%' || $1 || '%') THEN 50
+              WHEN LOWER(p.name) = LOWER($1) THEN 1000
+              WHEN LOWER(g.name) = LOWER($1) THEN 900  
+              WHEN LOWER(p.name) LIKE LOWER($1 || ' %') THEN 800
+              WHEN LOWER(g.name) LIKE LOWER($1 || ' %') THEN 700
+              WHEN LOWER(p.name) LIKE LOWER('% ' || $1 || ' %') THEN 600
+              WHEN LOWER(g.name) LIKE LOWER('% ' || $1 || ' %') THEN 500
+              WHEN LOWER(p.name) LIKE LOWER($1 || '%') THEN 400
+              WHEN LOWER(g.name) LIKE LOWER($1 || '%') THEN 350
+              WHEN LOWER(p.name) LIKE LOWER('%' || $1 || '%') THEN 300
+              WHEN LOWER(g.name) LIKE LOWER('%' || $1 || '%') THEN 250
               ELSE 10
             END as relevance
           `;
         }
         
-        // Vérifier si la recherche concerne un laboratoire ou une catégorie
+        // Recherche par nom avec groupement par code 13
         query = `
           WITH filtered_products AS (
             SELECT 
@@ -93,15 +106,13 @@ export async function GET(request: Request) {
               p.name,
               p.code_13_ref_id,
               p.pharmacy_id,
-              ${relevanceQuery},
-              ROW_NUMBER() OVER (PARTITION BY p.code_13_ref_id ORDER BY p.id) as row_num
+              ${relevanceQuery}
             FROM 
               data_internalproduct p
             LEFT JOIN 
               data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
             WHERE 
-              p.code_13_ref_id IS NOT NULL
-              AND (
+              (
                 LOWER(p.name) LIKE LOWER('%' || $1 || '%') 
                 OR LOWER(g.name) LIKE LOWER('%' || $1 || '%')
                 OR LOWER(g.brand_lab) LIKE LOWER('%' || $1 || '%')
@@ -117,52 +128,60 @@ export async function GET(request: Request) {
               weighted_average_price
             FROM data_inventorysnapshot
             ORDER BY product_id, date DESC
+          ),
+          grouped_products AS (
+            SELECT
+              fp.code_13_ref_id,
+              (array_agg(fp.id ORDER BY fp.id))[1] as id,
+              (array_agg(fp.name ORDER BY fp.id))[1] as name,
+              (array_agg(CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN fp.name ELSE g.name END ORDER BY fp.id))[1] AS display_name,
+              (array_agg(g.category ORDER BY fp.id))[1] as category,
+              (array_agg(g.brand_lab ORDER BY fp.id))[1] as brand_lab,
+              AVG(p."TVA") as tva_rate,
+              SUM(ls.current_stock) as total_stock,
+              AVG(ls.price_with_tax) as avg_price,
+              AVG(ls.weighted_average_price) as avg_weighted_price,
+              COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
+              COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage,
+              MAX(fp.relevance) as relevance
+            FROM 
+              filtered_products fp
+            JOIN
+              data_internalproduct p ON fp.id = p.id
+            LEFT JOIN 
+              data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
+            LEFT JOIN 
+              latest_snapshot ls ON fp.id = ls.product_id
+            GROUP BY
+              fp.code_13_ref_id
           )
           SELECT 
-            fp.id,
-            fp.name,
-            CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN fp.name ELSE g.name END AS display_name,
-            fp.code_13_ref_id AS code_13_ref,
-            g.category,
-            g.brand_lab,
-            ls.current_stock,
-            ls.price_with_tax,
-            ls.weighted_average_price,
-            p."TVA" as tva_rate,
-            fp.relevance
+            id,
+            name,
+            display_name,
+            code_13_ref_id AS code_13_ref,
+            category,
+            brand_lab,
+            tva_rate,
+            total_stock as current_stock,
+            avg_price as price_with_tax,
+            avg_weighted_price as weighted_average_price,
+            pharmacy_count,
+            pharmacies_with_stock,
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage,
+            relevance
           FROM 
-            filtered_products fp
-          JOIN
-            data_internalproduct p ON fp.id = p.id
-          LEFT JOIN 
-            data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
-          LEFT JOIN 
-            latest_snapshot ls ON fp.id = ls.product_id
-          WHERE 
-            fp.row_num = 1
+            grouped_products
           ORDER BY relevance DESC, display_name
           LIMIT $2
         `;
         params.push(name, limit);
         
       } else if (code) {
-        // Recherche par code EAN exact
+        // Recherche par code EAN exact ou partiel avec groupement
         query = `
-          WITH filtered_products AS (
-            SELECT 
-              p.id,
-              p.name,
-              p.code_13_ref_id,
-              p.pharmacy_id,
-              ROW_NUMBER() OVER (PARTITION BY p.code_13_ref_id ORDER BY p.id) as row_num
-            FROM 
-              data_internalproduct p
-            WHERE 
-              p.code_13_ref_id IS NOT NULL
-              AND p.code_13_ref_id = $1
-              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
-          ),
-          latest_snapshot AS (
+          WITH latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -170,51 +189,70 @@ export async function GET(request: Request) {
               weighted_average_price
             FROM data_inventorysnapshot
             ORDER BY product_id, date DESC
+          ),
+          filtered_pharmacies AS (
+            SELECT DISTINCT pharmacy_id
+            FROM data_internalproduct
+            WHERE 
+              code_13_ref_id IS NOT NULL
+              AND code_13_ref_id LIKE $1 || '%'
+              ${pharmacyIds.length > 0 ? 'AND pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
+          ),
+          grouped_products AS (
+            SELECT
+              p.code_13_ref_id,
+              (array_agg(p.id ORDER BY p.id))[1] as id,
+              (array_agg(p.name ORDER BY p.id))[1] as name,
+              (array_agg(CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END ORDER BY p.id))[1] AS display_name,
+              (array_agg(g.category ORDER BY p.id))[1] as category,
+              (array_agg(g.brand_lab ORDER BY p.id))[1] as brand_lab,
+              AVG(p."TVA") as tva_rate,
+              SUM(ls.current_stock) as total_stock,
+              AVG(ls.price_with_tax) as avg_price,
+              AVG(ls.weighted_average_price) as avg_weighted_price,
+              COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
+              COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+            FROM 
+              data_internalproduct p
+            LEFT JOIN 
+              data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+            LEFT JOIN 
+              latest_snapshot ls ON p.id = ls.product_id
+            WHERE 
+              p.code_13_ref_id IS NOT NULL
+              AND p.code_13_ref_id LIKE $1 || '%'
+              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
+            GROUP BY
+              p.code_13_ref_id
           )
-          SELECT 
-            fp.id,
-            fp.name,
-            CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN fp.name ELSE g.name END AS display_name,
-            fp.code_13_ref_id AS code_13_ref,
-            g.category,
-            g.brand_lab,
-            ls.current_stock,
-            ls.price_with_tax,
-            ls.weighted_average_price,
-            p."TVA" as tva_rate
-          FROM 
-            filtered_products fp
-          JOIN
-            data_internalproduct p ON fp.id = p.id
-          LEFT JOIN 
-            data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
-          LEFT JOIN 
-            latest_snapshot ls ON fp.id = ls.product_id
-          WHERE 
-            fp.row_num = 1
-          ORDER BY display_name
+          SELECT
+            id,
+            name,
+            display_name,
+            code_13_ref_id AS code_13_ref,
+            category,
+            brand_lab,
+            tva_rate,
+            total_stock as current_stock,
+            avg_price as price_with_tax,
+            avg_weighted_price as weighted_average_price,
+            pharmacy_count,
+            pharmacies_with_stock,
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+          FROM
+            grouped_products
+          ORDER BY 
+            CASE WHEN code_13_ref_id = $1 THEN 0 ELSE 1 END,  -- Priorité aux correspondances exactes
+            code_13_ref_id
           LIMIT $2
         `;
         params.push(code, limit);
         
       } else if (suffix) {
-        // Recherche par suffixe de code
+        // Recherche par suffixe de code avec groupement
         query = `
-          WITH filtered_products AS (
-            SELECT 
-              p.id,
-              p.name,
-              p.code_13_ref_id,
-              p.pharmacy_id,
-              ROW_NUMBER() OVER (PARTITION BY p.code_13_ref_id ORDER BY p.id) as row_num
-            FROM 
-              data_internalproduct p
-            WHERE 
-              p.code_13_ref_id IS NOT NULL
-              AND p.code_13_ref_id LIKE $1
-              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
-          ),
-          latest_snapshot AS (
+          WITH latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -222,28 +260,51 @@ export async function GET(request: Request) {
               weighted_average_price
             FROM data_inventorysnapshot
             ORDER BY product_id, date DESC
+          ),
+          grouped_products AS (
+            SELECT
+              p.code_13_ref_id,
+              (array_agg(p.id ORDER BY p.id))[1] as id,
+              (array_agg(p.name ORDER BY p.id))[1] as name,
+              (array_agg(CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END ORDER BY p.id))[1] AS display_name,
+              (array_agg(g.category ORDER BY p.id))[1] as category,
+              (array_agg(g.brand_lab ORDER BY p.id))[1] as brand_lab,
+              AVG(p."TVA") as tva_rate,
+              SUM(ls.current_stock) as total_stock,
+              AVG(ls.price_with_tax) as avg_price,
+              AVG(ls.weighted_average_price) as avg_weighted_price,
+              COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
+              COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+            FROM 
+              data_internalproduct p
+            LEFT JOIN 
+              data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+            LEFT JOIN 
+              latest_snapshot ls ON p.id = ls.product_id
+            WHERE 
+              p.code_13_ref_id IS NOT NULL
+              AND p.code_13_ref_id LIKE $1
+              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
+            GROUP BY
+              p.code_13_ref_id
           )
-          SELECT 
-            fp.id,
-            fp.name,
-            CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN fp.name ELSE g.name END AS display_name,
-            fp.code_13_ref_id AS code_13_ref,
-            g.category,
-            g.brand_lab,
-            ls.current_stock,
-            ls.price_with_tax,
-            ls.weighted_average_price,
-            p."TVA" as tva_rate
-          FROM 
-            filtered_products fp
-          JOIN
-            data_internalproduct p ON fp.id = p.id
-          LEFT JOIN 
-            data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
-          LEFT JOIN 
-            latest_snapshot ls ON fp.id = ls.product_id
-          WHERE 
-            fp.row_num = 1
+          SELECT
+            id,
+            name,
+            display_name,
+            code_13_ref_id AS code_13_ref,
+            category,
+            brand_lab,
+            tva_rate,
+            total_stock as current_stock,
+            avg_price as price_with_tax,
+            avg_weighted_price as weighted_average_price,
+            pharmacy_count,
+            pharmacies_with_stock,
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+          FROM
+            grouped_products
           ORDER BY display_name
           LIMIT $2
         `;
@@ -252,34 +313,26 @@ export async function GET(request: Request) {
       } else if (codes && codes.length > 0) {
         // Pour la recherche avec beaucoup de codes, utilisons aussi une table temporaire
         await client.query(`
-          CREATE TEMP TABLE temp_codes (
+          CREATE TEMP TABLE IF NOT EXISTS temp_codes (
             code VARCHAR(20)
           )
         `);
         
+        // Nettoyer la table temporaire avant d'insérer de nouvelles valeurs
+        await client.query(`DELETE FROM temp_codes`);
+        
         // Insérer les codes en lot
         const codeValues = codes.map(code => `('${code}')`).join(',');
-        await client.query(`
-          INSERT INTO temp_codes (code)
-          VALUES ${codeValues}
-        `);
+        if (codeValues.length > 0) {
+          await client.query(`
+            INSERT INTO temp_codes (code)
+            VALUES ${codeValues}
+          `);
+        }
         
+        // Recherche par liste de codes avec groupement
         query = `
-          WITH filtered_products AS (
-            SELECT 
-              p.id,
-              p.name,
-              p.code_13_ref_id,
-              p.pharmacy_id,
-              ROW_NUMBER() OVER (PARTITION BY p.code_13_ref_id ORDER BY p.id) as row_num
-            FROM 
-              data_internalproduct p
-            WHERE 
-              p.code_13_ref_id IS NOT NULL
-              AND p.code_13_ref_id IN (SELECT code FROM temp_codes)
-              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
-          ),
-          latest_snapshot AS (
+          WITH latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -287,34 +340,58 @@ export async function GET(request: Request) {
               weighted_average_price
             FROM data_inventorysnapshot
             ORDER BY product_id, date DESC
+          ),
+          grouped_products AS (
+            SELECT
+              p.code_13_ref_id,
+              (array_agg(p.id ORDER BY p.id))[1] as id,
+              (array_agg(p.name ORDER BY p.id))[1] as name,
+              (array_agg(CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END ORDER BY p.id))[1] AS display_name,
+              (array_agg(g.category ORDER BY p.id))[1] as category,
+              (array_agg(g.brand_lab ORDER BY p.id))[1] as brand_lab,
+              AVG(p."TVA") as tva_rate,
+              SUM(ls.current_stock) as total_stock,
+              AVG(ls.price_with_tax) as avg_price,
+              AVG(ls.weighted_average_price) as avg_weighted_price,
+              COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
+              COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+            FROM 
+              data_internalproduct p
+            LEFT JOIN 
+              data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+            LEFT JOIN 
+              latest_snapshot ls ON p.id = ls.product_id
+            WHERE 
+              p.code_13_ref_id IS NOT NULL
+              AND p.code_13_ref_id IN (SELECT code FROM temp_codes)
+              ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id IN (SELECT pharmacy_id FROM temp_pharmacies)' : ''}
+            GROUP BY
+              p.code_13_ref_id
           )
-          SELECT 
-            fp.id,
-            fp.name,
-            CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN fp.name ELSE g.name END AS display_name,
-            fp.code_13_ref_id AS code_13_ref,
-            g.category,
-            g.brand_lab,
-            ls.current_stock,
-            ls.price_with_tax,
-            ls.weighted_average_price,
-            p."TVA" as tva_rate
-          FROM 
-            filtered_products fp
-          JOIN
-            data_internalproduct p ON fp.id = p.id
-          LEFT JOIN 
-            data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
-          LEFT JOIN 
-            latest_snapshot ls ON fp.id = ls.product_id
-          WHERE 
-            fp.row_num = 1
+          SELECT
+            id,
+            name,
+            display_name,
+            code_13_ref_id AS code_13_ref,
+            category,
+            brand_lab,
+            tva_rate,
+            total_stock as current_stock,
+            avg_price as price_with_tax,
+            avg_weighted_price as weighted_average_price,
+            pharmacy_count,
+            pharmacies_with_stock,
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+          FROM
+            grouped_products
           ORDER BY display_name
           LIMIT $1
         `;
         params.push(limit);
       }
       
+      // Exécuter la requête
       const result = await client.query(query, params);
       
       // Nettoyer les tables temporaires
