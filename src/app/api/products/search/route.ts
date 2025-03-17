@@ -101,7 +101,20 @@ export async function GET(request: Request) {
         
         // Recherche par nom avec groupement par code 13
         query = `
-          WITH filtered_products AS (
+          WITH sales_data AS (
+            SELECT 
+              i.product_id,
+              SUM(s.quantity) as total_quantity
+            FROM 
+              data_sales s
+            JOIN 
+              data_inventorysnapshot i ON s.product_id = i.id
+            WHERE 
+              s.date BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+            GROUP BY 
+              i.product_id
+          ),
+          filtered_products AS (
             SELECT 
               p.id,
               p.name,
@@ -146,6 +159,7 @@ export async function GET(request: Request) {
               COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
               COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
               (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage,
+              SUM(COALESCE(sd.total_quantity, 0)) as total_sales,
               MAX(fp.relevance) as relevance
             FROM 
               filtered_products fp
@@ -155,6 +169,8 @@ export async function GET(request: Request) {
               data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
             LEFT JOIN 
               latest_snapshot ls ON fp.id = ls.product_id
+            LEFT JOIN
+              sales_data sd ON fp.id = sd.product_id
             GROUP BY
               fp.code_13_ref_id
           )
@@ -172,6 +188,7 @@ export async function GET(request: Request) {
             pharmacy_count,
             pharmacies_with_stock,
             ROUND(avg_margin_percentage::numeric, 2) as margin_percentage,
+            total_sales,
             relevance
           FROM 
             grouped_products
@@ -183,7 +200,20 @@ export async function GET(request: Request) {
       } else if (code) {
         // Recherche par code EAN exact ou partiel avec groupement
         query = `
-          WITH latest_snapshot AS (
+          WITH sales_data AS (
+            SELECT 
+              i.product_id,
+              SUM(s.quantity) as total_quantity
+            FROM 
+              data_sales s
+            JOIN 
+              data_inventorysnapshot i ON s.product_id = i.id
+            WHERE 
+              s.date BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+            GROUP BY 
+              i.product_id
+          ),
+          latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -214,13 +244,16 @@ export async function GET(request: Request) {
               AVG(ls.weighted_average_price) as avg_weighted_price,
               COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
               COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
-              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage,
+              SUM(COALESCE(sd.total_quantity, 0)) as total_sales
             FROM 
               data_internalproduct p
             LEFT JOIN 
               data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
             LEFT JOIN 
               latest_snapshot ls ON p.id = ls.product_id
+            LEFT JOIN
+              sales_data sd ON p.id = sd.product_id
             WHERE 
               p.code_13_ref_id IS NOT NULL
               AND p.code_13_ref_id LIKE $1 || '%'
@@ -241,7 +274,8 @@ export async function GET(request: Request) {
             avg_weighted_price as weighted_average_price,
             pharmacy_count,
             pharmacies_with_stock,
-            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage,
+            total_sales
           FROM
             grouped_products
           ORDER BY 
@@ -254,7 +288,20 @@ export async function GET(request: Request) {
       } else if (suffix) {
         // Recherche par suffixe de code avec groupement
         query = `
-          WITH latest_snapshot AS (
+          WITH sales_data AS (
+            SELECT 
+              i.product_id,
+              SUM(s.quantity) as total_quantity
+            FROM 
+              data_sales s
+            JOIN 
+              data_inventorysnapshot i ON s.product_id = i.id
+            WHERE 
+              s.date BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+            GROUP BY 
+              i.product_id
+          ),
+          latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -277,13 +324,16 @@ export async function GET(request: Request) {
               AVG(ls.weighted_average_price) as avg_weighted_price,
               COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
               COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
-              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage,
+              SUM(COALESCE(sd.total_quantity, 0)) as total_sales
             FROM 
               data_internalproduct p
             LEFT JOIN 
               data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
             LEFT JOIN 
               latest_snapshot ls ON p.id = ls.product_id
+            LEFT JOIN
+              sales_data sd ON p.id = sd.product_id
             WHERE 
               p.code_13_ref_id IS NOT NULL
               AND p.code_13_ref_id LIKE $1
@@ -304,7 +354,8 @@ export async function GET(request: Request) {
             avg_weighted_price as weighted_average_price,
             pharmacy_count,
             pharmacies_with_stock,
-            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage,
+            total_sales
           FROM
             grouped_products
           ORDER BY display_name
@@ -334,7 +385,20 @@ export async function GET(request: Request) {
         
         // Recherche par liste de codes avec groupement
         query = `
-          WITH latest_snapshot AS (
+          WITH sales_data AS (
+            SELECT 
+              i.product_id,
+              SUM(s.quantity) as total_quantity
+            FROM 
+              data_sales s
+            JOIN 
+              data_inventorysnapshot i ON s.product_id = i.id
+            WHERE 
+              s.date BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE
+            GROUP BY 
+              i.product_id
+          ),
+          latest_snapshot AS (
             SELECT DISTINCT ON (product_id) 
               product_id,
               stock as current_stock,
@@ -357,13 +421,16 @@ export async function GET(request: Request) {
               AVG(ls.weighted_average_price) as avg_weighted_price,
               COUNT(DISTINCT p.pharmacy_id) as pharmacy_count,
               COUNT(DISTINCT CASE WHEN ls.current_stock > 0 THEN p.pharmacy_id END) as pharmacies_with_stock,
-              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage
+              (AVG(ls.price_with_tax) - AVG(ls.weighted_average_price)) / NULLIF(AVG(ls.weighted_average_price), 0) * 100 as avg_margin_percentage,
+              SUM(COALESCE(sd.total_quantity, 0)) as total_sales
             FROM 
               data_internalproduct p
             LEFT JOIN 
               data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
             LEFT JOIN 
               latest_snapshot ls ON p.id = ls.product_id
+            LEFT JOIN
+              sales_data sd ON p.id = sd.product_id
             WHERE 
               p.code_13_ref_id IS NOT NULL
               AND p.code_13_ref_id IN (SELECT code FROM temp_codes)
@@ -384,7 +451,8 @@ export async function GET(request: Request) {
             avg_weighted_price as weighted_average_price,
             pharmacy_count,
             pharmacies_with_stock,
-            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage
+            ROUND(avg_margin_percentage::numeric, 2) as margin_percentage,
+            total_sales
           FROM
             grouped_products
           ORDER BY display_name

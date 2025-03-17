@@ -17,6 +17,7 @@ export interface Product {
   pharmacy_count?: number;
   pharmacies_with_stock?: number;
   margin_percentage?: number;
+  total_sales?: number; // Ajout de la propriété total_sales
 }
 
 export interface SearchParams {
