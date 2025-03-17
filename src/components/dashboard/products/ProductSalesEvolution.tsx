@@ -1,12 +1,12 @@
-// src/components/dashboard/products/ProductSalesEvolution.tsx (mise à jour)
+// src/components/dashboard/products/ProductSalesEvolution.tsx
 import React, { useState, useMemo } from 'react';
-import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight, FiBarChart2, FiPieChart, FiFilter, FiCheck } from 'react-icons/fi';
+import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight, FiBarChart2, FiPieChart, FiFilter, FiCheck, FiHome } from 'react-icons/fi';
 import { Product } from '@/services/productService';
 import { useProductSalesEvolution } from '@/hooks/useProductSalesEvolution';
-import { ProductDetailedChart } from './ProductDetailedChart';
 import { ProductSalesChart } from './ProductSalesChart';
+import { ProductDetailedChart } from './ProductDetailedChart';
+import { ProductPharmacyChart } from './ProductPharmacyChart';
 import { ProductSalesInsights } from './ProductSalesInsights';
-
 
 interface ProductSalesEvolutionChartProps {
   products: Product[];
@@ -16,21 +16,24 @@ interface ProductSalesEvolutionChartProps {
 export function ProductSalesEvolutionChart({ products, isLoading: parentLoading = false }: ProductSalesEvolutionChartProps) {
   const [interval, setInterval] = useState<'day' | 'week' | 'month'>('day');
   const [showMargin, setShowMargin] = useState(true);
-  const [viewMode, setViewMode] = useState<'total' | 'detailed'>('total');
-  const [showProductSelector, setShowProductSelector] = useState(false);
+  const [viewMode, setViewMode] = useState<'total' | 'detailed' | 'pharmacy'>('total');
+  const [showEntitySelector, setShowEntitySelector] = useState(false);
   
-  // État pour stocker les IDs des produits sélectionnés
+  // États pour stocker les IDs sélectionnés
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [selectedPharmacyIds, setSelectedPharmacyIds] = useState<string[]>([]);
   
-  // Effet pour initialiser les produits sélectionnés
+  const { totalData, productData, pharmacyData, isLoading, error } = useProductSalesEvolution(products, interval);
+  
+  // Effet pour initialiser les sélections
   React.useEffect(() => {
-    if (products.length > 0) {
-      // Par défaut, sélectionner tous les produits
-      setSelectedProductIds(products.map(p => p.id));
+    if (Object.keys(productData).length > 0) {
+      setSelectedProductIds(Object.keys(productData));
     }
-  }, [products]);
-  
-  const { totalData, detailedData, isLoading, error } = useProductSalesEvolution(products, interval);
+    if (Object.keys(pharmacyData).length > 0) {
+      setSelectedPharmacyIds(Object.keys(pharmacyData));
+    }
+  }, [productData, pharmacyData]);
   
   // Calculer la tendance (% d'évolution)
   const calculateTrend = () => {
@@ -48,18 +51,28 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
     };
   };
   
-  // Filtrer les données détaillées pour n'inclure que les produits sélectionnés
-  const filteredDetailedData = useMemo(() => {
+  // Filtrer les données détaillées pour n'inclure que les éléments sélectionnés
+  const filteredProductData = useMemo(() => {
     const filtered: Record<string, any> = {};
-    Object.entries(detailedData).forEach(([productId, productData]) => {
+    Object.entries(productData).forEach(([productId, data]) => {
       if (selectedProductIds.includes(productId)) {
-        filtered[productId] = productData;
+        filtered[productId] = data;
       }
     });
     return filtered;
-  }, [detailedData, selectedProductIds]);
+  }, [productData, selectedProductIds]);
   
-  // Fonction pour gérer la sélection/désélection d'un produit
+  const filteredPharmacyData = useMemo(() => {
+    const filtered: Record<string, any> = {};
+    Object.entries(pharmacyData).forEach(([pharmacyId, data]) => {
+      if (selectedPharmacyIds.includes(pharmacyId)) {
+        filtered[pharmacyId] = data;
+      }
+    });
+    return filtered;
+  }, [pharmacyData, selectedPharmacyIds]);
+  
+  // Fonction pour gérer la sélection/désélection d'un élément
   const toggleProductSelection = (productId: string) => {
     if (selectedProductIds.includes(productId)) {
       // Si déjà sélectionné, le désélectionner (sauf si c'est le dernier)
@@ -72,15 +85,38 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
     }
   };
   
+  const togglePharmacySelection = (pharmacyId: string) => {
+    if (selectedPharmacyIds.includes(pharmacyId)) {
+      // Si déjà sélectionné, le désélectionner (sauf si c'est le dernier)
+      if (selectedPharmacyIds.length > 1) {
+        setSelectedPharmacyIds(prev => prev.filter(id => id !== pharmacyId));
+      }
+    } else {
+      // Sinon l'ajouter
+      setSelectedPharmacyIds(prev => [...prev, pharmacyId]);
+    }
+  };
+  
   // Fonction pour tout sélectionner/désélectionner
   const toggleAllProducts = () => {
-    if (selectedProductIds.length === Object.keys(detailedData).length) {
+    if (selectedProductIds.length === Object.keys(productData).length) {
       // Si tous sont sélectionnés, n'en garder qu'un (le premier)
-      const firstProductId = Object.keys(detailedData)[0];
+      const firstProductId = Object.keys(productData)[0];
       setSelectedProductIds(firstProductId ? [firstProductId] : []);
     } else {
       // Sinon sélectionner tous
-      setSelectedProductIds(Object.keys(detailedData));
+      setSelectedProductIds(Object.keys(productData));
+    }
+  };
+  
+  const toggleAllPharmacies = () => {
+    if (selectedPharmacyIds.length === Object.keys(pharmacyData).length) {
+      // Si tous sont sélectionnés, n'en garder qu'un (le premier)
+      const firstPharmacyId = Object.keys(pharmacyData)[0];
+      setSelectedPharmacyIds(firstPharmacyId ? [firstPharmacyId] : []);
+    } else {
+      // Sinon sélectionner tous
+      setSelectedPharmacyIds(Object.keys(pharmacyData));
     }
   };
   
@@ -114,14 +150,17 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
 
         {/* Options du graphique */}
         <div className="flex flex-wrap gap-3">
-          {/* Affichage du sélecteur de produits si en mode détaillé et si on a plus d'un produit */}
-          {viewMode === 'detailed' && Object.keys(detailedData).length > 1 && (
+          {/* Sélecteur d'entités (produits ou pharmacies selon le mode) */}
+          {((viewMode === 'detailed' && Object.keys(productData).length > 1) || 
+            (viewMode === 'pharmacy' && Object.keys(pharmacyData).length > 1)) && (
             <button
-              onClick={() => setShowProductSelector(!showProductSelector)}
+              onClick={() => setShowEntitySelector(!showEntitySelector)}
               className="flex items-center px-3 py-1.5 text-xs rounded bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               <FiFilter className="mr-1.5" size={14} />
-              Filtrer ({selectedProductIds.length}/{Object.keys(detailedData).length})
+              Filtrer ({viewMode === 'detailed' 
+                ? `${selectedProductIds.length}/${Object.keys(productData).length}` 
+                : `${selectedPharmacyIds.length}/${Object.keys(pharmacyData).length}`})
             </button>
           )}
           
@@ -148,6 +187,17 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
             >
               <FiPieChart size={14} className="mr-1" />
               Détail
+            </button>
+            <button
+              onClick={() => setViewMode('pharmacy')}
+              className={`px-3 py-1.5 text-xs rounded flex items-center ${
+                viewMode === 'pharmacy' 
+                  ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              <FiHome size={14} className="mr-1" />
+              Pharmacies
             </button>
           </div>
           
@@ -200,63 +250,99 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
         </div>
       </div>
       
-      {/* Sélecteur de produits */}
-      {showProductSelector && viewMode === 'detailed' && (
+      {/* Sélecteur d'entités (produits ou pharmacies) */}
+      {showEntitySelector && (viewMode === 'detailed' || viewMode === 'pharmacy') && (
         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Sélectionner les produits à afficher
+              {viewMode === 'detailed' 
+                ? 'Sélectionner les produits à afficher' 
+                : 'Sélectionner les pharmacies à afficher'}
             </h3>
             <button 
-              onClick={toggleAllProducts}
+              onClick={viewMode === 'detailed' ? toggleAllProducts : toggleAllPharmacies}
               className="text-xs text-sky-600 dark:text-sky-400 hover:underline"
             >
-              {selectedProductIds.length === Object.keys(detailedData).length 
+              {(viewMode === 'detailed' && selectedProductIds.length === Object.keys(productData).length) || 
+               (viewMode === 'pharmacy' && selectedPharmacyIds.length === Object.keys(pharmacyData).length)
                 ? "Tout désélectionner" 
                 : "Tout sélectionner"}
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {Object.entries(detailedData).map(([productId, productData]) => (
-              <div 
-                key={productId}
-                className={`flex items-center p-2 rounded cursor-pointer ${
-                  selectedProductIds.includes(productId)
-                    ? 'bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50'
-                    : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
-                }`}
-                onClick={() => toggleProductSelection(productId)}
-              >
+            {viewMode === 'detailed' ?
+              // Affichage des produits
+              Object.entries(productData).map(([productId, productData]) => (
                 <div 
-                  className="w-4 h-4 rounded-full mr-2" 
-                  style={{ 
-                    backgroundColor: selectedProductIds.includes(productId) 
-                      ? Object.values(filteredDetailedData).length > 0 
-                        ? Object.values(filteredDetailedData).findIndex(p => p.name === productData.name) > -1
-                          ? Object.values(filteredDetailedData).findIndex(p => p.name === productData.name) < 5
-                            ? ['#0ea5e9', '#f97316', '#8b5cf6', '#14b8a6', '#ef4444'][Object.values(filteredDetailedData).findIndex(p => p.name === productData.name)]
-                            : '#6b7280'
-                          : '#6b7280'
+                  key={productId}
+                  className={`flex items-center p-2 rounded cursor-pointer ${
+                    selectedProductIds.includes(productId)
+                      ? 'bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50'
+                      : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                  }`}
+                  onClick={() => toggleProductSelection(productId)}
+                >
+                  <div 
+                    className="w-4 h-4 rounded-full mr-2" 
+                    style={{ 
+                      backgroundColor: selectedProductIds.includes(productId) 
+                        ? ['#0ea5e9', '#f97316', '#8b5cf6', '#14b8a6', '#ef4444'][
+                            selectedProductIds.indexOf(productId) % 5
+                          ]
                         : '#6b7280'
-                      : '#6b7280'
-                  }}
-                ></div>
-                <span className={`text-xs ${
-                  selectedProductIds.includes(productId)
-                    ? 'font-medium text-gray-900 dark:text-white'
-                    : 'text-gray-600 dark:text-gray-400'
-                }`}>
-                  {productData.name}
-                </span>
-                {selectedProductIds.includes(productId) && (
-                  <FiCheck className="ml-auto text-sky-500 dark:text-sky-400" size={14} />
-                )}
-              </div>
-            ))}
+                    }}
+                  ></div>
+                  <span className={`text-xs ${
+                    selectedProductIds.includes(productId)
+                      ? 'font-medium text-gray-900 dark:text-white'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}>
+                    {productData.name}
+                  </span>
+                  {selectedProductIds.includes(productId) && (
+                    <FiCheck className="ml-auto text-sky-500 dark:text-sky-400" size={14} />
+                  )}
+                </div>
+              )) :
+              // Affichage des pharmacies
+              Object.entries(pharmacyData).map(([pharmacyId, pharmacyData]) => (
+                <div 
+                  key={pharmacyId}
+                  className={`flex items-center p-2 rounded cursor-pointer ${
+                    selectedPharmacyIds.includes(pharmacyId)
+                      ? 'bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800/50'
+                      : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                  }`}
+                  onClick={() => togglePharmacySelection(pharmacyId)}
+                >
+                  <div 
+                    className="w-4 h-4 rounded-full mr-2" 
+                    style={{ 
+                      backgroundColor: selectedPharmacyIds.includes(pharmacyId) 
+                        ? ['#0ea5e9', '#f97316', '#8b5cf6', '#14b8a6', '#ef4444'][
+                            selectedPharmacyIds.indexOf(pharmacyId) % 5
+                          ]
+                        : '#6b7280'
+                    }}
+                  ></div>
+                  <span className={`text-xs ${
+                    selectedPharmacyIds.includes(pharmacyId)
+                      ? 'font-medium text-gray-900 dark:text-white'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}>
+                    {pharmacyData.name}
+                  </span>
+                  {selectedPharmacyIds.includes(pharmacyId) && (
+                    <FiCheck className="ml-auto text-sky-500 dark:text-sky-400" size={14} />
+                  )}
+                </div>
+              ))
+            }
           </div>
         </div>
       )}
 
+      {/* Affichage du graphique selon le mode choisi */}
       {viewMode === 'total' ? (
         <ProductSalesChart 
           data={totalData} 
@@ -265,9 +351,17 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
           interval={interval}
           showMargin={showMargin}
         />
-      ) : (
+      ) : viewMode === 'detailed' ? (
         <ProductDetailedChart 
-          data={filteredDetailedData} 
+          data={filteredProductData} 
+          isLoading={isCurrentlyLoading} 
+          error={error}
+          interval={interval}
+          showMargin={showMargin}
+        />
+      ) : (
+        <ProductPharmacyChart 
+          data={filteredPharmacyData} 
           isLoading={isCurrentlyLoading} 
           error={error}
           interval={interval}
@@ -275,6 +369,7 @@ export function ProductSalesEvolutionChart({ products, isLoading: parentLoading 
         />
       )}
       
+      {/* Insights communs à tous les modes */}
       {totalData && totalData.length > 0 && (
         <ProductSalesInsights data={totalData} interval={interval} />
       )}
