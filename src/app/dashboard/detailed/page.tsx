@@ -4,7 +4,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { FiArrowLeft, FiBox, FiPackage, FiGrid, FiSearch, FiBarChart, FiTrendingUp } from 'react-icons/fi';
+import { 
+  FiArrowLeft, FiBox, FiPackage, FiGrid, FiSearch, FiBarChart, 
+  FiTrendingUp, FiCopy, FiTruck, FiHome, FiPieChart
+} from 'react-icons/fi';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { AnalysisCategoryCard } from '@/components/dashboard/analysis/AnalysisCategoryCard';
 import { StatisticsSection } from '@/components/dashboard/analysis/StatisticsSection';
@@ -20,7 +23,7 @@ export const formatNumber = (num: number): string => {
  * Page d'analyse détaillée
  * 
  * Cette page sert de hub pour l'exploration détaillée des données par produit,
- * laboratoire ou catégorie.
+ * laboratoire, catégorie, générique ou grossiste.
  */
 export default function DetailedAnalysisPage() {
   const { data: session, status } = useSession();
@@ -47,8 +50,19 @@ export default function DetailedAnalysisPage() {
     { name: 'Antibiotiques', value: '965 ventes', change: '-1.2%' },
   ];
 
-  // Formatage des statistiques globales
+  const topGenerics = [
+    { name: 'Paracétamol', value: '1875 ventes', change: '+6.3%' },
+    { name: 'Amoxicilline', value: '940 ventes', change: '+10.5%' },
+    { name: 'Ibuprofène', value: '780 ventes', change: '+2.8%' },
+  ];
 
+  const topWholesalers = [
+    { name: 'Cerp Rhin Med Rhône', value: '2350 ventes', change: '+4.1%' },
+    { name: 'Alliance Healthcare', value: '1975 ventes', change: '+2.9%' },
+    { name: 'OCP Répartition', value: '1820 ventes', change: '-1.7%' },
+  ];
+
+  // Formatage des statistiques globales
   const globalStats = [
     { label: 'Produits analysés', value: formatNumber(statistics.uniqueProducts) },
     { label: 'Laboratoires', value: formatNumber(statistics.uniqueLabs) },
@@ -102,12 +116,32 @@ export default function DetailedAnalysisPage() {
             Analyse Détaillée
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-300">
-            Explorez les données spécifiques par produit, laboratoire ou catégorie
+            Explorez les données spécifiques par produit, laboratoire, catégorie, générique ou grossiste
           </p>
         </div>
         
-        {/* Contenu de la page avec carte d'analyse */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        {/* Carte d'analyse globale */}
+        <div className="mb-8">
+          <AnalysisCategoryCard
+            title="Analyse globale"
+            description="Vue synthétique de toutes vos données commerciales pour une vision d'ensemble de la performance."
+            icon={<FiPieChart size={22} />}
+            buttonIcon={<FiHome className="mr-2" size={16} />}
+            buttonText="Tableau de bord"
+            linkPath={createUrlWithParams("/dashboard")}
+            topItems={[
+              { name: 'CA Total', value: `${formatNumber(statistics.totalSales * 10)} €`, change: '+5.2%' },
+              { name: 'Marge Totale', value: `${formatNumber(statistics.totalSales * 2.5)} €`, change: '+3.7%' },
+              { name: 'Produits Actifs', value: formatNumber(statistics.uniqueProducts), change: '+1.3%' }
+            ]}
+            topTitle="Indicateurs clés"
+            bgColorClass="bg-indigo-100 dark:bg-indigo-900/30"
+            textColorClass="text-indigo-600 dark:text-indigo-300"
+          />
+        </div>
+        
+        {/* Contenu de la page avec cartes d'analyse par type */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <AnalysisCategoryCard
             title="Par produit"
             description="Analysez les performances de chaque produit individuellement avec des recherches par code EAN13 ou nom."
@@ -145,6 +179,32 @@ export default function DetailedAnalysisPage() {
             topTitle="Top 3 Catégories"
             bgColorClass="bg-emerald-100 dark:bg-emerald-900/30"
             textColorClass="text-emerald-600 dark:text-emerald-300"
+          />
+          
+          <AnalysisCategoryCard
+            title="Par générique"
+            description="Identifiez les tendances et opportunités dans les ventes de médicaments génériques et principes actifs."
+            icon={<FiCopy size={22} />}
+            buttonIcon={<FiSearch className="mr-2" size={16} />}
+            buttonText="Analyser les génériques"
+            linkPath={createUrlWithParams("/dashboard/detailed/generics")}
+            topItems={topGenerics}
+            topTitle="Top 3 Génériques"
+            bgColorClass="bg-purple-100 dark:bg-purple-900/30"
+            textColorClass="text-purple-600 dark:text-purple-300"
+          />
+          
+          <AnalysisCategoryCard
+            title="Par grossiste"
+            description="Optimisez vos relations avec les fournisseurs en analysant les performances par grossiste et circuit d'approvisionnement."
+            icon={<FiTruck size={22} />}
+            buttonIcon={<FiBarChart className="mr-2" size={16} />}
+            buttonText="Analyser les grossistes"
+            linkPath={createUrlWithParams("/dashboard/detailed/wholesalers")}
+            topItems={topWholesalers}
+            topTitle="Top 3 Grossistes"
+            bgColorClass="bg-amber-100 dark:bg-amber-900/30"
+            textColorClass="text-amber-600 dark:text-amber-300"
           />
         </div>
         

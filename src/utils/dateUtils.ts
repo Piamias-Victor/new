@@ -137,7 +137,7 @@ export function calculateDateRange(rangeType: DateRangeType): {
       
     case 'thisMonth':
       start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      end = new Date(now);
       label = "Ce mois-ci";
       break;
       

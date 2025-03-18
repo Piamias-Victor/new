@@ -9,6 +9,7 @@ import { MobileMenu } from './header/MobileMenu';
 import { DesktopNav } from './header/DesktopNav';
 import { ModernDateSelector } from '../shared/DateRangeSelector';
 import { PharmacySelector } from '../shared/PharmacySelector';
+import { AnalysisNavMenu } from './header/AnalysisNavMenu';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -60,6 +61,7 @@ export function Header() {
             {/* Sélecteurs visibles uniquement sur le dashboard */}
             {isDashboard && (
               <div className="hidden md:flex items-center space-x-4">
+                <AnalysisNavMenu />
                 <ModernDateSelector />
                 <PharmacySelector />
               </div>

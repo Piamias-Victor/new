@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useRevenue } from "@/hooks/useRevenue";
 import { useInventoryValuation } from "@/hooks/useInventoryValuation";
-import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, FiBox } from "react-icons/fi";
+import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
+         FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat } from "react-icons/fi";
 
 // Types pour les props du composant KpiCard
 interface KpiCardProps {
@@ -145,9 +146,9 @@ function KpiCard({
                   ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
-              title={title === "Stock" ? "Afficher en montant" : "Afficher en pourcentage"}
+              title={title.includes("Stock") ? "Afficher en montant" : "Afficher en pourcentage"}
             >
-              {title === "Stock" ? <FiDollarSign size={14} /> : <FiPercent size={14} />}
+              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <FiDollarSign size={14} /> : <FiPercent size={14} />}
             </button>
             
             <button
@@ -157,9 +158,9 @@ function KpiCard({
                   ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
-              title={title === "Stock" ? "Afficher en unités" : "Afficher en montant"}
+              title={title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? "Afficher en unités" : "Afficher en montant"}
             >
-              {title === "Stock" ? <FiBox size={14} /> : <FiDollarSign size={14} />}
+              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <FiBox size={14} /> : <FiDollarSign size={14} />}
             </button>
           </div>
           
@@ -233,6 +234,24 @@ export function KpiCards() {
     isLoading: stockLoading 
   } = useInventoryValuation();
   
+  // Données statiques de sell-in (à 0 pour le moment)
+  const totalPurchaseAmount = 0;
+  const totalPurchaseQuantity = 0;
+  const purchaseLoading = false;
+  
+  // Données statiques de ruptures (à 0 pour le moment)
+  const totalStockoutsValue = 0;
+  const totalStockoutsQuantity = 0;
+  const stockoutsLoading = false;
+  
+  // Données statiques du nombre de références
+  const totalSoldReferences = 0;
+  const soldReferencesLoading = false;
+  
+  // Données statiques pour le taux de renouvellement
+  const refreshRate = 0;
+  const refreshRateLoading = false;
+  
   // Formatter pour la monnaie
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', { 
@@ -247,12 +266,56 @@ export function KpiCards() {
     return new Intl.NumberFormat('fr-FR').format(num);
   };
   
-  // CA - Données réelles
+  // CA Sell-out (Ventes) - Données réelles
   const revenueChange = comparison ? {
     value: `${comparison.evolution.revenue.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(comparison.totalRevenue),
     isPositive: comparison.evolution.revenue.isPositive
   } : undefined;
+  
+  // Quantité Sell-out - Vue alternative pour la carte de CA Sell-out
+  const quantitySellOutView = {
+    title: "Qte Sell-out",
+    subtitle: "Qte vendue",
+    value: formatNumber(totalRevenue > 0 ? Math.round(totalRevenue / 20) : 0), // Estimation de la quantité basée sur le CA
+    change: comparison ? {
+      value: `${comparison.evolution.revenue.percentage.toFixed(1)}%`,
+      previousValue: formatNumber(comparison.totalRevenue > 0 ? Math.round(comparison.totalRevenue / 20) : 0),
+      isPositive: comparison.evolution.revenue.isPositive
+    } : undefined
+  };
+  
+  // Quantité Sell-in - Vue alternative pour la carte de CA Sell-in
+  const quantitySellInView = {
+    title: "Qte Sell-in",
+    subtitle: "Qte achetée",
+    value: formatNumber(totalPurchaseQuantity),
+    // Pas de comparaison disponible pour le moment
+  };
+  
+  // Vue alternative pour les ruptures en quantité
+  const stockoutsQuantityView = {
+    title: "Qte en rupture",
+    subtitle: "Quantité indisponible",
+    value: formatNumber(totalStockoutsQuantity),
+    // Pas de comparaison disponible pour le moment
+  };
+  
+  // Vue alternative pour les références vendues
+  const soldReferencesWithSalesView = {
+    title: "Réferences actives",
+    subtitle: "Avec ventes",
+    value: formatNumber(totalSoldReferences),
+    // Pas de comparaison disponible pour le moment
+  };
+  
+  // Vue alternative pour le taux de renouvellement
+  const refreshRateDetailView = {
+    title: "Taux renouvellement",
+    subtitle: "Produits récents vs total",
+    value: `${refreshRate.toFixed(1)}%`,
+    // Pas de comparaison disponible pour le moment
+  };
   
   // Marge (montant) - Vue alternative pour la carte de marge
   const marginMoneyView = {
@@ -329,14 +392,38 @@ export function KpiCards() {
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* CA Sell-out */}
       <KpiCard
-        icon={<FiBarChart2 size={24} />}
-        title="Ventes"
+        icon={<FiShoppingBag size={24} />}
+        title="CA Sell-out"
+        subtitle="Montant des ventes"
         value={formatCurrency(totalRevenue)}
         change={revenueChange}
+        alternateView={quantitySellOutView}
         isLoading={revenueLoading}
       />
       
+      {/* CA Sell-in */}
+      <KpiCard
+        icon={<FiShoppingCart size={24} />}
+        title="CA Sell-in"
+        subtitle="Montant d'achats"
+        value={formatCurrency(totalPurchaseAmount)}
+        alternateView={quantitySellInView}
+        isLoading={purchaseLoading}
+      />
+      
+      {/* Ruptures */}
+      <KpiCard
+        icon={<FiAlertTriangle size={24} />}
+        title="CA en rupture"
+        subtitle="Manque à gagner estimé"
+        value={formatCurrency(totalStockoutsValue)}
+        alternateView={stockoutsQuantityView}
+        isLoading={stockoutsLoading}
+      />
+      
+      {/* Marge */}
       <KpiCard
         icon={<FiTrendingUp size={24} />}
         title="Marge"
@@ -346,6 +433,7 @@ export function KpiCards() {
         isLoading={revenueLoading}
       />
       
+      {/* Stock */}
       <KpiCard
         icon={<FiPackage size={24} />}
         title="Stock"
@@ -356,6 +444,7 @@ export function KpiCards() {
         isLoading={stockLoading}
       />
       
+      {/* Rotation */}
       <KpiCard
         icon={<FiActivity size={24} />}
         title="Rotation"
@@ -363,6 +452,28 @@ export function KpiCards() {
         change={rotationChange}
         isLoading={revenueLoading || stockLoading}
         infoTooltip={rotationTooltip}
+      />
+      
+      {/* Références vendues */}
+      <KpiCard
+        icon={<FiHash size={24} />}
+        title="Références vendues"
+        subtitle="Nombre de produits distincts"
+        value={formatNumber(totalSoldReferences)}
+        alternateView={soldReferencesWithSalesView}
+        isLoading={soldReferencesLoading}
+        infoTooltip="Nombre total de références produits distinctes ayant enregistré au moins une vente sur la période."
+      />
+      
+      {/* Taux de renouvellement */}
+      <KpiCard
+        icon={<FiRepeat size={24} />}
+        title="Nouveautés"
+        subtitle="% du CA des 3 derniers mois"
+        value={`${refreshRate.toFixed(1)}%`}
+        alternateView={refreshRateDetailView}
+        isLoading={refreshRateLoading}
+        infoTooltip="Pourcentage du chiffre d'affaires réalisé par des produits introduits dans les 3 derniers mois."
       />
     </div>
   );
