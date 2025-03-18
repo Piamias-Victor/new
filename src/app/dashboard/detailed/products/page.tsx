@@ -9,7 +9,6 @@ import { FiArrowLeft } from 'react-icons/fi';
 
 import { ProductSearch } from '@/components/dashboard/products/ProductSearch';
 import { ProductResultsList } from '@/components/dashboard/products/ProductResultsList';
-import { ProductSearchSummary } from '@/components/dashboard/products/ProductSearchSummary';
 import { useProductSearch } from '@/hooks/useProductSearch';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { ProductSearchProvider, useProductSearchContext } from '@/contexts/ProductSearchContext';
@@ -19,6 +18,7 @@ import { ProductSalesEvolutionChart } from '@/components/dashboard/products/Prod
 import { ProductStockMonthsPanel } from '@/components/dashboard/stock/ProductStockMonthsPanel';
 import { ProductMarginsPanel } from '@/components/dashboard/margins/ProductMarginsPanel';
 import { ProductEvolutionSummary } from '@/components/dashboard/evolution/ProductEvolutionSummary';
+import { ProductEnhancedSummary } from '@/components/dashboard/products/ProductSearchSummary';
 
 // Composant interne qui utilise les contextes
 function ProductAnalysisContent() {
@@ -110,7 +110,7 @@ function ProductAnalysisContent() {
           
           {/* Synthèse des résultats - s'affiche uniquement si des résultats existent */}
           {results.length > 0 && (
-            <ProductSearchSummary products={results} />
+            <ProductEnhancedSummary products={results} />
           )}
           
           {/* Graphique d'évolution des ventes - s'affiche uniquement si des résultats existent */}
