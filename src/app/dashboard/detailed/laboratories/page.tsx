@@ -1,4 +1,4 @@
-// src/app/dashboard/detailed/laboratories/page.tsx
+// src/app/dashboard/detailed/laboratories/page.tsx (mise à jour)
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -8,17 +8,26 @@ import Link from 'next/link';
 import { FiArrowLeft } from 'react-icons/fi';
 
 import { LaboratorySearch } from '@/components/dashboard/laboratories/LaboratorySearch';
+import { ProductResultsList } from '@/components/dashboard/products/ProductResultsList';
+import { ProductSearchSummary } from '@/components/dashboard/products/ProductSearchSummary';
+import { ProductSalesEvolutionChart } from '@/components/dashboard/products/ProductSalesEvolution';
+import { ProductStockMonthsPanel } from '@/components/dashboard/stock/ProductStockMonthsPanel';
+import { ProductMarginsPanel } from '@/components/dashboard/margins/ProductMarginsPanel';
 import { useDateRange } from '@/contexts/DateRangeContext';
+import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { Product } from '@/services/productService';
 
 export default function LaboratoryAnalysisPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { startDate, endDate } = useDateRange();
+  const { selectedPharmacyIds } = usePharmacySelection();
   
   const [selectedLab, setSelectedLab] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [labData, setLabData] = useState<any | null>(null);
+  const [labProducts, setLabProducts] = useState<Product[]>([]);
 
   // Création de l'URL avec les paramètres de date actuels
   const createUrlWithParams = (baseUrl: string) => {
@@ -35,6 +44,13 @@ export default function LaboratoryAnalysisPage() {
     }
   }, [status, router]);
 
+  // Effet pour recharger les données lorsque les dates changent
+  useEffect(() => {
+    if (selectedLab) {
+      handleLabSearch(selectedLab);
+    }
+  }, [startDate, endDate, selectedPharmacyIds]);
+
   // Fonction pour rechercher un laboratoire
   const handleLabSearch = async (labName: string) => {
     try {
@@ -42,26 +58,52 @@ export default function LaboratoryAnalysisPage() {
       setError(null);
       setSelectedLab(labName);
       
-      // Préparer les paramètres de la requête
-      const params = new URLSearchParams({
+      // Préparer les paramètres pour la requête des détails
+      const detailsParams = new URLSearchParams({
         name: labName
       });
       
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+      if (startDate) detailsParams.append('startDate', startDate);
+      if (endDate) detailsParams.append('endDate', endDate);
       
-      // Faire la requête à l'API
-      const response = await fetch(`/api/laboratories/details?${params}`, {
+      selectedPharmacyIds.forEach(id => {
+        detailsParams.append('pharmacyIds', id);
+      });
+      
+      // Requête pour les détails du laboratoire
+      const detailsResponse = await fetch(`/api/laboratories/details?${detailsParams}`, {
         cache: 'no-store'
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!detailsResponse.ok) {
+        const errorData = await detailsResponse.json();
         throw new Error(errorData.error || 'Erreur lors de la récupération des données du laboratoire');
       }
       
-      const data = await response.json();
-      setLabData(data);
+      const detailsData = await detailsResponse.json();
+      setLabData(detailsData);
+      
+      // Préparer les paramètres pour la requête des produits
+      const productsParams = new URLSearchParams({
+        name: labName
+      });
+      
+      selectedPharmacyIds.forEach(id => {
+        productsParams.append('pharmacyIds', id);
+      });
+      
+      // Requête pour les produits du laboratoire
+      const productsResponse = await fetch(`/api/laboratories/products?${productsParams}`, {
+        cache: 'no-store'
+      });
+      
+      if (!productsResponse.ok) {
+        const errorData = await productsResponse.json();
+        throw new Error(errorData.error || 'Erreur lors de la récupération des produits du laboratoire');
+      }
+      
+      const productsData = await productsResponse.json();
+      setLabProducts(productsData.products);
     } catch (error) {
       console.error('Erreur lors de la recherche du laboratoire:', error);
       setError(error instanceof Error ? error.message : 'Erreur inconnue');
@@ -124,15 +166,81 @@ export default function LaboratoryAnalysisPage() {
             </div>
           )}
           
-          {/* Contenu principal - à implémenter au fur et à mesure */}
+          {/* Résultats de l'analyse de laboratoire */}
           {selectedLab && labData && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Résultats pour {selectedLab}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                Les détails de l'analyse seront affichés ici. Cette partie est en cours d'implémentation.
-              </p>
+            <div className="space-y-6">
+              {/* En-tête du laboratoire */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                  {selectedLab}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Produits</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {labData.summary?.total_products || 0}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Chiffre d'affaires</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0
+                      }).format(labData.sales?.total_revenue || 0)}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Marge</div>
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR',
+                        maximumFractionDigits: 0
+                      }).format(labData.sales?.total_margin || 0)}
+                      <span className="ml-2 text-sm font-normal">
+                        ({(labData.sales?.margin_percentage || 0).toFixed(1)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Synthèse des résultats - si des produits existent */}
+              {labProducts.length > 0 && (
+                <ProductSearchSummary products={labProducts} />
+              )}
+              
+              {/* Graphique d'évolution des ventes - si des produits existent */}
+              {/* {labProducts.length > 0 && (
+                <ProductSalesEvolutionChart 
+                  products={labProducts} 
+                  isLoading={isLoading} 
+                />
+              )} */}
+              
+              {/* Panneaux d'analyse côte à côte (Stock et Marges) - si des produits existent */}
+              {/* {labProducts.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <ProductStockMonthsPanel 
+                    products={labProducts} 
+                    isLoading={isLoading} 
+                  />
+                  
+                  <ProductMarginsPanel 
+                    products={labProducts} 
+                    isLoading={isLoading} 
+                  />
+                </div>
+              )} */}
+              
+              {/* Résultats de recherche détaillés */}
+              {/* <ProductResultsList 
+                products={labProducts}
+                isLoading={isLoading}
+                error={error}
+              /> */}
             </div>
           )}
         </div>

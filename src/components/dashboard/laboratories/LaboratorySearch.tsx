@@ -141,41 +141,41 @@ export function LaboratorySearch({ onSearch, isLoading = false }: LaboratorySear
               
               {/* Dropdown des laboratoires */}
               {dropdownOpen && (
-                <div className="absolute z-10 mt-2 left-0 right-0 bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 max-h-72 overflow-y-auto">
-                  {/* Entête du dropdown */}
-                  <div className="sticky top-0 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isLabsLoading ? 'Chargement...' : `${filteredLabs.length} laboratoires trouvés`}
-                    </p>
-                  </div>
+  <div className="absolute z-10 mt-2 w-full bg-white dark:bg-gray-800 shadow-xl rounded-lg border border-gray-200 dark:border-gray-700 max-h-72 overflow-y-auto">
+    {/* Entête du dropdown */}
+    <div className="sticky top-0 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-2">
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {isLabsLoading ? 'Chargement...' : `${filteredLabs.length} laboratoires trouvés`}
+      </p>
+    </div>
 
-                  {isLabsLoading ? (
-                    <div className="p-6 flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sky-500"></div>
-                      <span className="ml-3 text-gray-500 dark:text-gray-400">Chargement des laboratoires...</span>
-                    </div>
-                  ) : filteredLabs.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-                      <span className="block mb-1 text-xl">😕</span>
-                      Aucun laboratoire trouvé
-                    </div>
-                  ) : (
-                    <ul className="py-2">
-                      {filteredLabs.map((lab) => (
-                        <li 
-                          key={lab}
-                          onClick={() => handleLabSelect(lab)}
-                          className="px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 cursor-pointer text-gray-900 dark:text-white transition-colors"
-                        >
-                          <div className="flex items-center">
-                            <span className="font-medium">{lab}</span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+    {isLabsLoading ? (
+      <div className="p-6 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-sky-500"></div>
+        <span className="ml-3 text-gray-500 dark:text-gray-400">Chargement des laboratoires...</span>
+      </div>
+    ) : filteredLabs.length === 0 ? (
+      <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+        <span className="block mb-1 text-xl">😕</span>
+        Aucun laboratoire trouvé
+      </div>
+    ) : (
+      <ul className="py-2 max-h-60 overflow-y-auto">
+        {filteredLabs.map((lab) => (
+          <li 
+            key={lab}
+            onClick={() => handleLabSelect(lab)}
+            className="px-4 py-2.5 hover:bg-sky-50 dark:hover:bg-sky-900/20 cursor-pointer text-gray-900 dark:text-white transition-colors"
+          >
+            <div className="flex items-center">
+              <span className="font-medium">{lab}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)}
             </div>
           </div>
           
