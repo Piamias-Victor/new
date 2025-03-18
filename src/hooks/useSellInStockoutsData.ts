@@ -3,7 +3,19 @@ import { useState, useEffect } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useDateRange } from '@/contexts/DateRangeContext';
 
+// Fonction utilitaire pour convertir de manière sécurisée en nombre
+function safeNumber(value: any, defaultValue: number = 0): number {
+  const parsed = Number(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
 interface SellInStockoutsData {
+  sellOut: {
+    totalSellOut: number;
+    totalMargin: number;
+    referencesVendues: number;
+    marginPercentage: number;
+  };
   sellIn: {
     totalPurchaseAmount: number;
     totalPurchaseQuantity: number;
@@ -13,12 +25,21 @@ interface SellInStockoutsData {
     totalStockoutsValue: number;
     totalStockoutsQuantity: number;
   };
+  stock: {
+    totalStockValue: number;
+  };
   isLoading: boolean;
   error: string | null;
 }
 
 export function useSellInStockoutsData(): SellInStockoutsData {
   const [data, setData] = useState<SellInStockoutsData>({
+    sellOut: {
+      totalSellOut: 0,
+      totalMargin: 0,
+      referencesVendues: 0,
+      marginPercentage: 0
+    },
     sellIn: {
       totalPurchaseAmount: 0,
       totalPurchaseQuantity: 0,
@@ -27,6 +48,9 @@ export function useSellInStockoutsData(): SellInStockoutsData {
     stockouts: {
       totalStockoutsValue: 0,
       totalStockoutsQuantity: 0
+    },
+    stock: {
+      totalStockValue: 0
     },
     isLoading: true,
     error: null
@@ -58,7 +82,7 @@ export function useSellInStockoutsData(): SellInStockoutsData {
         }
         
         // Effectuer la requête
-        const response = await fetch(`/api/statistics/sell-in-stockouts?${params}`, {
+        const response = await fetch(`/api/sell-in-stockouts?${params}`, {
           cache: 'no-store'
         });
         
@@ -69,9 +93,26 @@ export function useSellInStockoutsData(): SellInStockoutsData {
         
         const result = await response.json();
         
+        // Convertir de manière sécurisée les valeurs numériques
         setData({
-          sellIn: result.sellIn,
-          stockouts: result.stockouts,
+          sellOut: {
+            totalSellOut: safeNumber(result.sellOut?.totalSellOut),
+            totalMargin: safeNumber(result.sellOut?.totalMargin),
+            referencesVendues: safeNumber(result.sellOut?.referencesVendues),
+            marginPercentage: safeNumber(result.sellOut?.marginPercentage)
+          },
+          sellIn: {
+            totalPurchaseAmount: safeNumber(result.sellIn?.totalPurchaseAmount),
+            totalPurchaseQuantity: safeNumber(result.sellIn?.totalPurchaseQuantity),
+            totalOrders: safeNumber(result.sellIn?.totalOrders)
+          },
+          stockouts: {
+            totalStockoutsValue: safeNumber(result.stockouts?.totalStockoutsValue),
+            totalStockoutsQuantity: safeNumber(result.stockouts?.totalStockoutsQuantity)
+          },
+          stock: {
+            totalStockValue: safeNumber(result.stock?.totalStockValue)
+          },
           isLoading: false,
           error: null
         });
