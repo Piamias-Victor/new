@@ -71,27 +71,24 @@ export function useProductSalesEvolution(
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        // Préparer les paramètres de la requête
-        const params = new URLSearchParams({
+        // Préparer les données pour la requête POST
+        const requestData = {
           startDate,
           endDate,
-          interval
-        });
+          interval,
+          // Ajouter chaque ID de produit 
+          productIds: products.map(product => product.id),
+          // Ajouter les IDs de pharmacie si spécifiés
+          ...(selectedPharmacyIds.length > 0 && { pharmacyIds: selectedPharmacyIds })
+        };
         
-        // Ajouter chaque ID de produit comme paramètre
-        products.forEach(product => {
-          params.append('productIds', product.id);
-        });
-        
-        // Ajouter les IDs de pharmacie si spécifiés
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
-            params.append('pharmacyIds', id);
-          });
-        }
-        
-        // Effectuer la requête
-        const response = await fetch(`/api/products/sales-evolution?${params}`, {
+        // Effectuer la requête POST
+        const response = await fetch('/api/products/sales-evolution', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData),
           cache: 'no-store'
         });
         

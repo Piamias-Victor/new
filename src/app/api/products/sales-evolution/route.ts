@@ -2,16 +2,20 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const interval = searchParams.get('interval') || 'day'; // 'day', 'week', 'month'
-    const productIds = searchParams.getAll('productIds');
-    const pharmacyIds = searchParams.getAll('pharmacyIds');
+    // Récupérer les données du corps de la requête
+    const body = await request.json();
+    const { 
+      startDate, 
+      endDate, 
+      interval = 'day', // 'day', 'week', 'month'
+      productIds,
+      pharmacyIds = []
+    } = body;
     
-    if (!startDate || !endDate || productIds.length === 0) {
+    // Validation des paramètres
+    if (!startDate || !endDate || !productIds || productIds.length === 0) {
       return NextResponse.json(
         { error: 'Dates et IDs de produits sont requis' },
         { status: 400 }

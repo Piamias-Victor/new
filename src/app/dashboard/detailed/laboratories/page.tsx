@@ -213,15 +213,15 @@ export default function LaboratoryAnalysisPage() {
               )}
               
               {/* Graphique d'évolution des ventes - si des produits existent */}
-              {/* {labProducts.length > 0 && (
+              {labProducts.length > 0 && (
                 <ProductSalesEvolutionChart 
                   products={labProducts} 
                   isLoading={isLoading} 
                 />
-              )} */}
+              )}
               
               {/* Panneaux d'analyse côte à côte (Stock et Marges) - si des produits existent */}
-              {/* {labProducts.length > 0 && (
+              {labProducts.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <ProductStockMonthsPanel 
                     products={labProducts} 
@@ -233,7 +233,7 @@ export default function LaboratoryAnalysisPage() {
                     isLoading={isLoading} 
                   />
                 </div>
-              )} */}
+              )}
               
               {/* Résultats de recherche détaillés */}
               {/* <ProductResultsList 
