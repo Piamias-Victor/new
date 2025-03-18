@@ -12,10 +12,10 @@ export async function GET(request: Request) {
     const comparisonEndDate = searchParams.get('comparisonEndDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     
-    // Validation des paramètres requis
+    // Validation des paramètres
     if (!startDate || !endDate || !comparisonStartDate || !comparisonEndDate) {
       return NextResponse.json(
-        { error: 'Les dates de début, de fin et de comparaison sont requises' },
+        { error: 'Les dates de début et de fin pour les deux périodes sont requises' },
         { status: 400 }
       );
     }
@@ -125,7 +125,10 @@ export async function GET(request: Request) {
             current_stock,
             current_revenue,
             previous_revenue,
+            current_margin,
+            previous_margin,
             evolution_percentage,
+            margin_evolution_percentage,
             CASE
               WHEN evolution_percentage < -15 THEN 'strongDecrease'
               WHEN evolution_percentage >= -15 AND evolution_percentage < -5 THEN 'slightDecrease'
@@ -133,7 +136,7 @@ export async function GET(request: Request) {
               WHEN evolution_percentage > 5 AND evolution_percentage <= 15 THEN 'slightIncrease'
               WHEN evolution_percentage > 15 THEN 'strongIncrease'
               ELSE 'stable'
-            END AS category
+            END AS category_type
           FROM
             evolution_data
         ),
@@ -161,11 +164,11 @@ export async function GET(request: Request) {
         SELECT 
           jsonb_build_object(
             'categories', jsonb_build_object(
-              'strongDecrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category = 'strongDecrease' ORDER BY evolution_percentage) t),
-              'slightDecrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category = 'slightDecrease' ORDER BY evolution_percentage) t),
-              'stable', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category = 'stable' ORDER BY evolution_percentage) t),
-              'slightIncrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category = 'slightIncrease' ORDER BY evolution_percentage DESC) t),
-              'strongIncrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category = 'strongIncrease' ORDER BY evolution_percentage DESC) t)
+              'strongDecrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category_type = 'strongDecrease' ORDER BY evolution_percentage) t),
+              'slightDecrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category_type = 'slightDecrease' ORDER BY evolution_percentage) t),
+              'stable', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category_type = 'stable' ORDER BY evolution_percentage) t),
+              'slightIncrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category_type = 'slightIncrease' ORDER BY evolution_percentage DESC) t),
+              'strongIncrease', (SELECT jsonb_agg(to_jsonb(t)) FROM (SELECT * FROM category_data WHERE category_type = 'strongIncrease' ORDER BY evolution_percentage DESC) t)
             ),
             'globalComparison', (SELECT to_jsonb(gc) FROM (
               SELECT 

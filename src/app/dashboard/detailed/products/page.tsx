@@ -18,6 +18,7 @@ import { ProductSalesEvolutionChart } from '@/components/dashboard/products/Prod
 // Import des nouveaux composants d'analyse
 import { ProductStockMonthsPanel } from '@/components/dashboard/stock/ProductStockMonthsPanel';
 import { ProductMarginsPanel } from '@/components/dashboard/margins/ProductMarginsPanel';
+import { ProductEvolutionSummary } from '@/components/dashboard/evolution/ProductEvolutionSummary';
 
 // Composant interne qui utilise les contextes
 function ProductAnalysisContent() {
@@ -132,6 +133,13 @@ function ProductAnalysisContent() {
                 products={results} 
                 isLoading={isLoading} 
               />
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ProductEvolutionSummary/>
+              <div>Test</div>
             </div>
           )}
           
