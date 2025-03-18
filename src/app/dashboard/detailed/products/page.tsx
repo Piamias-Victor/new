@@ -15,6 +15,10 @@ import { useDateRange } from '@/contexts/DateRangeContext';
 import { ProductSearchProvider, useProductSearchContext } from '@/contexts/ProductSearchContext';
 import { ProductSalesEvolutionChart } from '@/components/dashboard/products/ProductSalesEvolution';
 
+// Import des nouveaux composants d'analyse
+import { ProductStockMonthsPanel } from '@/components/dashboard/stock/ProductStockMonthsPanel';
+import { ProductMarginsPanel } from '@/components/dashboard/margins/ProductMarginsPanel';
+
 // Composant interne qui utilise les contextes
 function ProductAnalysisContent() {
   const { data: session, status } = useSession();
@@ -114,6 +118,21 @@ function ProductAnalysisContent() {
               products={results} 
               isLoading={isLoading} 
             />
+          )}
+          
+          {/* Panneaux d'analyse côte à côte (Stock et Marges) - s'affichent uniquement si des résultats existent */}
+          {results.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ProductStockMonthsPanel 
+                products={results} 
+                isLoading={isLoading} 
+              />
+              
+              <ProductMarginsPanel 
+                products={results} 
+                isLoading={isLoading} 
+              />
+            </div>
           )}
           
           {/* Résultats de recherche détaillés */}
