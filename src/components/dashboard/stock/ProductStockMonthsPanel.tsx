@@ -1,4 +1,3 @@
-// src/components/dashboard/products/ProductStockMonthsPanel.tsx
 import React, { useState, useMemo } from 'react';
 import { FiClock } from 'react-icons/fi';
 import { Product } from '@/services/productService';
@@ -9,60 +8,85 @@ import { StockSummaryCard } from './StockSummaryCard';
 
 interface ProductStockMonthsPanelProps {
   products: Product[];
+  labData?: any;
   isLoading: boolean;
 }
 
-export function ProductStockMonthsPanel({ products, isLoading }: ProductStockMonthsPanelProps) {
+export function ProductStockMonthsPanel({ 
+  products, 
+  labData = {}, 
+  isLoading 
+}: ProductStockMonthsPanelProps) {
   // État pour la modale
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<StockProductData[]>([]);
   const [modalTitle, setModalTitle] = useState('');
   
-      // Calculer les mois de stock pour chaque produit
+  // Calculer les mois de stock 
   const stockCategories = useMemo(() => {
-    if (!products.length) return {
-      criticalLow: [],
-      toWatch: [],
-      optimal: [],
-      overStock: [],
-      criticalHigh: []
-    };
-    
-    // Convertir les produits au format attendu par la modale
-    const convertedProducts: StockProductData[] = products.map(product => {
-      // Calculer les ventes mensuelles moyennes
-      // Utilisez les attributs disponibles dans votre objet Product
+    // Utiliser les données du laboratoire si disponibles
+    const criticalLow = labData?.stock_months?.criticalLow || [];
+    const toWatch = labData?.stock_months?.toWatch || [];
+    const optimal = labData?.stock_months?.optimal || [];
+    const overStock = labData?.stock_months?.overStock || [];
+    const criticalHigh = labData?.stock_months?.criticalHigh || [];
+
+    // Si les données du laboratoire existent et contiennent des catégories, les utiliser
+    if (criticalLow.length || toWatch.length || optimal.length || overStock.length || criticalHigh.length) {
+      return {
+        criticalLow,
+        toWatch,
+        optimal,
+        overStock,
+        criticalHigh
+      };
+    }
+
+    // Consolidation des produits par code_13_ref (identifiant unique du produit)
+    const consolidatedProducts = products.reduce((acc, product) => {
+      const existingProduct = acc.find(p => p.code_13_ref === product.code_13_ref);
       
-      // Estimation plus réaliste des ventes mensuelles
-      let avgMonthlySales = 0;
-      if (product.total_sales) {
-        // Si nous avons les ventes totales, supposons qu'elles sont sur une période de 3 mois
-        avgMonthlySales = Number(product.total_sales) / 3;
-      } else if (product.margin_percentage) {
-        // Si nous avons le pourcentage de marge mais pas les ventes, faisons une estimation arbitraire
-        // Cette partie est à ajuster selon les données disponibles dans votre objet Product
-        avgMonthlySales = Math.max(1, Number(product.current_stock) / 10);
+      if (!existingProduct) {
+        // Premier produit de ce type
+        acc.push({
+          code_13_ref: product.code_13_ref || '',
+          display_name: product.display_name || product.name,
+          current_stock: Number(product.current_stock) || 0,
+          total_sales: Number(product.total_sales) || 0
+        });
       } else {
-        // Par défaut, estimons qu'un produit en stock se vend en moyenne à 2 unités par mois
-        avgMonthlySales = 2;
+        // Accumulation des stocks pour ce produit
+        existingProduct.current_stock += Number(product.current_stock) || 0;
+        existingProduct.total_sales += Number(product.total_sales) || 0;
       }
       
-      // Calculer les mois de stock
-      const stockMonths = Number(product.current_stock) / avgMonthlySales;
+      return acc;
+    }, [] as Array<{
+      code_13_ref: string, 
+      display_name: string, 
+      current_stock: number, 
+      total_sales: number
+    }>);
+
+    // Conversion en données de stock
+    const convertedProducts: StockProductData[] = consolidatedProducts.map(product => {
+      // Estimation des ventes mensuelles
+      const avgMonthlySales = product.total_sales > 0 
+        ? product.total_sales / 3  // Moyenne sur 3 mois
+        : 2; // Valeur par défaut si pas de ventes
       
-      // Pour les produits sans vente ou avec très peu de ventes, limiter à 12 mois max
-      // au lieu de mettre une valeur arbitraire très élevée
-      const normalizedStockMonths = avgMonthlySales < 0.1 ? Math.min(12, stockMonths) : stockMonths;
+      // Calculer les mois de stock
+      const stockMonths = product.current_stock / avgMonthlySales;
       
       return {
-        id: product.id,
-        product_name: product.name,
+        id: product.code_13_ref,
+        product_name: product.display_name,
         global_name: product.display_name,
-        display_name: product.display_name || product.name,
-        category: product.category || '',
-        brand_lab: product.brand_lab || '',
-        code_13_ref: product.code_13_ref || '',
-        current_stock: Number(product.current_stock) || 0,
+        display_name: product.display_name,
+        category: '', // Pourrait être ajouté si nécessaire
+        brand_lab: '', // Pourrait être ajouté si nécessaire
+        code_13_ref: product.code_13_ref,
+        current_stock: product.current_stock,
         avg_monthly_sales: avgMonthlySales,
         stock_months: stockMonths
       };
@@ -76,7 +100,7 @@ export function ProductStockMonthsPanel({ products, isLoading }: ProductStockMon
       overStock: convertedProducts.filter(p => p.stock_months > 6 && p.stock_months <= 12),
       criticalHigh: convertedProducts.filter(p => p.stock_months > 12)
     };
-  }, [products]);
+  }, [products, labData]);
   
   // Fonction pour ouvrir la modale avec une catégorie spécifique
   const openModal = (products: StockProductData[], title: string) => {
@@ -121,7 +145,7 @@ export function ProductStockMonthsPanel({ products, isLoading }: ProductStockMon
       <div className="flex items-center mb-4">
         <FiClock className="text-gray-500 dark:text-gray-400 mr-2" size={18} />
         <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
-          Analyse des mois de stock ({products.length} produits)
+          Analyse des mois de stock
         </h2>
       </div>
       

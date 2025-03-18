@@ -209,7 +209,8 @@ export default function LaboratoryAnalysisPage() {
               
               {/* Synthèse des résultats - si des produits existent */}
               {labProducts.length > 0 && (
-                <ProductSearchSummary products={labProducts} />
+                <ProductSearchSummary products={labProducts} 
+                labData={labData}/>
               )}
               
               {/* Graphique d'évolution des ventes - si des produits existent */}
@@ -226,11 +227,13 @@ export default function LaboratoryAnalysisPage() {
                   <ProductStockMonthsPanel 
                     products={labProducts} 
                     isLoading={isLoading} 
+                    labData={labData}
                   />
                   
                   <ProductMarginsPanel 
                     products={labProducts} 
                     isLoading={isLoading} 
+                    labData={labData}
                   />
                 </div>
               )}

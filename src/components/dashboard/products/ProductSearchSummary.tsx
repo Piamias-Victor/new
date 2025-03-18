@@ -18,60 +18,68 @@ function formatLargeNumber(num: number): string {
 
 interface ProductSearchSummaryProps {
   products: Product[];
+  labData?: {
+    summary?: {
+      total_products?: number;
+    };
+    sales?: {
+      total_revenue?: number;
+      total_margin?: number;
+      margin_percentage?: number;
+      total_quantity_sold?: number;
+    };
+  };
 }
 
-export function ProductSearchSummary({ products }: ProductSearchSummaryProps) {
+export function ProductSearchSummary({ products, labData }: ProductSearchSummaryProps) {
   // Calcul des statistiques
   const calculateSummary = () => {
+    // Nombre total de produits - préférer le nombre issu des données du laboratoire
+    const totalProducts = labData?.summary?.total_products || products.length;
+    
     // Calcul du stock total avec conversion explicite
     const totalStock = products.reduce((sum, product) => 
       sum + (Number(product.current_stock) || 0), 0);
     
-    // Calcul des ventes totales en utilisant les ventes réelles
-    const totalSales = products.reduce((sum, product) => 
-      sum + (Number(product.total_sales) || 0), 0);
+    // Calcul des ventes totales - préférer les ventes totales du laboratoire si disponibles
+    const totalSales = labData?.sales?.total_quantity_sold || 
+      products.reduce((sum, product) => sum + (Number(product.total_sales) || 0), 0);
     
-    // Utilisation directe du chiffre d'affaires global du laboratoire si disponible
-    // Ce chiffre devrait être fourni par l'API des détails du laboratoire
-    const labTotalRevenue = window.labData?.sales?.total_revenue;
-    const totalRevenue = labTotalRevenue ? Number(labTotalRevenue) : products.reduce((sum, product) => {
-      // Si le produit a des ventes et un prix, l'utiliser pour le CA
-      if (product.total_sales && product.price_with_tax) {
-        return sum + (Number(product.total_sales) * Number(product.price_with_tax));
-      }
-      // Si la propriété revenue existe déjà (fournie par l'API)
-      if (product.revenue) {
-        return sum + Number(product.revenue);
-      }
-      return sum;
-    }, 0);
+    // Chiffre d'affaires total - préférer le CA total du laboratoire si disponible
+    const totalRevenue = labData?.sales?.total_revenue || 
+      products.reduce((sum, product) => {
+        if (product.total_sales && product.price_with_tax) {
+          return sum + (Number(product.total_sales) * Number(product.price_with_tax));
+        }
+        if (product.revenue) {
+          return sum + Number(product.revenue);
+        }
+        return sum;
+      }, 0);
     
-    // Utilisation directe de la marge globale du laboratoire si disponible
-    // Ce chiffre devrait être fourni par l'API des détails du laboratoire
-    const labTotalMargin = window.labData?.sales?.total_margin;
-    const totalMargin = labTotalMargin ? Number(labTotalMargin) : products.reduce((sum, product) => {
-      // Si la propriété margin existe déjà (fournie par l'API)
-      if (product.margin) {
-        return sum + Number(product.margin);
-      }
-      
-      // Calcul basé sur les ventes et les coûts
-      if (product.total_sales && product.price_with_tax && product.weighted_average_price && product.tva_rate) {
-        const prixHT = Number(product.price_with_tax) / (1 + Number(product.tva_rate) / 100);
-        const coutHT = Number(product.weighted_average_price);
-        const margeUnitaire = prixHT - coutHT;
-        return sum + (Number(product.total_sales) * margeUnitaire);
-      }
-      
-      return sum;
-    }, 0);
+    // Marge totale - préférer la marge totale du laboratoire si disponible
+    const totalMargin = labData?.sales?.total_margin || 
+      products.reduce((sum, product) => {
+        if (product.margin) {
+          return sum + Number(product.margin);
+        }
+        
+        if (product.total_sales && product.price_with_tax && product.weighted_average_price && product.tva_rate) {
+          const prixHT = Number(product.price_with_tax) / (1 + Number(product.tva_rate) / 100);
+          const coutHT = Number(product.weighted_average_price);
+          const margeUnitaire = prixHT - coutHT;
+          return sum + (Number(product.total_sales) * margeUnitaire);
+        }
+        
+        return sum;
+      }, 0);
   
-    const marginPercentage = totalRevenue > 0 
-      ? (totalMargin / totalRevenue) * 100 
-      : 0;
+    // Pourcentage de marge - préférer le pourcentage calculé par l'API si disponible
+    const marginPercentage = labData?.sales?.margin_percentage || 
+      (totalRevenue > 0 ? (totalMargin / totalRevenue) * 100 : 0);
   
     return {
-      totalProducts: products.length,
+      totalProducts,
       totalStock,
       totalSales,
       totalRevenue,
