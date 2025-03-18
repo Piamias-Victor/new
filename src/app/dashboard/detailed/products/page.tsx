@@ -136,12 +136,16 @@ function ProductAnalysisContent() {
             </div>
           )}
 
-          {results.length > 0 && (
+          
+
+          {/* {results.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ProductEvolutionSummary/>
               <div>Test</div>
             </div>
-          )}
+          )} */}
+
+
           
           {/* Résultats de recherche détaillés */}
           <ProductResultsList 
