@@ -1,4 +1,4 @@
-// src/hooks/useRevenue.ts - mise à jour
+// src/hooks/useRevenue.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
@@ -67,33 +67,27 @@ export function useRevenue(): RevenueData {
       // Mettre à jour l'état pour indiquer le chargement
       setData(prev => ({ ...prev, isLoading: true, error: null }));
       
-      // Préparer les paramètres de la requête
-      const params = new URLSearchParams({
+      // Préparer les données pour la requête POST
+      const requestData = {
         startDate,
-        endDate
-      });
+        endDate,
+        // Ajouter les dates de comparaison si activées
+        ...(isComparisonEnabled && comparisonStartDate && comparisonEndDate && {
+          comparisonStartDate,
+          comparisonEndDate
+        }),
+        // Ajouter les IDs de pharmacie sélectionnées
+        pharmacyIds: selectedPharmacyIds
+      };
       
-      // Ajouter les dates de comparaison si activées
-      if (isComparisonEnabled && comparisonStartDate && comparisonEndDate) {
-        params.append('comparisonStartDate', comparisonStartDate);
-        params.append('comparisonEndDate', comparisonEndDate);
-      }
-      
-      // Si on a une sélection spécifique, on l'ajoute aux paramètres
-      if (selectedPharmacyIds.length > 0) {
-        // Ajouter chaque ID de pharmacie sélectionnée
-        selectedPharmacyIds.forEach(id => {
-          params.append('pharmacyIds', id);
-        });
-      }
-      
-      // Effectuer la requête
-      const response = await fetch(`/api/sales/revenue?${params}`, {
-        cache: 'no-store',
-        method: 'GET',
+      // Effectuer la requête POST
+      const response = await fetch('/api/sales/revenue', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify(requestData),
+        cache: 'no-store'
       });
       
       if (!response.ok) {
