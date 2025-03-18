@@ -40,6 +40,7 @@ export async function GET(request: Request) {
             TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
             TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
             COUNT(DISTINCT s.date) as days_count
+            COUNT(DISTINCT i.product_id) as unique_products_sold
           FROM 
             data_sales s
           JOIN 

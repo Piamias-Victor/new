@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRevenue } from "@/hooks/useRevenue";
 import { useInventoryValuation } from "@/hooks/useInventoryValuation";
+import { useSellInStockoutsData } from "@/hooks/useSellInStockoutsData";
 import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
          FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat } from "react-icons/fi";
 
@@ -222,6 +223,7 @@ export function KpiCards() {
     totalMargin, 
     marginPercentage, 
     comparison, 
+    totalUniqueSoldProducts, // Nouvelle propriété ajoutée via l'extension de l'API
     isLoading: revenueLoading,
     actualDateRange
   } = useRevenue();
@@ -234,21 +236,14 @@ export function KpiCards() {
     isLoading: stockLoading 
   } = useInventoryValuation();
   
-  // Données statiques de sell-in (à 0 pour le moment)
-  const totalPurchaseAmount = 0;
-  const totalPurchaseQuantity = 0;
-  const purchaseLoading = false;
+  // Utilisation du nouveau hook pour les données de sell-in et ruptures
+  const {
+    sellIn: { totalPurchaseAmount, totalPurchaseQuantity, totalOrders },
+    stockouts: { totalStockoutsValue, totalStockoutsQuantity },
+    isLoading: sellInStockoutsLoading
+  } = useSellInStockoutsData();
   
-  // Données statiques de ruptures (à 0 pour le moment)
-  const totalStockoutsValue = 0;
-  const totalStockoutsQuantity = 0;
-  const stockoutsLoading = false;
-  
-  // Données statiques du nombre de références
-  const totalSoldReferences = 0;
-  const soldReferencesLoading = false;
-  
-  // Données statiques pour le taux de renouvellement
+  // Données pour le taux de renouvellement (à implémenter ultérieurement)
   const refreshRate = 0;
   const refreshRateLoading = false;
   
@@ -305,7 +300,7 @@ export function KpiCards() {
   const soldReferencesWithSalesView = {
     title: "Réferences actives",
     subtitle: "Avec ventes",
-    value: formatNumber(totalSoldReferences),
+    value: formatNumber(totalUniqueSoldProducts),
     // Pas de comparaison disponible pour le moment
   };
   
@@ -403,24 +398,24 @@ export function KpiCards() {
         isLoading={revenueLoading}
       />
       
-      {/* CA Sell-in */}
+      {/* CA Sell-in - Maintenant avec données réelles */}
       <KpiCard
         icon={<FiShoppingCart size={24} />}
         title="CA Sell-in"
         subtitle="Montant d'achats"
         value={formatCurrency(totalPurchaseAmount)}
         alternateView={quantitySellInView}
-        isLoading={purchaseLoading}
+        isLoading={sellInStockoutsLoading}
       />
       
-      {/* Ruptures */}
+      {/* Ruptures - Maintenant avec données réelles */}
       <KpiCard
         icon={<FiAlertTriangle size={24} />}
         title="CA en rupture"
         subtitle="Manque à gagner estimé"
         value={formatCurrency(totalStockoutsValue)}
         alternateView={stockoutsQuantityView}
-        isLoading={stockoutsLoading}
+        isLoading={sellInStockoutsLoading}
       />
       
       {/* Marge */}
@@ -454,18 +449,18 @@ export function KpiCards() {
         infoTooltip={rotationTooltip}
       />
       
-      {/* Références vendues */}
+      {/* Références vendues - Maintenant avec données réelles */}
       <KpiCard
         icon={<FiHash size={24} />}
         title="Références vendues"
         subtitle="Nombre de produits distincts"
-        value={formatNumber(totalSoldReferences)}
+        value={formatNumber(totalUniqueSoldProducts)}
         alternateView={soldReferencesWithSalesView}
-        isLoading={soldReferencesLoading}
+        isLoading={revenueLoading}
         infoTooltip="Nombre total de références produits distinctes ayant enregistré au moins une vente sur la période."
       />
       
-      {/* Taux de renouvellement */}
+      {/* Taux de renouvellement - À implémenter ultérieurement */}
       <KpiCard
         icon={<FiRepeat size={24} />}
         title="Nouveautés"
