@@ -510,12 +510,12 @@ export function KpiCards() {
       {/* Taux de renouvellement - À implémenter ultérieurement */}
       <KpiCard
         icon={<FiRepeat size={24} />}
-        title="Nouveautés"
-        subtitle="% du CA des 3 derniers mois"
-        value={`${refreshRate.toFixed(1)}%`}
+        title="Nombre de reference"
+        subtitle="ref vendues unique"
+        value={`0%`}
         alternateView={refreshRateDetailView}
         isLoading={refreshRateLoading}
-        infoTooltip="Pourcentage du chiffre d'affaires réalisé par des produits introduits dans les 3 derniers mois."
+        infoTooltip="Ref vendu unique"
       />
     </div>
   );
