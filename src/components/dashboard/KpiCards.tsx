@@ -61,7 +61,7 @@ function KpiCard({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
+            <div className="p-2 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
               {icon}
             </div>
             <div>
@@ -92,7 +92,6 @@ function KpiCard({
         <div className="text-3xl font-bold text-gray-900 dark:text-white">
           {value}
         </div>
-        
         {change && (
           <div className="mt-2 flex items-center text-sm">
             <span className={`font-medium ${
@@ -102,7 +101,6 @@ function KpiCard({
             }`}>
               {change.isPositive ? '+' : ''}{change.value}
             </span>
-            
             {change.previousValue && (
               <span className="text-gray-500 dark:text-gray-400 ml-2">
                 ({change.previousValue})
@@ -217,6 +215,7 @@ export function KpiCards() {
     totalQuantity,
     marginPercentage, 
     comparison, 
+    uniqueReferences,
     isLoading: revenueLoading,
     actualDateRange
   } = useRevenue();
@@ -270,13 +269,13 @@ export function KpiCards() {
   const stockBreakAmountChange = sellInComparison ? {
     value: `${sellInComparison.evolution.stockBreakAmount.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
-    isPositive: sellInComparison.evolution.stockBreakAmount.isPositive
+    isPositive: !sellInComparison.evolution.stockBreakAmount.isPositive
   } : undefined;
 
   const stockBreakRateChange = sellInComparison ? {
     value: `${sellInComparison.evolution.stockBreakRate.points.toFixed(1)}%`,
     previousValue: `${sellInComparison.stockBreakRate.toFixed(1)}%`,
-    isPositive: sellInComparison.evolution.stockBreakRate.isPositive
+    isPositive: !sellInComparison.evolution.stockBreakRate.isPositive
   } : undefined;
 
   const stockBreakQuantityView = {
@@ -304,7 +303,7 @@ export function KpiCards() {
   const sellInAmountChange = sellInComparison ? {
     value: `${sellInComparison.evolution.purchaseAmount.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(sellInComparison.totalPurchaseAmount),
-    isPositive: sellInComparison.evolution.purchaseAmount.isPositive
+    isPositive: !sellInComparison.evolution.purchaseAmount.isPositive
   } : undefined;
   
   const quantitySellInView = {
@@ -313,7 +312,7 @@ export function KpiCards() {
     change: sellInComparison ? {
       value: `${sellInComparison.evolution.purchaseQuantity.percentage.toFixed(1)}%`,
       previousValue: formatNumber(sellInComparison.totalPurchaseQuantity),
-      isPositive: sellInComparison.evolution.purchaseQuantity.isPositive
+      isPositive: !sellInComparison.evolution.purchaseQuantity.isPositive
     } : undefined
   };
   
@@ -464,16 +463,16 @@ export function KpiCards() {
       
       {/* Références uniques - Maintenant avec les données réelles */}
       <KpiCard
-        icon={<FiRepeat size={24} />}
-        title="Références vendues"
-        value={formatNumber(comparison?.uniqueReferences || 0)}
-        change={comparison?.evolution?.uniqueReferences ? {
-          value: `${comparison.evolution.uniqueReferences.percentage.toFixed(1)}%`,
-          previousValue: formatNumber(comparison.uniqueReferences),
-          isPositive: comparison.evolution.uniqueReferences.isPositive
-        } : undefined}
-        isLoading={revenueLoading}
-        infoTooltip={tooltips.references}
+      icon={<FiRepeat size={24} />}
+      title="Références vendues"
+      value={formatNumber(uniqueReferences || 0)} // Utilisez la valeur courante
+      change={comparison?.evolution?.uniqueReferences ? {
+        value: `${comparison.evolution.uniqueReferences.percentage.toFixed(1)}%`,
+        previousValue: formatNumber(comparison.uniqueReferences),
+        isPositive: comparison.evolution.uniqueReferences.isPositive
+      } : undefined}
+      isLoading={revenueLoading}
+      infoTooltip={tooltips.references}
       />
     </div>
   );
