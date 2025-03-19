@@ -57,7 +57,7 @@ export default function Dashboard() {
         <NavigationCards />
         
         {/* Nouveau composant d'évolution des ventes */}
-        <SalesEvolutionChart />
+        {/* <SalesEvolutionChart /> */}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -65,7 +65,7 @@ export default function Dashboard() {
               Top produits
             </h2>
             
-            <TopProducts />
+            {/* <TopProducts /> */}
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -73,7 +73,7 @@ export default function Dashboard() {
               Répartition des ventes
             </h2>
             
-            <SalesDistribution />
+            {/* <SalesDistribution /> */}
           </div>
         </div>
       </div>
