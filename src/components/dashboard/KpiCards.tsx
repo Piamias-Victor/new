@@ -237,17 +237,22 @@ export function KpiCards() {
   } = useInventoryValuation();
   
   // Utilisation du hook pour les données de sell-in
-  const {
+  const { 
     totalPurchaseQuantity,
     totalPurchaseAmount,
     totalOrders,
+    totalOrderedQuantity,
+    totalStockBreakQuantity,
+    totalStockBreakAmount,
+    stockBreakRate,
     comparison: sellInComparison,
-    isLoading: sellInLoading
+    isLoading: sellInLoading 
   } = useSellIn();
   
   // Données pour le taux de renouvellement (à implémenter ultérieurement)
   const refreshRate = 0;
   const refreshRateLoading = false;
+
   
   // Formatter pour la monnaie
   const formatCurrency = (amount: number) => {
@@ -261,6 +266,26 @@ export function KpiCards() {
   // Formatter pour les nombres
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fr-FR').format(num);
+  };
+
+
+  const stockBreakAmountChange = sellInComparison ? {
+    value: `${sellInComparison.evolution.stockBreakAmount.percentage.toFixed(1)}%`,
+    previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
+    isPositive: !sellInComparison.evolution.stockBreakAmount.isPositive // Inverser car une baisse est positive
+  } : undefined;
+
+  const stockBreakRateChange = sellInComparison ? {
+    value: `${sellInComparison.evolution.stockBreakRate.percentage.toFixed(1)}%`,
+    previousValue: `${sellInComparison.stockBreakRate.toFixed(1)}%`,
+    isPositive: !sellInComparison.evolution.stockBreakRate.isPositive // Inverser car une baisse est positive
+  } : undefined;
+
+  const stockBreakQuantityView = {
+    title: "CA en rupture",
+    subtitle: "Manque à gagner estimé",
+    value: formatCurrency(totalStockBreakAmount),
+    change: stockBreakAmountChange
   };
   
   // CA Sell-out (Ventes) - Données réelles
@@ -427,11 +452,13 @@ export function KpiCards() {
       {/* Ruptures - À implémenter ultérieurement */}
       <KpiCard
         icon={<FiAlertTriangle size={24} />}
-        title="CA en rupture"
-        subtitle="Manque à gagner estimé"
-        value={formatCurrency(0)} // À implémenter ultérieurement
-        alternateView={stockoutsQuantityView}
-        isLoading={false}
+        title="Taux rupture"
+        subtitle="% des commandes non satisfaites"
+        value={`${stockBreakRate.toFixed(1)}%`}
+        change={stockBreakRateChange}
+        alternateView={stockBreakQuantityView}
+        isLoading={sellInLoading}
+        infoTooltip="Pourcentage des produits commandés mais non livrés par les fournisseurs. Le manque à gagner est estimé selon les prix de vente actuels."
       />
       
       {/* Marge */}

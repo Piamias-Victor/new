@@ -21,11 +21,20 @@ interface SellInComparison {
   totalPurchaseAmount: number;
   totalOrders: number;
   averagePurchasePrice: number;
+  // Nouvelles propriétés pour les ruptures
+  totalOrderedQuantity: number;
+  totalStockBreakQuantity: number;
+  totalStockBreakAmount: number;
+  stockBreakRate: number;
   evolution: {
     purchaseQuantity: SellInEvolution;
     purchaseAmount: SellInEvolution;
     orders: SellInEvolution;
     averagePurchasePrice: SellInEvolution;
+    // Nouvelles évolutions pour les ruptures
+    stockBreakQuantity: SellInEvolution;
+    stockBreakAmount: SellInEvolution;
+    stockBreakRate: SellInEvolution;
   };
 }
 
@@ -34,6 +43,11 @@ interface SellInData {
   totalPurchaseAmount: number;
   totalOrders: number;
   averagePurchasePrice: number;
+  // Nouvelles propriétés pour les ruptures
+  totalOrderedQuantity: number;
+  totalStockBreakQuantity: number;
+  totalStockBreakAmount: number;
+  stockBreakRate: number;
   isLoading: boolean;
   error: string | null;
   actualDateRange?: {
@@ -50,6 +64,11 @@ export function useSellIn(): SellInData {
     totalPurchaseAmount: 0,
     totalOrders: 0,
     averagePurchasePrice: 0,
+    // Initialisation des nouvelles propriétés
+    totalOrderedQuantity: 0,
+    totalStockBreakQuantity: 0,
+    totalStockBreakAmount: 0,
+    stockBreakRate: 0,
     isLoading: true,
     error: null
   });
@@ -57,7 +76,7 @@ export function useSellIn(): SellInData {
   const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  // Fonction pour récupérer les données de sell-in (achats)
+  // Fonction pour récupérer les données de sell-in (achats) et ruptures
   const fetchSellIn = async () => {
     // Vérifier que les dates sont disponibles
     if (!startDate || !endDate) {
@@ -98,12 +117,17 @@ export function useSellIn(): SellInData {
       
       const result = await response.json();
       
-      // Mettre à jour l'état avec les données reçues
+      // Mettre à jour l'état avec les données reçues, y compris les ruptures
       setData({
         totalPurchaseQuantity: result.totalPurchaseQuantity,
         totalPurchaseAmount: result.totalPurchaseAmount,
         totalOrders: result.totalOrders,
         averagePurchasePrice: result.averagePurchasePrice,
+        // Mise à jour des données de rupture
+        totalOrderedQuantity: result.totalOrderedQuantity || 0,
+        totalStockBreakQuantity: result.totalStockBreakQuantity || 0,
+        totalStockBreakAmount: result.totalStockBreakAmount || 0,
+        stockBreakRate: result.stockBreakRate || 0,
         actualDateRange: result.actualDateRange,
         comparison: result.comparison,
         isLoading: false,
