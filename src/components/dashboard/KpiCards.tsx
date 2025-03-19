@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRevenue } from "@/hooks/useRevenue";
 import { useInventoryValuation } from "@/hooks/useInventoryValuation";
-import { useSellInStockoutsData } from "@/hooks/useSellInStockoutsData";
+import { useSellIn } from "@/hooks/useSellIn"; // Import du nouveau hook
 import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
          FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat } from "react-icons/fi";
 
@@ -221,9 +221,9 @@ export function KpiCards() {
   const { 
     totalRevenue, 
     totalMargin, 
+    totalQuantity, // Nouvelle propriété ajoutée
     marginPercentage, 
     comparison, 
-    totalUniqueSoldProducts, // Nouvelle propriété ajoutée via l'extension de l'API
     isLoading: revenueLoading,
     actualDateRange
   } = useRevenue();
@@ -236,12 +236,14 @@ export function KpiCards() {
     isLoading: stockLoading 
   } = useInventoryValuation();
   
-  // Utilisation du nouveau hook pour les données de sell-in et ruptures
+  // Utilisation du hook pour les données de sell-in
   const {
-    sellIn: { totalPurchaseAmount, totalPurchaseQuantity, totalOrders },
-    stockouts: { totalStockoutsValue, totalStockoutsQuantity },
-    isLoading: sellInStockoutsLoading
-  } = useSellInStockoutsData();
+    totalPurchaseQuantity,
+    totalPurchaseAmount,
+    totalOrders,
+    comparison: sellInComparison,
+    isLoading: sellInLoading
+  } = useSellIn();
   
   // Données pour le taux de renouvellement (à implémenter ultérieurement)
   const refreshRate = 0;
@@ -269,30 +271,42 @@ export function KpiCards() {
   } : undefined;
   
   // Quantité Sell-out - Vue alternative pour la carte de CA Sell-out
+  // Utilisation des quantités réelles maintenant
   const quantitySellOutView = {
     title: "Qte Sell-out",
     subtitle: "Qte vendue",
-    value: formatNumber(totalRevenue > 0 ? Math.round(totalRevenue / 20) : 0), // Estimation de la quantité basée sur le CA
-    change: comparison ? {
-      value: `${comparison.evolution.revenue.percentage.toFixed(1)}%`,
-      previousValue: formatNumber(comparison.totalRevenue > 0 ? Math.round(comparison.totalRevenue / 20) : 0),
-      isPositive: comparison.evolution.revenue.isPositive
+    value: formatNumber(totalQuantity),
+    change: comparison?.evolution?.quantity ? {
+      value: `${comparison.evolution.quantity.percentage.toFixed(1)}%`,
+      previousValue: formatNumber(comparison.totalQuantity),
+      isPositive: comparison.evolution.quantity.isPositive
     } : undefined
   };
+  
+  // CA Sell-in - Maintenant avec données réelles
+  const sellInAmountChange = sellInComparison ? {
+    value: `${sellInComparison.evolution.purchaseAmount.percentage.toFixed(1)}%`,
+    previousValue: formatCurrency(sellInComparison.totalPurchaseAmount),
+    isPositive: sellInComparison.evolution.purchaseAmount.isPositive
+  } : undefined;
   
   // Quantité Sell-in - Vue alternative pour la carte de CA Sell-in
   const quantitySellInView = {
     title: "Qte Sell-in",
     subtitle: "Qte achetée",
     value: formatNumber(totalPurchaseQuantity),
-    // Pas de comparaison disponible pour le moment
+    change: sellInComparison ? {
+      value: `${sellInComparison.evolution.purchaseQuantity.percentage.toFixed(1)}%`,
+      previousValue: formatNumber(sellInComparison.totalPurchaseQuantity),
+      isPositive: sellInComparison.evolution.purchaseQuantity.isPositive
+    } : undefined
   };
   
   // Vue alternative pour les ruptures en quantité
   const stockoutsQuantityView = {
     title: "Qte en rupture",
     subtitle: "Quantité indisponible",
-    value: formatNumber(totalStockoutsQuantity),
+    value: formatNumber(0), // À implémenter ultérieurement
     // Pas de comparaison disponible pour le moment
   };
   
@@ -300,7 +314,7 @@ export function KpiCards() {
   const soldReferencesWithSalesView = {
     title: "Réferences actives",
     subtitle: "Avec ventes",
-    value: formatNumber(totalUniqueSoldProducts),
+    value: formatNumber(0), // À implémenter ultérieurement
     // Pas de comparaison disponible pour le moment
   };
   
@@ -404,18 +418,20 @@ export function KpiCards() {
         title="CA Sell-in"
         subtitle="Montant d'achats"
         value={formatCurrency(totalPurchaseAmount)}
+        change={sellInAmountChange}
         alternateView={quantitySellInView}
-        isLoading={sellInStockoutsLoading}
+        isLoading={sellInLoading}
+        infoTooltip="Montant total des achats (produits reçus) sur la période sélectionnée."
       />
       
-      {/* Ruptures - Maintenant avec données réelles */}
+      {/* Ruptures - À implémenter ultérieurement */}
       <KpiCard
         icon={<FiAlertTriangle size={24} />}
         title="CA en rupture"
         subtitle="Manque à gagner estimé"
-        value={formatCurrency(totalStockoutsValue)}
+        value={formatCurrency(0)} // À implémenter ultérieurement
         alternateView={stockoutsQuantityView}
-        isLoading={sellInStockoutsLoading}
+        isLoading={false}
       />
       
       {/* Marge */}
@@ -449,15 +465,19 @@ export function KpiCards() {
         infoTooltip={rotationTooltip}
       />
       
-      {/* Références vendues - Maintenant avec données réelles */}
+      {/* Commandes - Nouvelle carte pour les commandes */}
       <KpiCard
         icon={<FiHash size={24} />}
-        title="Références vendues"
-        subtitle="Nombre de produits distincts"
-        value={formatNumber(totalUniqueSoldProducts)}
-        alternateView={soldReferencesWithSalesView}
-        isLoading={revenueLoading}
-        infoTooltip="Nombre total de références produits distinctes ayant enregistré au moins une vente sur la période."
+        title="Commandes"
+        subtitle="Nombre de commandes"
+        value={formatNumber(totalOrders)}
+        change={sellInComparison ? {
+          value: `${sellInComparison.evolution.orders.percentage.toFixed(1)}%`,
+          previousValue: formatNumber(sellInComparison.totalOrders),
+          isPositive: sellInComparison.evolution.orders.isPositive
+        } : undefined}
+        isLoading={sellInLoading}
+        infoTooltip="Nombre total de commandes passées sur la période sélectionnée."
       />
       
       {/* Taux de renouvellement - À implémenter ultérieurement */}

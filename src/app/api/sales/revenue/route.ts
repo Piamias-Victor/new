@@ -37,10 +37,11 @@ export async function GET(request: Request) {
           SELECT 
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + p."TVA"/100))), 0) as total_margin,
+            COALESCE(SUM(s.quantity), 0) as total_quantity,
+            COUNT(DISTINCT i.product_id) as unique_products_sold,
             TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
             TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
             COUNT(DISTINCT s.date) as days_count
-            COUNT(DISTINCT i.product_id) as unique_products_sold
           FROM 
             data_sales s
           JOIN 
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
           filtered_snapshots AS (
             SELECT 
               i.id, 
+              i.product_id,
               i.price_with_tax,
               i.weighted_average_price,
               p."TVA"
@@ -73,6 +75,8 @@ export async function GET(request: Request) {
           SELECT 
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + i."TVA"/100))), 0) as total_margin,
+            COALESCE(SUM(s.quantity), 0) as total_quantity,
+            COUNT(DISTINCT i.product_id) as unique_products_sold,
             TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
             TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
             COUNT(DISTINCT s.date) as days_count
@@ -95,6 +99,8 @@ export async function GET(request: Request) {
       const mainRow = mainResult.rows[0] || {
         total_revenue: 0,
         total_margin: 0,
+        total_quantity: 0,
+        unique_products_sold: 0,
         min_date: null,
         max_date: null,
         days_count: 0
@@ -103,6 +109,8 @@ export async function GET(request: Request) {
       // Calculer le taux de marge
       const totalRevenue = parseFloat(mainRow.total_revenue) || 0;
       const totalMargin = parseFloat(mainRow.total_margin) || 0;
+      const totalQuantity = parseInt(mainRow.total_quantity) || 0;
+      const uniqueProductsSold = parseInt(mainRow.unique_products_sold) || 0;
       const marginPercentage = totalRevenue > 0 
         ? (totalMargin / totalRevenue) * 100 
         : 0;
@@ -117,8 +125,10 @@ export async function GET(request: Request) {
           days: parseInt(mainRow.days_count) || 0
         },
         pharmacyIds: pharmacyIds.length > 0 ? pharmacyIds : 'all',
-        totalRevenue: totalRevenue,
-        totalMargin: totalMargin,
+        totalRevenue,
+        totalMargin,
+        totalQuantity,
+        totalUniqueSoldProducts: uniqueProductsSold,
         marginPercentage: parseFloat(marginPercentage.toFixed(2))
       };
       
@@ -134,6 +144,8 @@ export async function GET(request: Request) {
             SELECT 
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + p."TVA"/100))), 0) as total_margin,
+              COALESCE(SUM(s.quantity), 0) as total_quantity,
+              COUNT(DISTINCT i.product_id) as unique_products_sold,
               TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
               TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
               COUNT(DISTINCT s.date) as days_count
@@ -159,6 +171,7 @@ export async function GET(request: Request) {
             filtered_snapshots AS (
               SELECT 
                 i.id, 
+                i.product_id,
                 i.price_with_tax,
                 i.weighted_average_price,
                 p."TVA"
@@ -169,6 +182,8 @@ export async function GET(request: Request) {
             SELECT 
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + i."TVA"/100))), 0) as total_margin,
+              COALESCE(SUM(s.quantity), 0) as total_quantity,
+              COUNT(DISTINCT i.product_id) as unique_products_sold,
               TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
               TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
               COUNT(DISTINCT s.date) as days_count
@@ -190,6 +205,8 @@ export async function GET(request: Request) {
         const comparisonRow = comparisonResult.rows[0] || {
           total_revenue: 0,
           total_margin: 0,
+          total_quantity: 0,
+          unique_products_sold: 0,
           min_date: null,
           max_date: null,
           days_count: 0
@@ -198,6 +215,8 @@ export async function GET(request: Request) {
         // Calculer les valeurs et le taux de marge pour la comparaison
         const comparisonRevenue = parseFloat(comparisonRow.total_revenue) || 0;
         const comparisonMargin = parseFloat(comparisonRow.total_margin) || 0;
+        const comparisonQuantity = parseInt(comparisonRow.total_quantity) || 0;
+        const comparisonUniqueProducts = parseInt(comparisonRow.unique_products_sold) || 0;
         const comparisonMarginPercentage = comparisonRevenue > 0 
           ? (comparisonMargin / comparisonRevenue) * 100 
           : 0;
@@ -211,6 +230,14 @@ export async function GET(request: Request) {
           ? (totalMargin - comparisonMargin) / comparisonMargin 
           : 0;
         
+        const quantityEvolution = comparisonQuantity > 0
+          ? (totalQuantity - comparisonQuantity) / comparisonQuantity
+          : 0;
+        
+        const uniqueProductsEvolution = comparisonUniqueProducts > 0
+          ? (uniqueProductsSold - comparisonUniqueProducts) / comparisonUniqueProducts
+          : 0;
+          
         const marginPercentageEvolution = marginPercentage - comparisonMarginPercentage;
         
         // Ajouter à la réponse
@@ -224,6 +251,8 @@ export async function GET(request: Request) {
           },
           totalRevenue: comparisonRevenue,
           totalMargin: comparisonMargin,
+          totalQuantity: comparisonQuantity,
+          totalUniqueSoldProducts: comparisonUniqueProducts,
           marginPercentage: parseFloat(comparisonMarginPercentage.toFixed(2)),
           evolution: {
             revenue: {
@@ -235,6 +264,16 @@ export async function GET(request: Request) {
               absolute: totalMargin - comparisonMargin,
               percentage: parseFloat((marginEvolution * 100).toFixed(2)),
               isPositive: marginEvolution >= 0
+            },
+            quantity: {
+              absolute: totalQuantity - comparisonQuantity,
+              percentage: parseFloat((quantityEvolution * 100).toFixed(2)),
+              isPositive: quantityEvolution >= 0
+            },
+            uniqueProducts: {
+              absolute: uniqueProductsSold - comparisonUniqueProducts,
+              percentage: parseFloat((uniqueProductsEvolution * 100).toFixed(2)),
+              isPositive: uniqueProductsEvolution >= 0
             },
             marginPercentage: {
               points: parseFloat(marginPercentageEvolution.toFixed(2)),
@@ -262,7 +301,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Nouvelle fonction POST
+// Fonction POST pour permettre des requêtes avec body
 export async function POST(request: Request) {
   try {
     // Récupérer les données du corps de la requête
@@ -294,6 +333,8 @@ export async function POST(request: Request) {
           SELECT 
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + p."TVA"/100))), 0) as total_margin,
+            COALESCE(SUM(s.quantity), 0) as total_quantity,
+            COUNT(DISTINCT i.product_id) as unique_products_sold,
             TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
             TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
             COUNT(DISTINCT s.date) as days_count
@@ -319,6 +360,7 @@ export async function POST(request: Request) {
           filtered_snapshots AS (
             SELECT 
               i.id, 
+              i.product_id,
               i.price_with_tax,
               i.weighted_average_price,
               p."TVA"
@@ -329,6 +371,8 @@ export async function POST(request: Request) {
           SELECT 
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
             COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + i."TVA"/100))), 0) as total_margin,
+            COALESCE(SUM(s.quantity), 0) as total_quantity,
+            COUNT(DISTINCT i.product_id) as unique_products_sold,
             TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
             TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
             COUNT(DISTINCT s.date) as days_count
@@ -351,6 +395,8 @@ export async function POST(request: Request) {
       const mainRow = mainResult.rows[0] || {
         total_revenue: 0,
         total_margin: 0,
+        total_quantity: 0,
+        unique_products_sold: 0,
         min_date: null,
         max_date: null,
         days_count: 0
@@ -359,6 +405,8 @@ export async function POST(request: Request) {
       // Calculer le taux de marge
       const totalRevenue = parseFloat(mainRow.total_revenue) || 0;
       const totalMargin = parseFloat(mainRow.total_margin) || 0;
+      const totalQuantity = parseInt(mainRow.total_quantity) || 0;
+      const uniqueProductsSold = parseInt(mainRow.unique_products_sold) || 0;
       const marginPercentage = totalRevenue > 0 
         ? (totalMargin / totalRevenue) * 100 
         : 0;
@@ -373,8 +421,10 @@ export async function POST(request: Request) {
           days: parseInt(mainRow.days_count) || 0
         },
         pharmacyIds: pharmacyIds && pharmacyIds.length > 0 ? pharmacyIds : 'all',
-        totalRevenue: totalRevenue,
-        totalMargin: totalMargin,
+        totalRevenue,
+        totalMargin,
+        totalQuantity,
+        totalUniqueSoldProducts: uniqueProductsSold,
         marginPercentage: parseFloat(marginPercentage.toFixed(2))
       };
       
@@ -390,6 +440,8 @@ export async function POST(request: Request) {
             SELECT 
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + p."TVA"/100))), 0) as total_margin,
+              COALESCE(SUM(s.quantity), 0) as total_quantity,
+              COUNT(DISTINCT i.product_id) as unique_products_sold,
               TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
               TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
               COUNT(DISTINCT s.date) as days_count
@@ -415,6 +467,7 @@ export async function POST(request: Request) {
             filtered_snapshots AS (
               SELECT 
                 i.id, 
+                i.product_id,
                 i.price_with_tax,
                 i.weighted_average_price,
                 p."TVA"
@@ -425,6 +478,8 @@ export async function POST(request: Request) {
             SELECT 
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
               COALESCE(SUM(s.quantity * i.price_with_tax), 0) - COALESCE(SUM(s.quantity * (i.weighted_average_price * (1 + i."TVA"/100))), 0) as total_margin,
+              COALESCE(SUM(s.quantity), 0) as total_quantity,
+              COUNT(DISTINCT i.product_id) as unique_products_sold,
               TO_CHAR(MIN(s.date), 'YYYY-MM-DD') as min_date,
               TO_CHAR(MAX(s.date), 'YYYY-MM-DD') as max_date,
               COUNT(DISTINCT s.date) as days_count
@@ -446,6 +501,8 @@ export async function POST(request: Request) {
         const comparisonRow = comparisonResult.rows[0] || {
           total_revenue: 0,
           total_margin: 0,
+          total_quantity: 0,
+          unique_products_sold: 0,
           min_date: null,
           max_date: null,
           days_count: 0
@@ -454,6 +511,8 @@ export async function POST(request: Request) {
         // Calculer les valeurs et le taux de marge pour la comparaison
         const comparisonRevenue = parseFloat(comparisonRow.total_revenue) || 0;
         const comparisonMargin = parseFloat(comparisonRow.total_margin) || 0;
+        const comparisonQuantity = parseInt(comparisonRow.total_quantity) || 0;
+        const comparisonUniqueProducts = parseInt(comparisonRow.unique_products_sold) || 0;
         const comparisonMarginPercentage = comparisonRevenue > 0 
           ? (comparisonMargin / comparisonRevenue) * 100 
           : 0;
@@ -467,6 +526,14 @@ export async function POST(request: Request) {
           ? (totalMargin - comparisonMargin) / comparisonMargin 
           : 0;
         
+        const quantityEvolution = comparisonQuantity > 0
+          ? (totalQuantity - comparisonQuantity) / comparisonQuantity
+          : 0;
+        
+        const uniqueProductsEvolution = comparisonUniqueProducts > 0
+          ? (uniqueProductsSold - comparisonUniqueProducts) / comparisonUniqueProducts
+          : 0;
+          
         const marginPercentageEvolution = marginPercentage - comparisonMarginPercentage;
         
         // Ajouter à la réponse
@@ -480,6 +547,8 @@ export async function POST(request: Request) {
           },
           totalRevenue: comparisonRevenue,
           totalMargin: comparisonMargin,
+          totalQuantity: comparisonQuantity,
+          totalUniqueSoldProducts: comparisonUniqueProducts,
           marginPercentage: parseFloat(comparisonMarginPercentage.toFixed(2)),
           evolution: {
             revenue: {
@@ -491,6 +560,16 @@ export async function POST(request: Request) {
               absolute: totalMargin - comparisonMargin,
               percentage: parseFloat((marginEvolution * 100).toFixed(2)),
               isPositive: marginEvolution >= 0
+            },
+            quantity: {
+              absolute: totalQuantity - comparisonQuantity,
+              percentage: parseFloat((quantityEvolution * 100).toFixed(2)),
+              isPositive: quantityEvolution >= 0
+            },
+            uniqueProducts: {
+              absolute: uniqueProductsSold - comparisonUniqueProducts,
+              percentage: parseFloat((uniqueProductsEvolution * 100).toFixed(2)),
+              isPositive: uniqueProductsEvolution >= 0
             },
             marginPercentage: {
               points: parseFloat(marginPercentageEvolution.toFixed(2)),

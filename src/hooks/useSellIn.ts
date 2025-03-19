@@ -1,33 +1,39 @@
-// src/hooks/useRevenue.ts
+// src/hooks/useSellIn.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
-interface RevenueEvolution {
+interface SellInEvolution {
   absolute: number;
   percentage: number;
   isPositive: boolean;
 }
 
-interface MarginPercentageEvolution {
-  points: number;      // Différence en points de pourcentage
-  isPositive: boolean;
+interface SellInComparison {
+  startDate: string;
+  endDate: string;
+  actualDateRange?: {
+    min: string;
+    max: string;
+    days: number;
+  };
+  totalPurchaseQuantity: number;
+  totalPurchaseAmount: number;
+  totalOrders: number;
+  averagePurchasePrice: number;
+  evolution: {
+    purchaseQuantity: SellInEvolution;
+    purchaseAmount: SellInEvolution;
+    orders: SellInEvolution;
+    averagePurchasePrice: SellInEvolution;
+  };
 }
 
-interface Evolution {
-  revenue: RevenueEvolution;
-  margin: RevenueEvolution;
-  quantity: RevenueEvolution;  // Nouvelle propriété pour les quantités
-  uniqueProducts: RevenueEvolution; // Nouvelle propriété pour les produits uniques
-  marginPercentage: MarginPercentageEvolution;
-}
-
-interface RevenueData {
-  totalRevenue: number;
-  totalMargin: number;
-  totalQuantity: number;  // Nouvelle propriété ajoutée
-  totalUniqueSoldProducts: number;
-  marginPercentage: number;
+interface SellInData {
+  totalPurchaseQuantity: number;
+  totalPurchaseAmount: number;
+  totalOrders: number;
+  averagePurchasePrice: number;
   isLoading: boolean;
   error: string | null;
   actualDateRange?: {
@@ -35,28 +41,15 @@ interface RevenueData {
     max: string;
     days: number;
   };
-  comparison?: {
-    totalRevenue: number;
-    totalMargin: number;
-    totalQuantity: number;  // Nouvelle propriété ajoutée
-    totalUniqueSoldProducts: number;
-    marginPercentage: number;
-    evolution: Evolution;
-    actualDateRange?: {
-      min: string;
-      max: string;
-      days: number;
-    };
-  };
+  comparison?: SellInComparison;
 }
 
-export function useRevenue(): RevenueData {
-  const [data, setData] = useState<RevenueData>({
-    totalRevenue: 0,
-    totalMargin: 0,
-    totalQuantity: 0,
-    totalUniqueSoldProducts: 0,
-    marginPercentage: 0,
+export function useSellIn(): SellInData {
+  const [data, setData] = useState<SellInData>({
+    totalPurchaseQuantity: 0,
+    totalPurchaseAmount: 0,
+    totalOrders: 0,
+    averagePurchasePrice: 0,
     isLoading: true,
     error: null
   });
@@ -64,8 +57,8 @@ export function useRevenue(): RevenueData {
   const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  // Fonction pour récupérer les données de revenue et de marge
-  const fetchRevenue = async () => {
+  // Fonction pour récupérer les données de sell-in (achats)
+  const fetchSellIn = async () => {
     // Vérifier que les dates sont disponibles
     if (!startDate || !endDate) {
       return;
@@ -89,7 +82,7 @@ export function useRevenue(): RevenueData {
       };
       
       // Effectuer la requête POST
-      const response = await fetch('/api/sales/revenue', {
+      const response = await fetch('/api/sales/sellin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,33 +100,28 @@ export function useRevenue(): RevenueData {
       
       // Mettre à jour l'état avec les données reçues
       setData({
-        totalRevenue: result.totalRevenue,
-        totalMargin: result.totalMargin,
-        totalQuantity: result.totalQuantity,
-        totalUniqueSoldProducts: result.totalUniqueSoldProducts || 0,
-        marginPercentage: result.marginPercentage,
+        totalPurchaseQuantity: result.totalPurchaseQuantity,
+        totalPurchaseAmount: result.totalPurchaseAmount,
+        totalOrders: result.totalOrders,
+        averagePurchasePrice: result.averagePurchasePrice,
         actualDateRange: result.actualDateRange,
         comparison: result.comparison,
         isLoading: false,
         error: null
       });
     } catch (error) {
-      console.error('Erreur dans useRevenue:', error);
-      setData({
-        totalRevenue: 0,
-        totalMargin: 0,
-        totalQuantity: 0,
-        totalUniqueSoldProducts: 0,
-        marginPercentage: 0,
+      console.error('Erreur dans useSellIn:', error);
+      setData(prev => ({
+        ...prev,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Erreur inconnue'
-      });
+      }));
     }
   };
   
   // Déclencher la requête lorsque les dépendances changent
   useEffect(() => {
-    fetchRevenue();
+    fetchSellIn();
   }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled]);
   
   return data;
