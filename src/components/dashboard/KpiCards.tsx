@@ -1,9 +1,9 @@
 // src/components/dashboard/KpiCards.tsx
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRevenue } from "@/hooks/useRevenue";
 import { useInventoryValuation } from "@/hooks/useInventoryValuation";
-import { useSellIn } from "@/hooks/useSellIn"; // Import du nouveau hook
-import { FiBarChart2, FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
+import { useSellIn } from "@/hooks/useSellIn";
+import { FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
          FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat } from "react-icons/fi";
 
 // Types pour les props du composant KpiCard
@@ -42,11 +42,9 @@ function KpiCard({
   alternateView, 
   infoTooltip 
 }: KpiCardProps) {
-  // État local pour suivre quel affichage est actif (pourcentage ou montant)
   const [showAlternate, setShowAlternate] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   
-  // Si chargement, afficher un placeholder
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 animate-pulse">
@@ -58,7 +56,6 @@ function KpiCard({
     );
   }
 
-  // Si pas de vue alternative, afficher une carte simple
   if (!alternateView) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -68,7 +65,7 @@ function KpiCard({
               {icon}
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">{title}</h3>
+              <h3 className="font-medium text-sm text-gray-900 dark:text-white">{title}</h3>
               {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
             </div>
           </div>
@@ -117,16 +114,15 @@ function KpiCard({
     );
   }
 
-  // Avec vue alternative, afficher une carte avec boutons de bascule
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
-          <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
+          <div className="p-2 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
             {icon}
           </div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h3 className="font-medium text-sm text-gray-900 dark:text-white">
               {showAlternate && alternateView.title ? alternateView.title : title}
             </h3>
             {showAlternate && alternateView.subtitle 
@@ -136,13 +132,11 @@ function KpiCard({
           </div>
         </div>
         
-        {/* Section boutons de basculement et info tooltip */}
         <div className="flex items-center space-x-2">
-          {/* Boutons de basculement */}
           <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
             <button
               onClick={() => setShowAlternate(false)}
-              className={`flex items-center justify-center p-1.5 rounded-md transition-colors ${
+              className={`flex text-xs items-center justify-center p-1.5 rounded-md transition-colors ${
                 !showAlternate
                   ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -165,7 +159,6 @@ function KpiCard({
             </button>
           </div>
           
-          {/* Info tooltip */}
           {infoTooltip && (
             <div className="relative">
               <button 
@@ -221,37 +214,42 @@ export function KpiCards() {
   const { 
     totalRevenue, 
     totalMargin, 
-    totalQuantity, // Nouvelle propriété ajoutée
+    totalQuantity,
     marginPercentage, 
     comparison, 
     isLoading: revenueLoading,
     actualDateRange
   } = useRevenue();
   
-  // Utilisation du hook pour les stocks
   const { 
     totalStockValueHT, 
     totalUnits, 
     comparison: stockComparison,
+    stockDays,
     isLoading: stockLoading 
   } = useInventoryValuation();
   
-  // Utilisation du hook pour les données de sell-in
   const { 
     totalPurchaseQuantity,
     totalPurchaseAmount,
     totalOrders,
-    totalOrderedQuantity,
     totalStockBreakQuantity,
     totalStockBreakAmount,
     stockBreakRate,
     comparison: sellInComparison,
     isLoading: sellInLoading 
   } = useSellIn();
-  
-  // Données pour le taux de renouvellement (à implémenter ultérieurement)
-  const refreshRate = 0;
-  const refreshRateLoading = false;
+
+  const tooltips = {
+    sellOut: "Montant total des ventes (TTC) réalisées sur la période sélectionnée. Indicateur principal de l'activité commerciale.",
+    sellIn: "Montant total des achats (prix d'achat HT) réceptionnés sur la période. Reflète l'approvisionnement réel.",
+    stockBreak: "Pourcentage des produits commandés mais non livrés par les fournisseurs. Un taux élevé indique des problèmes d'approvisionnement.",
+    margin: "Pourcentage de marge calculé comme (Prix de vente - Prix d'achat) / Prix de vente. Indicateur de rentabilité.",
+    stock: "Valeur du stock actuel en prix d'achat HT. Représente l'investissement immobilisé.",
+    rotation: "Nombre de fois où le stock est renouvelé par an. Calculé comme (CA annualisé / Valeur du stock). Un ratio élevé indique une gestion efficace.",
+    orders: "Nombre total de commandes passées durant la période sélectionnée.",
+    references: "Nombre de références produits différentes vendues sur la période. Indicateur de diversité de l'offre."
+  };
 
   
   // Formatter pour la monnaie
@@ -268,38 +266,33 @@ export function KpiCards() {
     return new Intl.NumberFormat('fr-FR').format(num);
   };
 
-
+  // Préparer les données pour les KPI Cards
   const stockBreakAmountChange = sellInComparison ? {
     value: `${sellInComparison.evolution.stockBreakAmount.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
-    isPositive: !sellInComparison.evolution.stockBreakAmount.isPositive // Inverser car une baisse est positive
+    isPositive: sellInComparison.evolution.stockBreakAmount.isPositive
   } : undefined;
 
   const stockBreakRateChange = sellInComparison ? {
-    value: `${sellInComparison.evolution.stockBreakRate.percentage.toFixed(1)}%`,
+    value: `${sellInComparison.evolution.stockBreakRate.points.toFixed(1)}%`,
     previousValue: `${sellInComparison.stockBreakRate.toFixed(1)}%`,
-    isPositive: !sellInComparison.evolution.stockBreakRate.isPositive // Inverser car une baisse est positive
+    isPositive: sellInComparison.evolution.stockBreakRate.isPositive
   } : undefined;
 
   const stockBreakQuantityView = {
     title: "CA en rupture",
-    subtitle: "Manque à gagner estimé",
     value: formatCurrency(totalStockBreakAmount),
     change: stockBreakAmountChange
   };
   
-  // CA Sell-out (Ventes) - Données réelles
   const revenueChange = comparison ? {
     value: `${comparison.evolution.revenue.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(comparison.totalRevenue),
     isPositive: comparison.evolution.revenue.isPositive
   } : undefined;
   
-  // Quantité Sell-out - Vue alternative pour la carte de CA Sell-out
-  // Utilisation des quantités réelles maintenant
   const quantitySellOutView = {
     title: "Qte Sell-out",
-    subtitle: "Qte vendue",
     value: formatNumber(totalQuantity),
     change: comparison?.evolution?.quantity ? {
       value: `${comparison.evolution.quantity.percentage.toFixed(1)}%`,
@@ -308,17 +301,14 @@ export function KpiCards() {
     } : undefined
   };
   
-  // CA Sell-in - Maintenant avec données réelles
   const sellInAmountChange = sellInComparison ? {
     value: `${sellInComparison.evolution.purchaseAmount.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(sellInComparison.totalPurchaseAmount),
     isPositive: sellInComparison.evolution.purchaseAmount.isPositive
   } : undefined;
   
-  // Quantité Sell-in - Vue alternative pour la carte de CA Sell-in
   const quantitySellInView = {
     title: "Qte Sell-in",
-    subtitle: "Qte achetée",
     value: formatNumber(totalPurchaseQuantity),
     change: sellInComparison ? {
       value: `${sellInComparison.evolution.purchaseQuantity.percentage.toFixed(1)}%`,
@@ -327,31 +317,6 @@ export function KpiCards() {
     } : undefined
   };
   
-  // Vue alternative pour les ruptures en quantité
-  const stockoutsQuantityView = {
-    title: "Qte en rupture",
-    subtitle: "Quantité indisponible",
-    value: formatNumber(0), // À implémenter ultérieurement
-    // Pas de comparaison disponible pour le moment
-  };
-  
-  // Vue alternative pour les références vendues
-  const soldReferencesWithSalesView = {
-    title: "Réferences actives",
-    subtitle: "Avec ventes",
-    value: formatNumber(0), // À implémenter ultérieurement
-    // Pas de comparaison disponible pour le moment
-  };
-  
-  // Vue alternative pour le taux de renouvellement
-  const refreshRateDetailView = {
-    title: "Taux renouvellement",
-    subtitle: "Produits récents vs total",
-    value: `${refreshRate.toFixed(1)}%`,
-    // Pas de comparaison disponible pour le moment
-  };
-  
-  // Marge (montant) - Vue alternative pour la carte de marge
   const marginMoneyView = {
     title: "Marge",
     value: formatCurrency(totalMargin),
@@ -362,24 +327,20 @@ export function KpiCards() {
     } : undefined
   };
   
-  // Marge (pourcentage) - Vue principale
   const marginPercentChange = comparison ? {
     value: `${comparison.evolution.marginPercentage.points.toFixed(1)} pts`,
     previousValue: `${comparison.marginPercentage.toFixed(1)}%`,
     isPositive: comparison.evolution.marginPercentage.isPositive
   } : undefined;
   
-  // Stock en montant - Vue principale
   const stockChange = stockComparison ? {
     value: `${stockComparison.evolution.stockValue.percentage.toFixed(1)}%`,
     previousValue: formatCurrency(stockComparison.totalStockValueHT),
     isPositive: stockComparison.evolution.stockValue.isPositive
   } : undefined;
   
-  // Stock en unités - Vue alternative
   const stockUnitsView = {
     title: "Stock",
-    subtitle: "En unités",
     value: formatNumber(totalUnits),
     change: stockComparison ? {
       value: `${stockComparison.evolution.units.percentage.toFixed(1)}%`,
@@ -395,7 +356,6 @@ export function KpiCards() {
   const rotation = totalStockValueHT > 0 ? annualizedRevenue / totalStockValueHT : 0;
   
   // Calcul de la rotation précédente si les données sont disponibles
-  let previousRotation: number | undefined;
   let rotationChange: {
     value: string;
     previousValue: string;
@@ -405,7 +365,7 @@ export function KpiCards() {
   if (comparison && stockComparison) {
     const previousDailyRevenue = comparison.totalRevenue / (comparison.actualDateRange?.days || 30);
     const previousAnnualizedRevenue = previousDailyRevenue * 365;
-    previousRotation = stockComparison.totalStockValueHT > 0 
+    const previousRotation = stockComparison.totalStockValueHT > 0 
       ? previousAnnualizedRevenue / stockComparison.totalStockValueHT 
       : 0;
     
@@ -421,44 +381,39 @@ export function KpiCards() {
     };
   }
   
-  // Description de la rotation pour l'infobulle
-  const rotationTooltip = "La rotation du stock est calculée en divisant le chiffre d'affaires annualisé par la valeur du stock. Elle indique combien de fois le stock est renouvelé en une année.";
-  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* CA Sell-out */}
       <KpiCard
         icon={<FiShoppingBag size={24} />}
         title="CA Sell-out"
-        subtitle="Montant des ventes"
         value={formatCurrency(totalRevenue)}
         change={revenueChange}
         alternateView={quantitySellOutView}
         isLoading={revenueLoading}
+        infoTooltip={tooltips.sellOut}
       />
       
-      {/* CA Sell-in - Maintenant avec données réelles */}
+      {/* CA Sell-in */}
       <KpiCard
         icon={<FiShoppingCart size={24} />}
         title="CA Sell-in"
-        subtitle="Montant d'achats"
         value={formatCurrency(totalPurchaseAmount)}
         change={sellInAmountChange}
         alternateView={quantitySellInView}
         isLoading={sellInLoading}
-        infoTooltip="Montant total des achats (produits reçus) sur la période sélectionnée."
+        infoTooltip={tooltips.sellIn}
       />
       
-      {/* Ruptures - À implémenter ultérieurement */}
+      {/* Ruptures */}
       <KpiCard
         icon={<FiAlertTriangle size={24} />}
         title="Taux rupture"
-        subtitle="% des commandes non satisfaites"
         value={`${stockBreakRate.toFixed(1)}%`}
         change={stockBreakRateChange}
         alternateView={stockBreakQuantityView}
         isLoading={sellInLoading}
-        infoTooltip="Pourcentage des produits commandés mais non livrés par les fournisseurs. Le manque à gagner est estimé selon les prix de vente actuels."
+        infoTooltip={tooltips.stockBreak}
       />
       
       {/* Marge */}
@@ -469,17 +424,18 @@ export function KpiCards() {
         change={marginPercentChange}
         alternateView={marginMoneyView}
         isLoading={revenueLoading}
+        infoTooltip={tooltips.margin}
       />
       
       {/* Stock */}
       <KpiCard
         icon={<FiPackage size={24} />}
         title="Stock"
-        subtitle="Valorisé en PMP HT"
         value={formatCurrency(totalStockValueHT)}
         change={stockChange}
         alternateView={stockUnitsView}
         isLoading={stockLoading}
+        infoTooltip={tooltips.stock}
       />
       
       {/* Rotation */}
@@ -489,14 +445,13 @@ export function KpiCards() {
         value={`${rotation.toFixed(1)}x`}
         change={rotationChange}
         isLoading={revenueLoading || stockLoading}
-        infoTooltip={rotationTooltip}
+        infoTooltip={tooltips.rotation}
       />
       
-      {/* Commandes - Nouvelle carte pour les commandes */}
+      {/* Commandes */}
       <KpiCard
         icon={<FiHash size={24} />}
         title="Commandes"
-        subtitle="Nombre de commandes"
         value={formatNumber(totalOrders)}
         change={sellInComparison ? {
           value: `${sellInComparison.evolution.orders.percentage.toFixed(1)}%`,
@@ -504,18 +459,21 @@ export function KpiCards() {
           isPositive: sellInComparison.evolution.orders.isPositive
         } : undefined}
         isLoading={sellInLoading}
-        infoTooltip="Nombre total de commandes passées sur la période sélectionnée."
+        infoTooltip={tooltips.orders}
       />
       
-      {/* Taux de renouvellement - À implémenter ultérieurement */}
+      {/* Références uniques - Maintenant avec les données réelles */}
       <KpiCard
         icon={<FiRepeat size={24} />}
-        title="Nombre de reference"
-        subtitle="ref vendues unique"
-        value={`0%`}
-        alternateView={refreshRateDetailView}
-        isLoading={refreshRateLoading}
-        infoTooltip="Ref vendu unique"
+        title="Références vendues"
+        value={formatNumber(comparison?.uniqueReferences || 0)}
+        change={comparison?.evolution?.uniqueReferences ? {
+          value: `${comparison.evolution.uniqueReferences.percentage.toFixed(1)}%`,
+          previousValue: formatNumber(comparison.uniqueReferences),
+          isPositive: comparison.evolution.uniqueReferences.isPositive
+        } : undefined}
+        isLoading={revenueLoading}
+        infoTooltip={tooltips.references}
       />
     </div>
   );

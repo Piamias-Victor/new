@@ -1,154 +1,112 @@
 // src/hooks/useInventoryValuation.ts
 import { useState, useEffect } from 'react';
-import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useDateRange } from '@/contexts/DateRangeContext';
+import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 interface InventoryData {
   totalStockValueHT: number;
   totalUnits: number;
-  date: string;
-}
-
-interface InventoryValuationData {
-  totalStockValueHT: number;
-  totalUnits: number;
-  isLoading: boolean;
-  error: string | null;
-  comparison?: {
+  averagePrice: number;
+  stockDays: number;
+  comparison: {
     totalStockValueHT: number;
     totalUnits: number;
+    averagePrice: number;
     evolution: {
-      stockValue: {
-        absolute: number;
-        percentage: number;
-        isPositive: boolean;
-      };
-      units: {
-        absolute: number;
-        percentage: number;
-        isPositive: boolean;
-      };
-    };
+      stockValue: { percentage: number; isPositive: boolean };
+      units: { percentage: number; isPositive: boolean };
+      averagePrice: { percentage: number; isPositive: boolean };
+    }
   };
 }
 
-export function useInventoryValuation(): InventoryValuationData {
-  const [data, setData] = useState<InventoryValuationData>({
+export function useInventoryValuation() {
+  const [data, setData] = useState<InventoryData>({
     totalStockValueHT: 0,
     totalUnits: 0,
-    isLoading: true,
-    error: null
+    averagePrice: 0,
+    stockDays: 0,
+    comparison: {
+      totalStockValueHT: 0,
+      totalUnits: 0,
+      averagePrice: 0,
+      evolution: {
+        stockValue: { percentage: 0, isPositive: true },
+        units: { percentage: 0, isPositive: true },
+        averagePrice: { percentage: 0, isPositive: true }
+      }
+    }
   });
   
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { startDate, endDate, comparisonStartDate, comparisonEndDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
-  const { endDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   
   useEffect(() => {
-    async function fetchInventoryValuation() {
+    async function fetchData() {
+      if (!startDate || !endDate) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
       try {
-        setData(prev => ({ ...prev, isLoading: true, error: null }));
-        
-        // Préparer les paramètres de base (date courante)
-        const params = new URLSearchParams();
-        if (endDate) {
-          params.append('date', endDate);
-        }
-        
-        // Ajouter les IDs des pharmacies
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
-            params.append('pharmacyIds', id);
-          });
-        }
-        
-        // Faire la requête API pour la période principale
-        const response = await fetch(`/api/inventory/valuation?${params}`, {
-          cache: 'no-store'
+        const response = await fetch('/api/kpi/stock', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startDate,
+            endDate,
+            comparisonStartDate: comparisonStartDate || startDate,
+            comparisonEndDate: comparisonEndDate || endDate,
+            pharmacyIds: selectedPharmacyIds
+          }),
         });
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erreur lors de la récupération des données de stock');
+          throw new Error('Erreur lors de la récupération des données de stock');
         }
         
-        const result = await response.json();
+        const jsonData = await response.json();
         
-        // Préparation des données primaires
-        const stockData: InventoryValuationData = {
-          totalStockValueHT: result.totalStockValueHT,
-          totalUnits: result.totalUnits,
-          isLoading: false,
-          error: null
-        };
-        
-        // Si la comparaison est activée, récupérer les données de comparaison
-        if (isComparisonEnabled && comparisonEndDate) {
-          // Préparer les paramètres pour la comparaison
-          const comparisonParams = new URLSearchParams();
-          comparisonParams.append('date', comparisonEndDate);
-          
-          // Ajouter les mêmes IDs de pharmacies
-          if (selectedPharmacyIds.length > 0) {
-            selectedPharmacyIds.forEach(id => {
-              comparisonParams.append('pharmacyIds', id);
-            });
-          }
-          
-          // Faire la requête API pour la période de comparaison
-          const comparisonResponse = await fetch(`/api/inventory/valuation?${comparisonParams}`, {
-            cache: 'no-store'
-          });
-          
-          if (comparisonResponse.ok) {
-            const comparisonResult = await comparisonResponse.json();
-            
-            // Calculer les évolutions
-            const stockValueDiff = result.totalStockValueHT - comparisonResult.totalStockValueHT;
-            const stockValuePerc = comparisonResult.totalStockValueHT !== 0 
-              ? (stockValueDiff / comparisonResult.totalStockValueHT) * 100 
-              : 0;
-            
-            const unitsDiff = result.totalUnits - comparisonResult.totalUnits;
-            const unitsPerc = comparisonResult.totalUnits !== 0 
-              ? (unitsDiff / comparisonResult.totalUnits) * 100 
-              : 0;
-            
-            // Ajouter les données de comparaison
-            stockData.comparison = {
-              totalStockValueHT: comparisonResult.totalStockValueHT,
-              totalUnits: comparisonResult.totalUnits,
-              evolution: {
-                stockValue: {
-                  absolute: stockValueDiff,
-                  percentage: stockValuePerc,
-                  // Moins de stock est généralement considéré comme positif (moins d'immobilisation)
-                  isPositive: stockValueDiff < 0
-                },
-                units: {
-                  absolute: unitsDiff,
-                  percentage: unitsPerc,
-                  // Moins d'unités est généralement considéré comme positif
-                  isPositive: unitsDiff < 0
-                }
-              }
-            };
-          }
-        }
-        
-        setData(stockData);
-      } catch (error) {
-        console.error('Erreur dans useInventoryValuation:', error);
         setData({
-          totalStockValueHT: 0,
-          totalUnits: 0,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Erreur inconnue'
+          totalStockValueHT: jsonData.current.stockValueHT,
+          totalUnits: jsonData.current.stockUnits,
+          averagePrice: jsonData.current.averagePrice,
+          stockDays: jsonData.stockDaysInfo.stockDaysValue,
+          comparison: {
+            totalStockValueHT: jsonData.comparison.stockValueHT,
+            totalUnits: jsonData.comparison.stockUnits,
+            averagePrice: jsonData.comparison.averagePrice,
+            evolution: {
+              stockValue: { 
+                percentage: jsonData.evolution.stockValue.percentage,
+                isPositive: jsonData.evolution.stockValue.isPositive
+              },
+              units: { 
+                percentage: jsonData.evolution.units.percentage,
+                isPositive: jsonData.evolution.units.isPositive
+              },
+              averagePrice: { 
+                percentage: jsonData.evolution.averagePrice.percentage,
+                isPositive: jsonData.evolution.averagePrice.isPositive
+              }
+            }
+          }
         });
+      } catch (error) {
+        console.error('Erreur lors de la récupération des données:', error);
+        setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      } finally {
+        setIsLoading(false);
       }
     }
     
-    fetchInventoryValuation();
-  }, [endDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled]);
+    fetchData();
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds]);
   
-  return data;
+  return { ...data, isLoading, error };
 }

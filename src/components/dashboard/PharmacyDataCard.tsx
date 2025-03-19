@@ -5,7 +5,7 @@ import React from 'react';
 import { FiDollarSign, FiCalendar } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useDateRange } from '@/contexts/DateRangeContext';
-import { useRevenue } from '@/hooks/useRevenue';
+import { useRevenue } from '@/hooks/useRevenueold';
 
 export function PharmacyDataCard() {
   const { selectedPharmacyIds } = usePharmacySelection();

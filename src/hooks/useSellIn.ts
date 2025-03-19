@@ -3,150 +3,143 @@ import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
-interface SellInEvolution {
-  absolute: number;
-  percentage: number;
-  isPositive: boolean;
-}
-
-interface SellInComparison {
-  startDate: string;
-  endDate: string;
-  actualDateRange?: {
-    min: string;
-    max: string;
-    days: number;
-  };
-  totalPurchaseQuantity: number;
-  totalPurchaseAmount: number;
-  totalOrders: number;
-  averagePurchasePrice: number;
-  // Nouvelles propriétés pour les ruptures
-  totalOrderedQuantity: number;
-  totalStockBreakQuantity: number;
-  totalStockBreakAmount: number;
-  stockBreakRate: number;
-  evolution: {
-    purchaseQuantity: SellInEvolution;
-    purchaseAmount: SellInEvolution;
-    orders: SellInEvolution;
-    averagePurchasePrice: SellInEvolution;
-    // Nouvelles évolutions pour les ruptures
-    stockBreakQuantity: SellInEvolution;
-    stockBreakAmount: SellInEvolution;
-    stockBreakRate: SellInEvolution;
-  };
-}
-
 interface SellInData {
-  totalPurchaseQuantity: number;
   totalPurchaseAmount: number;
-  totalOrders: number;
-  averagePurchasePrice: number;
-  // Nouvelles propriétés pour les ruptures
-  totalOrderedQuantity: number;
-  totalStockBreakQuantity: number;
+  totalPurchaseQuantity: number;
   totalStockBreakAmount: number;
+  totalStockBreakQuantity: number;
   stockBreakRate: number;
-  isLoading: boolean;
-  error: string | null;
-  actualDateRange?: {
-    min: string;
-    max: string;
-    days: number;
+  totalOrders: number;
+  comparison: {
+    totalPurchaseAmount: number;
+    totalPurchaseQuantity: number;
+    totalStockBreakAmount: number;
+    totalStockBreakQuantity: number;
+    stockBreakRate: number;
+    totalOrders: number;
+    evolution: {
+      purchaseAmount: { percentage: number; isPositive: boolean };
+      purchaseQuantity: { percentage: number; isPositive: boolean };
+      stockBreakAmount: { percentage: number; isPositive: boolean };
+      stockBreakQuantity: { percentage: number; isPositive: boolean };
+      stockBreakRate: { points: number; isPositive: boolean };
+      orders: { percentage: number; isPositive: boolean };
+    }
   };
-  comparison?: SellInComparison;
 }
 
-export function useSellIn(): SellInData {
+export function useSellIn() {
   const [data, setData] = useState<SellInData>({
-    totalPurchaseQuantity: 0,
     totalPurchaseAmount: 0,
-    totalOrders: 0,
-    averagePurchasePrice: 0,
-    // Initialisation des nouvelles propriétés
-    totalOrderedQuantity: 0,
-    totalStockBreakQuantity: 0,
+    totalPurchaseQuantity: 0,
     totalStockBreakAmount: 0,
+    totalStockBreakQuantity: 0,
     stockBreakRate: 0,
-    isLoading: true,
-    error: null
+    totalOrders: 0,
+    comparison: {
+      totalPurchaseAmount: 0,
+      totalPurchaseQuantity: 0,
+      totalStockBreakAmount: 0,
+      totalStockBreakQuantity: 0,
+      stockBreakRate: 0,
+      totalOrders: 0,
+      evolution: {
+        purchaseAmount: { percentage: 0, isPositive: true },
+        purchaseQuantity: { percentage: 0, isPositive: true },
+        stockBreakAmount: { percentage: 0, isPositive: true },
+        stockBreakQuantity: { percentage: 0, isPositive: true },
+        stockBreakRate: { points: 0, isPositive: true },
+        orders: { percentage: 0, isPositive: true }
+      }
+    }
   });
   
-  const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { startDate, endDate, comparisonStartDate, comparisonEndDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  // Fonction pour récupérer les données de sell-in (achats) et ruptures
-  const fetchSellIn = async () => {
-    // Vérifier que les dates sont disponibles
-    if (!startDate || !endDate) {
-      return;
+  useEffect(() => {
+    async function fetchData() {
+      if (!startDate || !endDate) return;
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch('/api/kpi/sell-in', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            startDate,
+            endDate,
+            comparisonStartDate: comparisonStartDate || startDate,
+            comparisonEndDate: comparisonEndDate || endDate,
+            pharmacyIds: selectedPharmacyIds
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des données d\'achat');
+        }
+        
+        const jsonData = await response.json();
+        
+        setData({
+          totalPurchaseAmount: jsonData.current.purchaseAmount,
+          totalPurchaseQuantity: jsonData.current.purchaseQuantity,
+          totalStockBreakAmount: jsonData.current.stockBreakAmount,
+          totalStockBreakQuantity: jsonData.current.stockBreakQuantity,
+          stockBreakRate: jsonData.current.stockBreakRate,
+          totalOrders: jsonData.current.ordersCount,
+          comparison: {
+            totalPurchaseAmount: jsonData.comparison.purchaseAmount,
+            totalPurchaseQuantity: jsonData.comparison.purchaseQuantity,
+            totalStockBreakAmount: jsonData.comparison.stockBreakAmount,
+            totalStockBreakQuantity: jsonData.comparison.stockBreakQuantity,
+            stockBreakRate: jsonData.comparison.stockBreakRate,
+            totalOrders: jsonData.comparison.ordersCount,
+            evolution: {
+              purchaseAmount: { 
+                percentage: jsonData.evolution.purchaseAmount.percentage,
+                isPositive: jsonData.evolution.purchaseAmount.isPositive
+              },
+              purchaseQuantity: { 
+                percentage: jsonData.evolution.purchaseQuantity.percentage,
+                isPositive: jsonData.evolution.purchaseQuantity.isPositive
+              },
+              stockBreakAmount: { 
+                percentage: jsonData.evolution.stockBreakAmount.percentage,
+                isPositive: jsonData.evolution.stockBreakAmount.isPositive
+              },
+              stockBreakQuantity: { 
+                percentage: jsonData.evolution.stockBreakQuantity.percentage,
+                isPositive: jsonData.evolution.stockBreakQuantity.isPositive
+              },
+              stockBreakRate: { 
+                points: jsonData.evolution.stockBreakRate.points,
+                isPositive: jsonData.evolution.stockBreakRate.isPositive
+              },
+              orders: { 
+                percentage: jsonData.evolution.orders.percentage,
+                isPositive: jsonData.evolution.orders.isPositive
+              }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Erreur lors de la récupération des données:', error);
+        setError(error instanceof Error ? error.message : 'Erreur inconnue');
+      } finally {
+        setIsLoading(false);
+      }
     }
     
-    try {
-      // Mettre à jour l'état pour indiquer le chargement
-      setData(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      // Préparer les données pour la requête POST
-      const requestData = {
-        startDate,
-        endDate,
-        // Ajouter les dates de comparaison si activées
-        ...(isComparisonEnabled && comparisonStartDate && comparisonEndDate && {
-          comparisonStartDate,
-          comparisonEndDate
-        }),
-        // Ajouter les IDs de pharmacie sélectionnées
-        pharmacyIds: selectedPharmacyIds
-      };
-      
-      // Effectuer la requête POST
-      const response = await fetch('/api/sales/sellin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-        cache: 'no-store'
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de la récupération des données');
-      }
-      
-      const result = await response.json();
-      
-      // Mettre à jour l'état avec les données reçues, y compris les ruptures
-      setData({
-        totalPurchaseQuantity: result.totalPurchaseQuantity,
-        totalPurchaseAmount: result.totalPurchaseAmount,
-        totalOrders: result.totalOrders,
-        averagePurchasePrice: result.averagePurchasePrice,
-        // Mise à jour des données de rupture
-        totalOrderedQuantity: result.totalOrderedQuantity || 0,
-        totalStockBreakQuantity: result.totalStockBreakQuantity || 0,
-        totalStockBreakAmount: result.totalStockBreakAmount || 0,
-        stockBreakRate: result.stockBreakRate || 0,
-        actualDateRange: result.actualDateRange,
-        comparison: result.comparison,
-        isLoading: false,
-        error: null
-      });
-    } catch (error) {
-      console.error('Erreur dans useSellIn:', error);
-      setData(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      }));
-    }
-  };
+    fetchData();
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds]);
   
-  // Déclencher la requête lorsque les dépendances changent
-  useEffect(() => {
-    fetchSellIn();
-  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled]);
-  
-  return data;
+  return { ...data, isLoading, error };
 }
