@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       percentage: data.comparison_stock_value > 0 
         ? ((data.current_stock_value - data.comparison_stock_value) / data.comparison_stock_value) * 100 
         : 0,
-      isPositive: data.current_stock_value >= data.comparison_stock_value
+      isPositive: data.current_stock_value <= data.comparison_stock_value
     };
     
     const unitsEvolution = {
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       percentage: data.comparison_total_units > 0 
         ? ((data.current_total_units - data.comparison_total_units) / data.comparison_total_units) * 100 
         : 0,
-      isPositive: data.current_total_units >= data.comparison_total_units
+      isPositive: data.current_total_units <= data.comparison_total_units
     };
     
     const avgPriceEvolution = {

@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
       percentage: data.comparison_orders_count > 0 
         ? ((data.current_orders_count - data.comparison_orders_count) / data.comparison_orders_count) * 100 
         : 0,
-      isPositive: data.current_orders_count >= data.comparison_orders_count
+      isPositive: data.current_orders_count <= data.comparison_orders_count
     };
 
     const response = {

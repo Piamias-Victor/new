@@ -28,10 +28,13 @@ interface KpiCardProps {
       isPositive: boolean;
     };
   };
+  inverseColor?: boolean,
   infoTooltip?: string;
 }
 
 // Composant pour une carte KPI individuelle
+// Dans src/components/dashboard/KpiCards.tsx
+
 function KpiCard({ 
   icon, 
   title, 
@@ -40,11 +43,21 @@ function KpiCard({
   change, 
   isLoading, 
   alternateView, 
-  infoTooltip 
+  infoTooltip,
+  inverseColor = false // Nouveau paramètre pour indiquer si une baisse est positive
 }: KpiCardProps) {
   const [showAlternate, setShowAlternate] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   
+  // Déterminer si la couleur doit être verte ou rouge
+  const getColorClass = (isPositive: boolean, inverse: boolean) => {
+    // Si inverse est true, on inverse la logique des couleurs
+    const showPositiveColor = inverse ? !isPositive : isPositive;
+    return showPositiveColor 
+      ? 'text-green-500 dark:text-green-400' 
+      : 'text-red-500 dark:text-red-400';
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 animate-pulse">
@@ -61,7 +74,7 @@ function KpiCard({
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <div className="p-2 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
+            <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
               {icon}
             </div>
             <div>
@@ -92,15 +105,13 @@ function KpiCard({
         <div className="text-3xl font-bold text-gray-900 dark:text-white">
           {value}
         </div>
+        
         {change && (
           <div className="mt-2 flex items-center text-sm">
-            <span className={`font-medium ${
-              change.isPositive 
-                ? 'text-green-500 dark:text-green-400' 
-                : 'text-red-500 dark:text-red-400'
-            }`}>
+            <span className={`font-medium ${getColorClass(change.isPositive, inverseColor)}`}>
               {change.isPositive ? '+' : ''}{change.value}
             </span>
+            
             {change.previousValue && (
               <span className="text-gray-500 dark:text-gray-400 ml-2">
                 ({change.previousValue})
@@ -181,12 +192,13 @@ function KpiCard({
         {showAlternate ? alternateView.value : value}
       </div>
       
+      {/* Partie modifiée pour l'alternateView */}
       {(showAlternate ? alternateView.change : change) && (
         <div className="mt-2 flex items-center text-sm">
           <span className={`font-medium ${
-            (showAlternate ? alternateView.change?.isPositive : change?.isPositive) 
-              ? 'text-green-500 dark:text-green-400' 
-              : 'text-red-500 dark:text-red-400'
+            showAlternate && alternateView.change 
+              ? getColorClass(alternateView.change.isPositive, inverseColor)
+              : change && getColorClass(change.isPositive, inverseColor)
           }`}>
             {showAlternate && alternateView.change
               ? (alternateView.change.isPositive ? '+' : '') + alternateView.change.value
@@ -413,6 +425,7 @@ export function KpiCards() {
         alternateView={stockBreakQuantityView}
         isLoading={sellInLoading}
         infoTooltip={tooltips.stockBreak}
+        inverseColor={true}
       />
       
       {/* Marge */}
@@ -445,6 +458,7 @@ export function KpiCards() {
         change={rotationChange}
         isLoading={revenueLoading || stockLoading}
         infoTooltip={tooltips.rotation}
+        inverseColor={true}
       />
       
       {/* Commandes */}
@@ -459,6 +473,7 @@ export function KpiCards() {
         } : undefined}
         isLoading={sellInLoading}
         infoTooltip={tooltips.orders}
+        inverseColor={true}
       />
       
       {/* Références uniques - Maintenant avec les données réelles */}
