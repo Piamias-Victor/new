@@ -10,8 +10,9 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
+import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight, FiShoppingCart, FiShoppingBag } from 'react-icons/fi';
 import { useSalesEvolution } from '@/hooks/useSalesEvolution';
+import { useSellInEvolution } from '@/hooks/useSellInEvolution';
 import { SalesInsights } from './SalesInsights';
 
 type IntervalType = 'day' | 'week' | 'month';
@@ -19,7 +20,33 @@ type IntervalType = 'day' | 'week' | 'month';
 export function SalesEvolutionChart() {
   const [interval, setInterval] = useState<IntervalType>('day');
   const [showMargin, setShowMargin] = useState(true);
-  const { data, isLoading, error } = useSalesEvolution(interval);
+  const [showSellIn, setShowSellIn] = useState(false);
+  
+  // Récupérer les données sell-out (ventes)
+  const { data: sellOutData, isLoading: isSellOutLoading, error: sellOutError } = useSalesEvolution(interval);
+  
+  // Récupérer les données sell-in (achats)
+  const { data: sellInData, isLoading: isSellInLoading, error: sellInError } = useSellInEvolution(interval);
+  
+  // État de chargement global
+  const isLoading = isSellOutLoading || isSellInLoading;
+  const error = sellOutError || sellInError;
+  
+  // Combiner les données pour l'affichage sur le même graphique
+  const combinedData = useMemo(() => {
+    if (!sellOutData || sellOutData.length === 0) return [];
+    
+    return sellOutData.map(sellOutItem => {
+      // Trouver l'entrée correspondante dans les données sell-in
+      const sellInItem = sellInData?.find(item => item.period === sellOutItem.period);
+      
+      return {
+        ...sellOutItem,
+        // Ajouter les données sell-in (si disponibles)
+        sellInAmount: sellInItem?.amount || 0
+      };
+    });
+  }, [sellOutData, sellInData]);
   
   // Formatter les dates selon l'intervalle choisi
   const formatXAxis = (tickItem: string) => {
@@ -68,10 +95,10 @@ export function SalesEvolutionChart() {
   
   // Calculer la tendance (% d'évolution)
   const calculateTrend = () => {
-    if (!data || data.length < 2) return { value: 0, isPositive: true };
+    if (!combinedData || combinedData.length < 2) return { value: 0, isPositive: true };
     
-    const firstValue = data[0]?.revenue || 0;
-    const lastValue = data[data.length - 1]?.revenue || 0;
+    const firstValue = combinedData[0]?.revenue || 0;
+    const lastValue = combinedData[combinedData.length - 1]?.revenue || 0;
     
     const change = lastValue - firstValue;
     const percentChange = firstValue !== 0 ? (change / firstValue) * 100 : 0;
@@ -84,18 +111,20 @@ export function SalesEvolutionChart() {
   
   // Calculer les bornes du domaine Y pour s'assurer que toutes les valeurs sont visibles
   const yDomain = useMemo(() => {
-    if (!data || data.length === 0) return [0, 0];
+    if (!combinedData || combinedData.length === 0) return [0, 0];
     
     // Trouver la valeur maximale pour déterminer le domaine Y
-    const maxRevenue = Math.max(...data.map(item => item.revenue || 0));
-    const maxMargin = showMargin ? Math.max(...data.map(item => item.margin || 0)) : 0;
-    const maxValue = Math.max(maxRevenue, maxMargin);
+    const maxRevenue = Math.max(...combinedData.map(item => item.revenue || 0));
+    const maxMargin = showMargin ? Math.max(...combinedData.map(item => item.margin || 0)) : 0;
+    const maxSellIn = showSellIn ? Math.max(...combinedData.map(item => item.sellInAmount || 0)) : 0;
+    
+    const maxValue = Math.max(maxRevenue, maxMargin, maxSellIn);
     
     // Ajouter une marge de 10% au-dessus du maximum pour éviter les coupures
     const topMargin = maxValue * 0.1;
     
     return [0, maxValue + topMargin];
-  }, [data, showMargin]);
+  }, [combinedData, showMargin, showSellIn]);
   
   const trend = calculateTrend();
 
@@ -154,18 +183,32 @@ export function SalesEvolutionChart() {
 
         {/* Options du graphique */}
         <div className="flex flex-wrap gap-3">
-          {/* Sélection de l'affichage de la marge */}
-          <button
-            onClick={() => setShowMargin(!showMargin)}
-            className={`flex items-center px-3 py-1.5 text-xs rounded ${
-              showMargin 
-                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-            }`}
-          >
-            <span className="w-3 h-3 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1"></span>
-            Marge
-          </button>
+          {/* Sélection des séries à afficher */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowMargin(!showMargin)}
+              className={`flex items-center px-3 py-1.5 text-xs rounded ${
+                showMargin 
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' 
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-emerald-500 dark:bg-emerald-400 mr-1"></span>
+              Marge
+            </button>
+            
+            <button
+              onClick={() => setShowSellIn(!showSellIn)}
+              className={`flex items-center px-3 py-1.5 text-xs rounded ${
+                showSellIn 
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' 
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-amber-500 dark:bg-amber-400 mr-1"></span>
+              Sell-in
+            </button>
+          </div>
           
           {/* Sélection de l'intervalle */}
           <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
@@ -203,9 +246,23 @@ export function SalesEvolutionChart() {
         </div>
       </div>
 
+      {/* Légende */}
+      <div className="flex gap-4 mb-4 text-sm">
+        <div className="flex items-center">
+          <FiShoppingBag className="mr-1 text-sky-500" /> 
+          <span className="text-gray-600 dark:text-gray-300">Sell-out (ventes)</span>
+        </div>
+        {showSellIn && (
+          <div className="flex items-center">
+            <FiShoppingCart className="mr-1 text-amber-500" /> 
+            <span className="text-gray-600 dark:text-gray-300">Sell-in (achats)</span>
+          </div>
+        )}
+      </div>
+
       {/* Conteneur du graphique avec une hauteur fixe */}
       <div className="w-full" style={{ height: '400px' }}>
-        {!data || data.length === 0 ? (
+        {!combinedData || combinedData.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500 dark:text-gray-400">
               Aucune donnée disponible pour la période sélectionnée
@@ -214,7 +271,7 @@ export function SalesEvolutionChart() {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={data}
+              data={combinedData}
               margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
             >
               <defs>
@@ -225,6 +282,10 @@ export function SalesEvolutionChart() {
                 <linearGradient id="colorMargin" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorSellIn" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
@@ -263,7 +324,7 @@ export function SalesEvolutionChart() {
               <Area 
                 type="monotone" 
                 dataKey="revenue" 
-                name="CA" 
+                name="CA Sell-out" 
                 stroke="#0ea5e9" 
                 fillOpacity={1}
                 fill="url(#colorRevenue)" 
@@ -284,12 +345,26 @@ export function SalesEvolutionChart() {
                   activeDot={{ stroke: '#10b981', fill: '#ffffff', strokeWidth: 2, r: 6 }}
                 />
               )}
+              {showSellIn && (
+                <Area 
+                  type="monotone" 
+                  dataKey="sellInAmount" 
+                  name="CA Sell-in" 
+                  stroke="#f59e0b" 
+                  fillOpacity={1}
+                  fill="url(#colorSellIn)" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ stroke: '#f59e0b', fill: '#ffffff', strokeWidth: 2, r: 4 }}
+                  activeDot={{ stroke: '#f59e0b', fill: '#ffffff', strokeWidth: 2, r: 6 }}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         )}
       </div>
-      {data && data.length > 0 && (
-        <SalesInsights data={data} interval={interval} />
+      {sellOutData && sellOutData.length > 0 && (
+        <SalesInsights data={sellOutData} interval={interval} />
       )}
     </div>
   );
