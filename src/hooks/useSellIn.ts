@@ -18,12 +18,12 @@ interface SellInData {
     stockBreakRate: number;
     totalOrders: number;
     evolution: {
-      purchaseAmount: { percentage: number; isPositive: boolean };
-      purchaseQuantity: { percentage: number; isPositive: boolean };
-      stockBreakAmount: { percentage: number; isPositive: boolean };
-      stockBreakQuantity: { percentage: number; isPositive: boolean };
-      stockBreakRate: { points: number; isPositive: boolean };
-      orders: { percentage: number; isPositive: boolean };
+      purchaseAmount: { percentage: number; isPositive: boolean; displayValue: string };
+      purchaseQuantity: { percentage: number; isPositive: boolean; displayValue: string };
+      stockBreakAmount: { percentage: number; isPositive: boolean; displayValue: string };
+      stockBreakQuantity: { percentage: number; isPositive: boolean; displayValue: string };
+      stockBreakRate: { points: number; isPositive: boolean; displayValue: string };
+      orders: { percentage: number; isPositive: boolean; displayValue: string };
     }
   };
 }
@@ -44,12 +44,12 @@ export function useSellIn() {
       stockBreakRate: 0,
       totalOrders: 0,
       evolution: {
-        purchaseAmount: { percentage: 0, isPositive: true },
-        purchaseQuantity: { percentage: 0, isPositive: true },
-        stockBreakAmount: { percentage: 0, isPositive: true },
-        stockBreakQuantity: { percentage: 0, isPositive: true },
-        stockBreakRate: { points: 0, isPositive: true },
-        orders: { percentage: 0, isPositive: true }
+        purchaseAmount: { percentage: 0, isPositive: true, displayValue: '+0.0%' },
+        purchaseQuantity: { percentage: 0, isPositive: true, displayValue: '+0.0%' },
+        stockBreakAmount: { percentage: 0, isPositive: false, displayValue: '+0.0%' },
+        stockBreakQuantity: { percentage: 0, isPositive: false, displayValue: '+0.0%' },
+        stockBreakRate: { points: 0, isPositive: false, displayValue: '+0.0%' },
+        orders: { percentage: 0, isPositive: false, displayValue: '+0.0%' }
       }
     }
   });
@@ -88,6 +88,17 @@ export function useSellIn() {
         
         const jsonData = await response.json();
         
+        // Pour ruptures et commandes: une diminution est positive (vert)
+        // Préparation des strings d'affichage avec signes +/-
+        const purchaseAmountDisplayValue = `${jsonData.evolution.purchaseAmount.percentage >= 0 ? '+' : ''}${jsonData.evolution.purchaseAmount.percentage.toFixed(1)}%`;
+        const purchaseQuantityDisplayValue = `${jsonData.evolution.purchaseQuantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.purchaseQuantity.percentage.toFixed(1)}%`;
+        
+        // Pour ces métriques une baisse est positive (en vert)
+        const stockBreakAmountDisplayValue = `${jsonData.evolution.stockBreakAmount.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockBreakAmount.percentage.toFixed(1)}%`;
+        const stockBreakQuantityDisplayValue = `${jsonData.evolution.stockBreakQuantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockBreakQuantity.percentage.toFixed(1)}%`;
+        const stockBreakRateDisplayValue = `${jsonData.evolution.stockBreakRate.points >= 0 ? '+' : ''}${jsonData.evolution.stockBreakRate.points.toFixed(1)}%`;
+        const ordersDisplayValue = `${jsonData.evolution.orders.percentage >= 0 ? '+' : ''}${jsonData.evolution.orders.percentage.toFixed(1)}%`;
+        
         setData({
           totalPurchaseAmount: jsonData.current.purchaseAmount,
           totalPurchaseQuantity: jsonData.current.purchaseQuantity,
@@ -105,27 +116,34 @@ export function useSellIn() {
             evolution: {
               purchaseAmount: { 
                 percentage: jsonData.evolution.purchaseAmount.percentage,
-                isPositive: jsonData.evolution.purchaseAmount.isPositive
+                isPositive: jsonData.evolution.purchaseAmount.percentage >= 0,
+                displayValue: purchaseAmountDisplayValue
               },
               purchaseQuantity: { 
                 percentage: jsonData.evolution.purchaseQuantity.percentage,
-                isPositive: jsonData.evolution.purchaseQuantity.isPositive
+                isPositive: jsonData.evolution.purchaseQuantity.percentage >= 0,
+                displayValue: purchaseQuantityDisplayValue
               },
+              // Pour ces métriques, une DIMINUTION est positive (en vert)
               stockBreakAmount: { 
                 percentage: jsonData.evolution.stockBreakAmount.percentage,
-                isPositive: jsonData.evolution.stockBreakAmount.isPositive
+                isPositive: jsonData.evolution.stockBreakAmount.percentage < 0,
+                displayValue: stockBreakAmountDisplayValue
               },
               stockBreakQuantity: { 
                 percentage: jsonData.evolution.stockBreakQuantity.percentage,
-                isPositive: jsonData.evolution.stockBreakQuantity.isPositive
+                isPositive: jsonData.evolution.stockBreakQuantity.percentage < 0,
+                displayValue: stockBreakQuantityDisplayValue
               },
               stockBreakRate: { 
                 points: jsonData.evolution.stockBreakRate.points,
-                isPositive: jsonData.evolution.stockBreakRate.isPositive
+                isPositive: jsonData.evolution.stockBreakRate.points < 0,
+                displayValue: stockBreakRateDisplayValue
               },
               orders: { 
                 percentage: jsonData.evolution.orders.percentage,
-                isPositive: jsonData.evolution.orders.isPositive
+                isPositive: jsonData.evolution.orders.percentage < 0,
+                displayValue: ordersDisplayValue
               }
             }
           }

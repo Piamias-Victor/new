@@ -13,7 +13,7 @@ interface KpiCardProps {
   subtitle?: string;
   value: string;
   change?: {
-    value: string;
+    displayValue: string;
     previousValue?: string;
     isPositive: boolean;
   };
@@ -23,18 +23,15 @@ interface KpiCardProps {
     subtitle?: string;
     value: string;
     change?: {
-      value: string;
+      displayValue: string;
       previousValue?: string;
       isPositive: boolean;
     };
   };
-  inverseColor?: boolean,
   infoTooltip?: string;
 }
 
 // Composant pour une carte KPI individuelle
-// Dans src/components/dashboard/KpiCards.tsx
-
 function KpiCard({ 
   icon, 
   title, 
@@ -43,17 +40,14 @@ function KpiCard({
   change, 
   isLoading, 
   alternateView, 
-  infoTooltip,
-  inverseColor = false // Nouveau paramètre pour indiquer si une baisse est positive
+  infoTooltip
 }: KpiCardProps) {
   const [showAlternate, setShowAlternate] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   
-  // Déterminer si la couleur doit être verte ou rouge
-  const getColorClass = (isPositive: boolean, inverse: boolean) => {
-    // Si inverse est true, on inverse la logique des couleurs
-    const showPositiveColor = inverse ? !isPositive : isPositive;
-    return showPositiveColor 
+  // Déterminer la couleur en fonction de isPositive
+  const getColorClass = (isPositive: boolean) => {
+    return isPositive 
       ? 'text-green-500 dark:text-green-400' 
       : 'text-red-500 dark:text-red-400';
   };
@@ -108,8 +102,8 @@ function KpiCard({
         
         {change && (
           <div className="mt-2 flex items-center text-sm">
-            <span className={`font-medium ${getColorClass(change.isPositive, inverseColor)}`}>
-              {change.isPositive ? '+' : ''}{change.value}
+            <span className={`font-medium ${getColorClass(change.isPositive)}`}>
+              {change.displayValue}
             </span>
             
             {change.previousValue && (
@@ -197,12 +191,12 @@ function KpiCard({
         <div className="mt-2 flex items-center text-sm">
           <span className={`font-medium ${
             showAlternate && alternateView.change 
-              ? getColorClass(alternateView.change.isPositive, inverseColor)
-              : change && getColorClass(change.isPositive, inverseColor)
+              ? getColorClass(alternateView.change.isPositive)
+              : change && getColorClass(change.isPositive)
           }`}>
             {showAlternate && alternateView.change
-              ? (alternateView.change.isPositive ? '+' : '') + alternateView.change.value
-              : change && (change.isPositive ? '+' : '') + change.value
+              ? alternateView.change.displayValue
+              : change && change.displayValue
             }
           </span>
           
@@ -278,26 +272,8 @@ export function KpiCards() {
   };
 
   // Préparer les données pour les KPI Cards
-  const stockBreakAmountChange = sellInComparison ? {
-    value: `${sellInComparison.evolution.stockBreakAmount.percentage.toFixed(1)}%`,
-    previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
-    isPositive: !sellInComparison.evolution.stockBreakAmount.isPositive
-  } : undefined;
-
-  const stockBreakRateChange = sellInComparison ? {
-    value: `${sellInComparison.evolution.stockBreakRate.points.toFixed(1)}%`,
-    previousValue: `${sellInComparison.stockBreakRate.toFixed(1)}%`,
-    isPositive: !sellInComparison.evolution.stockBreakRate.isPositive
-  } : undefined;
-
-  const stockBreakQuantityView = {
-    title: "CA en rupture",
-    value: formatCurrency(totalStockBreakAmount),
-    change: stockBreakAmountChange
-  };
-  
   const revenueChange = comparison ? {
-    value: `${comparison.evolution.revenue.percentage.toFixed(1)}%`,
+    displayValue: comparison.evolution.revenue.displayValue,
     previousValue: formatCurrency(comparison.totalRevenue),
     isPositive: comparison.evolution.revenue.isPositive
   } : undefined;
@@ -306,46 +282,62 @@ export function KpiCards() {
     title: "Qte Sell-out",
     value: formatNumber(totalQuantity),
     change: comparison?.evolution?.quantity ? {
-      value: `${comparison.evolution.quantity.percentage.toFixed(1)}%`,
+      displayValue: comparison.evolution.quantity.displayValue,
       previousValue: formatNumber(comparison.totalQuantity),
       isPositive: comparison.evolution.quantity.isPositive
     } : undefined
   };
   
   const sellInAmountChange = sellInComparison ? {
-    value: `${sellInComparison.evolution.purchaseAmount.percentage.toFixed(1)}%`,
+    displayValue: sellInComparison.evolution.purchaseAmount.displayValue,
     previousValue: formatCurrency(sellInComparison.totalPurchaseAmount),
-    isPositive: !sellInComparison.evolution.purchaseAmount.isPositive
+    isPositive: sellInComparison.evolution.purchaseAmount.isPositive
   } : undefined;
   
   const quantitySellInView = {
     title: "Qte Sell-in",
     value: formatNumber(totalPurchaseQuantity),
     change: sellInComparison ? {
-      value: `${sellInComparison.evolution.purchaseQuantity.percentage.toFixed(1)}%`,
+      displayValue: sellInComparison.evolution.purchaseQuantity.displayValue,
       previousValue: formatNumber(sellInComparison.totalPurchaseQuantity),
-      isPositive: !sellInComparison.evolution.purchaseQuantity.isPositive
+      isPositive: sellInComparison.evolution.purchaseQuantity.isPositive
     } : undefined
   };
+  
+  const stockBreakRateChange = sellInComparison ? {
+    displayValue: sellInComparison.evolution.stockBreakRate.displayValue,
+    previousValue: `${sellInComparison.stockBreakRate.toFixed(1)}%`,
+    isPositive: sellInComparison.evolution.stockBreakRate.isPositive
+  } : undefined;
+
+  const stockBreakAmountView = {
+    title: "CA en rupture",
+    value: formatCurrency(totalStockBreakAmount),
+    change: sellInComparison ? {
+      displayValue: sellInComparison.evolution.stockBreakAmount.displayValue,
+      previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
+      isPositive: sellInComparison.evolution.stockBreakAmount.isPositive
+    } : undefined
+  };
+  
+  const marginPercentChange = comparison ? {
+    displayValue: comparison.evolution.marginPercentage.displayValue,
+    previousValue: `${comparison.marginPercentage.toFixed(1)}%`,
+    isPositive: comparison.evolution.marginPercentage.isPositive
+  } : undefined;
   
   const marginMoneyView = {
     title: "Marge",
     value: formatCurrency(totalMargin),
     change: comparison ? {
-      value: `${comparison.evolution.margin.percentage.toFixed(1)}%`,
+      displayValue: comparison.evolution.margin.displayValue,
       previousValue: formatCurrency(comparison.totalMargin),
       isPositive: comparison.evolution.margin.isPositive
     } : undefined
   };
   
-  const marginPercentChange = comparison ? {
-    value: `${comparison.evolution.marginPercentage.points.toFixed(1)} pts`,
-    previousValue: `${comparison.marginPercentage.toFixed(1)}%`,
-    isPositive: comparison.evolution.marginPercentage.isPositive
-  } : undefined;
-  
   const stockChange = stockComparison ? {
-    value: `${stockComparison.evolution.stockValue.percentage.toFixed(1)}%`,
+    displayValue: stockComparison.evolution.stockValue.displayValue,
     previousValue: formatCurrency(stockComparison.totalStockValueHT),
     isPositive: stockComparison.evolution.stockValue.isPositive
   } : undefined;
@@ -354,7 +346,7 @@ export function KpiCards() {
     title: "Stock",
     value: formatNumber(totalUnits),
     change: stockComparison ? {
-      value: `${stockComparison.evolution.units.percentage.toFixed(1)}%`,
+      displayValue: stockComparison.evolution.units.displayValue,
       previousValue: formatNumber(stockComparison.totalUnits),
       isPositive: stockComparison.evolution.units.isPositive
     } : undefined
@@ -368,7 +360,7 @@ export function KpiCards() {
   
   // Calcul de la rotation précédente si les données sont disponibles
   let rotationChange: {
-    value: string;
+    displayValue: string;
     previousValue: string;
     isPositive: boolean;
   } | undefined;
@@ -386,7 +378,7 @@ export function KpiCards() {
       : 0;
     
     rotationChange = {
-      value: `${rotationPerc.toFixed(1)}%`,
+      displayValue: `${rotationPerc >= 0 ? '+' : ''}${rotationPerc.toFixed(1)}%`,
       previousValue: `${previousRotation.toFixed(1)}x`,
       isPositive: rotationDiff > 0
     };
@@ -422,10 +414,9 @@ export function KpiCards() {
         title="Taux rupture"
         value={`${stockBreakRate.toFixed(1)}%`}
         change={stockBreakRateChange}
-        alternateView={stockBreakQuantityView}
+        alternateView={stockBreakAmountView}
         isLoading={sellInLoading}
         infoTooltip={tooltips.stockBreak}
-        inverseColor={true}
       />
       
       {/* Marge */}
@@ -458,7 +449,6 @@ export function KpiCards() {
         change={rotationChange}
         isLoading={revenueLoading || stockLoading}
         infoTooltip={tooltips.rotation}
-        inverseColor={true}
       />
       
       {/* Commandes */}
@@ -467,27 +457,26 @@ export function KpiCards() {
         title="Commandes"
         value={formatNumber(totalOrders)}
         change={sellInComparison ? {
-          value: `${sellInComparison.evolution.orders.percentage.toFixed(1)}%`,
+          displayValue: sellInComparison.evolution.orders.displayValue,
           previousValue: formatNumber(sellInComparison.totalOrders),
           isPositive: sellInComparison.evolution.orders.isPositive
         } : undefined}
         isLoading={sellInLoading}
         infoTooltip={tooltips.orders}
-        inverseColor={true}
       />
       
-      {/* Références uniques - Maintenant avec les données réelles */}
+      {/* Références uniques */}
       <KpiCard
-      icon={<FiRepeat size={24} />}
-      title="Références vendues"
-      value={formatNumber(uniqueReferences || 0)} // Utilisez la valeur courante
-      change={comparison?.evolution?.uniqueReferences ? {
-        value: `${comparison.evolution.uniqueReferences.percentage.toFixed(1)}%`,
-        previousValue: formatNumber(comparison.uniqueReferences),
-        isPositive: comparison.evolution.uniqueReferences.isPositive
-      } : undefined}
-      isLoading={revenueLoading}
-      infoTooltip={tooltips.references}
+        icon={<FiRepeat size={24} />}
+        title="Références vendues"
+        value={formatNumber(uniqueReferences || 0)}
+        change={comparison?.evolution?.uniqueReferences ? {
+          displayValue: comparison.evolution.uniqueReferences.displayValue,
+          previousValue: formatNumber(comparison.uniqueReferences),
+          isPositive: comparison.evolution.uniqueReferences.isPositive
+        } : undefined}
+        isLoading={revenueLoading}
+        infoTooltip={tooltips.references}
       />
     </div>
   );

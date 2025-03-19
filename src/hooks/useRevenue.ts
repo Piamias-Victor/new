@@ -16,11 +16,11 @@ interface RevenueData {
     marginPercentage: number;
     uniqueReferences: number;
     evolution: {
-      revenue: { percentage: number; isPositive: boolean };
-      margin: { percentage: number; isPositive: boolean };
-      quantity: { percentage: number; isPositive: boolean };
-      marginPercentage: { points: number; isPositive: boolean };
-      uniqueReferences: { percentage: number; isPositive: boolean };
+      revenue: { percentage: number; isPositive: boolean; displayValue: string };
+      margin: { percentage: number; isPositive: boolean; displayValue: string };
+      quantity: { percentage: number; isPositive: boolean; displayValue: string };
+      marginPercentage: { points: number; isPositive: boolean; displayValue: string };
+      uniqueReferences: { percentage: number; isPositive: boolean; displayValue: string };
     },
     actualDateRange?: { min: string; max: string; days: number };
   };
@@ -42,11 +42,11 @@ export function useRevenue() {
       marginPercentage: 0,
       uniqueReferences: 0,
       evolution: {
-        revenue: { percentage: 0, isPositive: true },
-        margin: { percentage: 0, isPositive: true },
-        quantity: { percentage: 0, isPositive: true },
-        marginPercentage: { points: 0, isPositive: true },
-        uniqueReferences: { percentage: 0, isPositive: true }
+        revenue: { percentage: 0, isPositive: true, displayValue: '+0.0%' },
+        margin: { percentage: 0, isPositive: true, displayValue: '+0.0%' },
+        quantity: { percentage: 0, isPositive: true, displayValue: '+0.0%' },
+        marginPercentage: { points: 0, isPositive: true, displayValue: '+0.0 pts' },
+        uniqueReferences: { percentage: 0, isPositive: true, displayValue: '+0.0%' }
       }
     },
     isComparisonEnabled: true
@@ -82,13 +82,21 @@ export function useRevenue() {
         
         if (!response.ok) {
           throw new Error('Erreur lors de la récupération des données de vente');
-        }// src/hooks/useRevenue.ts (continuation)
+        }
+        
         const jsonData = await response.json();
         
         // Calculer le nombre de jours dans la période
         const startDateObj = new Date(startDate);
         const endDateObj = new Date(endDate);
         const daysInPeriod = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Préparation des valeurs d'affichage avec signes +/-
+        const revenueDisplayValue = `${jsonData.evolution.revenue.percentage >= 0 ? '+' : ''}${jsonData.evolution.revenue.percentage.toFixed(1)}%`;
+        const marginDisplayValue = `${jsonData.evolution.margin.percentage >= 0 ? '+' : ''}${jsonData.evolution.margin.percentage.toFixed(1)}%`;
+        const quantityDisplayValue = `${jsonData.evolution.quantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.quantity.percentage.toFixed(1)}%`;
+        const marginPointsDisplayValue = `${jsonData.evolution.marginPercentage.points >= 0 ? '+' : ''}${jsonData.evolution.marginPercentage.points.toFixed(1)} pts`;
+        const refDisplayValue = `${jsonData.evolution.uniqueReferences.percentage >= 0 ? '+' : ''}${jsonData.evolution.uniqueReferences.percentage.toFixed(1)}%`;
         
         setData({
           totalRevenue: jsonData.current.revenue,
@@ -105,23 +113,28 @@ export function useRevenue() {
             evolution: {
               revenue: { 
                 percentage: jsonData.evolution.revenue.percentage,
-                isPositive: jsonData.evolution.revenue.percentage >= 0
+                isPositive: jsonData.evolution.revenue.percentage >= 0,
+                displayValue: revenueDisplayValue
               },
               margin: { 
                 percentage: jsonData.evolution.margin.percentage,
-                isPositive: jsonData.evolution.margin.percentage >= 0
+                isPositive: jsonData.evolution.margin.percentage >= 0,
+                displayValue: marginDisplayValue
               },
               quantity: { 
                 percentage: jsonData.evolution.quantity.percentage,
-                isPositive: jsonData.evolution.quantity.percentage >= 0
+                isPositive: jsonData.evolution.quantity.percentage >= 0,
+                displayValue: quantityDisplayValue
               },
               marginPercentage: { 
                 points: jsonData.evolution.marginPercentage.points,
-                isPositive: jsonData.evolution.marginPercentage.points >= 0
+                isPositive: jsonData.evolution.marginPercentage.points >= 0,
+                displayValue: marginPointsDisplayValue
               },
               uniqueReferences: { 
                 percentage: jsonData.evolution.uniqueReferences.percentage,
-                isPositive: jsonData.evolution.uniqueReferences.percentage >= 0
+                isPositive: jsonData.evolution.uniqueReferences.percentage >= 0,
+                displayValue: refDisplayValue
               }
             },
             actualDateRange: {

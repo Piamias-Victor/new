@@ -13,9 +13,9 @@ interface InventoryData {
     totalUnits: number;
     averagePrice: number;
     evolution: {
-      stockValue: { percentage: number; isPositive: boolean };
-      units: { percentage: number; isPositive: boolean };
-      averagePrice: { percentage: number; isPositive: boolean };
+      stockValue: { percentage: number; isPositive: boolean; displayValue: string };
+      units: { percentage: number; isPositive: boolean; displayValue: string };
+      averagePrice: { percentage: number; isPositive: boolean; displayValue: string };
     }
   };
 }
@@ -31,9 +31,9 @@ export function useInventoryValuation() {
       totalUnits: 0,
       averagePrice: 0,
       evolution: {
-        stockValue: { percentage: 0, isPositive: true },
-        units: { percentage: 0, isPositive: true },
-        averagePrice: { percentage: 0, isPositive: true }
+        stockValue: { percentage: 0, isPositive: false, displayValue: '+0.0%' },
+        units: { percentage: 0, isPositive: false, displayValue: '+0.0%' },
+        averagePrice: { percentage: 0, isPositive: true, displayValue: '+0.0%' }
       }
     }
   });
@@ -72,6 +72,14 @@ export function useInventoryValuation() {
         
         const jsonData = await response.json();
         
+        // Préparation des affichages avec signes
+        // Pour stock et unités, une DIMINUTION est positive (en vert)
+        const stockValueDisplayValue = `${jsonData.evolution.stockValue.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockValue.percentage.toFixed(1)}%`;
+        const unitsDisplayValue = `${jsonData.evolution.units.percentage >= 0 ? '+' : ''}${jsonData.evolution.units.percentage.toFixed(1)}%`;
+        
+        // Pour prix moyen, une AUGMENTATION est positive
+        const avgPriceDisplayValue = `${jsonData.evolution.averagePrice.percentage >= 0 ? '+' : ''}${jsonData.evolution.averagePrice.percentage.toFixed(1)}%`;
+        
         setData({
           totalStockValueHT: jsonData.current.stockValueHT,
           totalUnits: jsonData.current.stockUnits,
@@ -82,17 +90,21 @@ export function useInventoryValuation() {
             totalUnits: jsonData.comparison.stockUnits,
             averagePrice: jsonData.comparison.averagePrice,
             evolution: {
+              // Pour ces métriques, une DIMINUTION est positive (en vert)
               stockValue: { 
                 percentage: jsonData.evolution.stockValue.percentage,
-                isPositive: jsonData.evolution.stockValue.isPositive
+                isPositive: jsonData.evolution.stockValue.percentage < 0,
+                displayValue: stockValueDisplayValue
               },
               units: { 
                 percentage: jsonData.evolution.units.percentage,
-                isPositive: jsonData.evolution.units.isPositive
+                isPositive: jsonData.evolution.units.percentage < 0,
+                displayValue: unitsDisplayValue
               },
               averagePrice: { 
                 percentage: jsonData.evolution.averagePrice.percentage,
-                isPositive: jsonData.evolution.averagePrice.isPositive
+                isPositive: jsonData.evolution.averagePrice.percentage >= 0,
+                displayValue: avgPriceDisplayValue
               }
             }
           }
