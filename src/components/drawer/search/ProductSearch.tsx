@@ -1,4 +1,3 @@
-// Mise à jour de ProductSearch.tsx
 import React, { useState, useEffect } from 'react';
 import { FiBox, FiHash, FiInfo } from 'react-icons/fi';
 import { ProductSearchResults, Product } from './ProductSearchResults';
@@ -16,7 +15,7 @@ interface ProductSearchProps {
 export function ProductSearch({ selectedProducts, onToggleProduct }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'code' | 'suffix'>('name');
-  const [showSuffixInfo, setShowSuffixInfo] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const { results, isLoading, error, searchProducts, clearResults } = useProductSearch();
 
   // Détecter automatiquement si l'utilisateur utilise '*' pour chercher par fin de code
@@ -55,46 +54,49 @@ export function ProductSearch({ selectedProducts, onToggleProduct }: ProductSear
     <div className="flex flex-col h-full">
       <div className="space-y-4 mb-4">
         {/* Choix du type de recherche */}
-        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
-          <button
-            onClick={() => setSearchType('name')}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 ${
-              searchType === 'name' 
-                ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
-                : 'text-gray-600 dark:text-gray-300'
-            }`}
-          >
-            <FiBox size={16} />
-            <span>Par nom</span>
-          </button>
-          <button
-            onClick={() => setSearchType('code')}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 ${
-              searchType === 'code' || searchType === 'suffix'
-                ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
-                : 'text-gray-600 dark:text-gray-300'
-            } relative`}
-          >
-            <FiHash size={16} />
-            <span>Par code</span>
-            <button 
-              className="absolute right-0.5 top-0.5 text-gray-400 hover:text-sky-500 dark:hover:text-sky-400"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowSuffixInfo(!showSuffixInfo);
-              }}
-            >
-              <FiInfo size={14} />
-            </button>
-          </button>
-        </div>
-        
-        {/* Info-bulle pour la recherche par fin de code */}
-        {showSuffixInfo && (
-          <div className="bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 p-2 rounded-md text-xs">
-            <p>Vous pouvez rechercher par fin de code en commençant votre recherche par un astérisque (*). Par exemple, "*1234" recherchera tous les produits dont le code se termine par 1234.</p>
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center space-x-2">
+            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex flex-1">
+              <button
+                onClick={() => setSearchType('name')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 ${
+                  searchType === 'name' 
+                    ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                <FiBox size={16} />
+                <span>Par nom</span>
+              </button>
+              <button
+                onClick={() => setSearchType('code')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium flex items-center justify-center gap-2 ${
+                  searchType === 'code' || searchType === 'suffix'
+                    ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                <FiHash size={16} />
+                <span>Par code</span>
+              </button>
+            </div>
+            <div className="relative">
+              <button 
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+              >
+                <FiInfo size={16} />
+              </button>
+              
+              {showTooltip && (
+                <div className="absolute right-0 z-10 w-64 p-3 text-xs bg-white dark:bg-gray-700 rounded-md shadow-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300">
+                  Vous pouvez rechercher par fin de code en commençant votre recherche par un astérisque (*). Par exemple, "*1234" recherchera tous les produits dont le code se termine par 1234.
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Champ de recherche */}
         <SearchInput
