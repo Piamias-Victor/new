@@ -1,11 +1,12 @@
+// src/components/drawer/ProductSelectionDrawer.tsx
 import React, { useState } from 'react';
-import { SegmentSearch } from './search/SegmentSearch';
-import { Segment } from './search/SegmentSearchResults';
 import { FiX, FiCheck } from 'react-icons/fi';
 import { LabSearch } from './search/LabSearch';
 import { ProductSearch } from './search/ProductSearch';
 import { Product } from './search/ProductSearchResults';
 import { Laboratory } from './search/LabSearchResults';
+import { SelectionSummary } from './SelectionSummary';
+import { UnifiedSegment, UnifiedSegmentSearch } from './search/SegmentSearch';
 
 interface ProductSelectionDrawerProps {
   isOpen: boolean;
@@ -15,8 +16,8 @@ interface ProductSelectionDrawerProps {
   onToggleProduct: (product: Product) => void;
   selectedLabs?: Laboratory[];
   onToggleLab?: (lab: Laboratory) => void;
-  selectedSegments?: Segment[];
-  onToggleSegment?: (segment: Segment) => void;
+  selectedSegments?: UnifiedSegment[];
+  onToggleSegment?: (segment: UnifiedSegment) => void;
   onConfirmSelection?: () => void;
 }
 
@@ -47,6 +48,35 @@ export function ProductSelectionDrawer({
     ...selectedLabs.flatMap(lab => lab.code_13_refs || []),
     ...selectedSegments.flatMap(segment => segment.code_13_refs || [])
   ].filter((code, index, self) => self.indexOf(code) === index).length;
+  
+  // Fonctions pour supprimer des éléments
+  const handleRemoveProduct = (product: Product) => {
+    onToggleProduct(product);
+  };
+  
+  const handleRemoveLab = (lab: Laboratory) => {
+    if (onToggleLab) onToggleLab(lab);
+  };
+  
+  const handleRemoveSegment = (segment: UnifiedSegment) => {
+    if (onToggleSegment) onToggleSegment(segment);
+  };
+  
+  // Fonction pour tout effacer
+  const handleClearAll = () => {
+    // Désélectionner tous les produits
+    selectedProducts.forEach(product => onToggleProduct(product));
+    
+    // Désélectionner tous les laboratoires
+    if (onToggleLab) {
+      selectedLabs.forEach(lab => onToggleLab(lab));
+    }
+    
+    // Désélectionner tous les segments
+    if (onToggleSegment) {
+      selectedSegments.forEach(segment => onToggleSegment(segment));
+    }
+  };
 
   return (
     <>
@@ -126,9 +156,22 @@ export function ProductSelectionDrawer({
             />
           )}
           {activeTab === 'segment' && (
-            <SegmentSearch
+            <UnifiedSegmentSearch
               selectedSegments={selectedSegments}
               onToggleSegment={onToggleSegment}
+            />
+          )}
+          
+          {/* Afficher le sommaire de la sélection */}
+          {totalSelected > 0 && (
+            <SelectionSummary
+              selectedProducts={selectedProducts}
+              selectedLabs={selectedLabs}
+              selectedSegments={selectedSegments}
+              onRemoveProduct={handleRemoveProduct}
+              onRemoveLab={handleRemoveLab}
+              onRemoveSegment={handleRemoveSegment}
+              onClearAll={handleClearAll}
             />
           )}
         </div>

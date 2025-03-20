@@ -1,10 +1,10 @@
 // src/hooks/useSegmentSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
-import { Segment } from '@/components/drawer/search/SegmentSearchResults';
+import { UnifiedSegment } from '@/components/drawer/search/SegmentSearch';
 
 interface SegmentSearchState {
-  results: Segment[];
+  results: UnifiedSegment[];
   isLoading: boolean;
   error: string | null;
 }
@@ -18,7 +18,8 @@ export function useSegmentSearch() {
   
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  const searchSegments = useCallback(async (term: string) => {
+  // Nouvelle fonction de recherche unifiée
+  const searchUnifiedSegments = useCallback(async (term: string) => {
     // Validation de base
     if (!term || term.trim().length < 2) {
       setState(prev => ({
@@ -35,7 +36,9 @@ export function useSegmentSearch() {
     try {
       // Construire les paramètres de la requête
       const queryParams = new URLSearchParams({
-        name: term
+        term: term.trim(),
+        // Mode unified pour indiquer à l'API de chercher dans tous les types
+        mode: 'unified'  
       });
       
       // Ajouter les pharmacies sélectionnées
@@ -46,7 +49,7 @@ export function useSegmentSearch() {
       }
       
       // Effectuer la requête
-      const response = await fetch(`/api/search/segments?${queryParams}`, {
+      const response = await fetch(`/api/search/segments-unified?${queryParams}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +90,7 @@ export function useSegmentSearch() {
   
   return {
     ...state,
-    searchSegments,
+    searchUnifiedSegments,
     clearResults
   };
 }
