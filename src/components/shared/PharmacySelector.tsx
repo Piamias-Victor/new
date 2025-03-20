@@ -82,16 +82,16 @@ export function PharmacySelector() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center px-3 py-2 w-56 text-sm font-medium bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+        className="flex items-center h-10 pl-4 pr-3 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm hover:border-teal-300 dark:hover:border-teal-600 transition-colors duration-150 group bg-white dark:bg-gray-800"
       >
         <div className="flex items-center min-w-0 flex-1">
           {getFilterIcon()}
-          <span className={`truncate ${lastFilterType !== 'none' ? "text-teal-600 dark:text-teal-400" : "text-gray-700 dark:text-gray-300"}`}>
+          <span className={`truncate text-sm font-medium ${lastFilterType !== 'none' ? "text-teal-600 dark:text-teal-400" : "text-gray-700 dark:text-gray-300"}`}>
             {getDisplayText()}
           </span>
         </div>
-        <div className="flex-shrink-0 ml-2">
-          {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+        <div className="flex-shrink-0 ml-2 text-gray-400 group-hover:text-teal-500 dark:group-hover:text-teal-400 transition-colors duration-150">
+          {isOpen ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
         </div>
       </button>
 

@@ -30,9 +30,8 @@ export function ProductSelectionDrawer({ isOpen, onClose }: ProductSelectionDraw
       />
       
       {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 md:w-[450px] bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transition-transform duration-300">
-        
-        {/* En-tête du drawer */}
+{/* Drawer avec animation */}
+      <div className="fixed right-0 top-0 bottom-0 w-full sm:w-96 md:w-[450px] bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transform transition-all duration-300 ease-in-out animate-slideInRight">        {/* En-tête du drawer */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Sélection de produits

@@ -69,16 +69,10 @@ export function Header() {
                   <AnalysisNavMenu />
                   <ModernDateSelector />
                   <PharmacySelector />
+                  <ProductSelectionButton openDrawer={openDrawer} />
                 </div>
               )}
             </div>
-            
-            {/* Section centrale avec le bouton de sélection de produits */}
-            {isDashboard && status === 'authenticated' && (
-              <div className="hidden md:block">
-                <ProductSelectionButton openDrawer={openDrawer} />
-              </div>
-            )}
             
             {/* Navigation desktop */}
             <DesktopNav 
@@ -140,7 +134,6 @@ export function Header() {
       </header>
 
       {/* Drawer de sélection de produits (en dehors du header) */}
-      <ProductSelectionDrawer isOpen={isOpen} onClose={closeDrawer} />
-    </>
+      <ProductSelectionDrawer isOpen={isOpen} onClose={closeDrawer} isClosing={useDrawerState().isClosing} />    </>
   );
 }

@@ -134,3 +134,30 @@ html {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
+
+/* Ajouter ceci à src/app/globals.css */
+.animate-loading-bar {
+  width: 30%;
+  animation: loading-bar 1.5s infinite ease-in-out;
+}
+
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* Animation pour le drawer de sélection produits */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out forwards;
+}
