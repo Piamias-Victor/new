@@ -1,14 +1,14 @@
+// src/components/dashboard/UniverseTreemap.tsx
 import React, { useState } from 'react';
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
 import { FiBarChart2 } from 'react-icons/fi';
 import { useSalesByUniverse } from '@/hooks/useSalesByUniverse';
 
-// Palette de couleurs pour les différents univers
+// Palette de couleurs plus harmonieuse et moderne pour les différents univers
 const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8',
-  '#82CA9D', '#8DD1E1', '#A4DE6C', '#D0ED57', '#FAAAA3',
-  '#F5C3C1', '#B4A7D6', '#D5A6BD', '#C27BA0', '#76A5AF',
-  '#9FC5E8', '#B6D7A8', '#FFD966', '#F9CB9C', '#EA9999'
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+  '#14B8A6', '#6366F1', '#F97316', '#EC4899', '#06B6D4',
+  '#84CC16', '#9333EA', '#22D3EE', '#F43F5E', '#64748B'
 ];
 
 // Interface pour les données d'univers formatées pour le treemap
@@ -41,29 +41,23 @@ const formatPercent = (value: number): string => {
   }).format(value / 100);
 };
 
-// Formater les données pour le treemap
-const formatDataForTreemap = (data: any[]): TreemapItem[] => {
-  if (!Array.isArray(data)) return [];
-  
-  return data.map((item, index) => ({
-    name: item.universe || "Non catégorisé",
-    size: parseFloat(item.revenue) || 0,
-    value: parseFloat(item.revenue) || 0,
-    margin: parseFloat(item.margin) || 0,
-    quantity: parseInt(item.quantity) || 0,
-    revenue_percentage: parseFloat(item.revenue_percentage) || 0,
-    margin_percentage: parseFloat(item.margin_percentage) || 0,
-    color: COLORS[index % COLORS.length]
-  }));
-};
-
 // Fonction pour déterminer la couleur du texte (blanc ou noir) selon la couleur de fond
 function getContrastText(bgColor: string): string {
+  // Vérifier si bgColor est défini et est une chaîne
+  if (!bgColor || typeof bgColor !== 'string') {
+    return '#FFFFFF'; // Valeur par défaut en cas d'erreur
+  }
+
   // Convertir la couleur hex en RGB
   const hex = bgColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Vérifier si les valeurs RGB sont valides (non NaN)
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    return '#FFFFFF'; // Valeur par défaut en cas de couleur invalide
+  }
   
   // Calculer la luminosité (formule standard)
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -71,6 +65,23 @@ function getContrastText(bgColor: string): string {
   // Retourner blanc ou noir selon la luminosité
   return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }
+
+// Formater les données pour le treemap
+const formatDataForTreemap = (data: any[]): TreemapItem[] => {
+  if (!Array.isArray(data) || data.length === 0) return [];
+  
+  // S'assurer que tous les champs sont correctement typés
+  return data.map((item, index) => ({
+    name: item.universe || "Non catégorisé",
+    size: item.revenue > 0 ? item.revenue : 0.1, // Assurer une taille minimale pour les petites valeurs
+    value: item.revenue || 0,
+    margin: item.margin || 0,
+    quantity: item.quantity || 0,
+    revenue_percentage: item.revenue_percentage || 0,
+    margin_percentage: item.margin_percentage || 0,
+    color: COLORS[index % COLORS.length]
+  }));
+};
 
 // Interface pour les props du composant de contenu
 interface CustomTreemapContentProps {
@@ -90,11 +101,16 @@ interface CustomTreemapContentProps {
 // Composant pour afficher le contenu de chaque cellule du TreeMap
 const CustomTreemapContent: React.FC<CustomTreemapContentProps> = (props) => {
   const { x, y, width, height, name, value, color, payload } = props;
-  
-  if (!width || !height || width < 0 || height < 0 || !x || !y) return null;
+
+
+  if (width === undefined || height === undefined || x === undefined || y === undefined || 
+    width < 0 || height < 0 || name === undefined) return null;
+
+  // Utiliser une couleur par défaut si non définie
+  const fillColor = color || '#CCCCCC';
   
   // Si la cellule est trop petite, n'afficher que le rectangle coloré
-  if (width < 30 || height < 30) {
+  if (width < 50 || height < 50) {
     return (
       <g>
         <rect
@@ -103,57 +119,116 @@ const CustomTreemapContent: React.FC<CustomTreemapContentProps> = (props) => {
           width={width}
           height={height}
           style={{
-            fill: color,
-            stroke: '#fff',
-            strokeWidth: 2,
-            strokeOpacity: 1
+            fill: fillColor,
+            stroke: 'none'
           }}
         />
       </g>
     );
   }
-
+  
+  // Déterminer la couleur du texte
+  const textColor = getContrastText(fillColor);
+  
+  // Formater le texte pour qu'il s'adapte à la taille de la cellule
+  let displayName = name;
+  const words = name.split(/\s+/);
+  
+  // Ajuster l'affichage en fonction de la taille
+  if (width < 100) {
+    // Pour les petites cellules, afficher juste le début du nom
+    displayName = name.length > 8 ? name.slice(0, 6) + '...' : name;
+    return (
+      <g>
+        <rect x={x} y={y} width={width} height={height} style={{ fill: fillColor, stroke: 'none' }} />
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          style={{
+            fontSize: '9px',
+            fontWeight: 'bold',
+            fill: textColor,
+            pointerEvents: 'none',
+          }}
+        >
+          {displayName}
+        </text>
+      </g>
+    );
+  }
+  
+  // Pour les cellules plus grandes, formater le texte sur plusieurs lignes si nécessaire
   return (
     <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        style={{
-          fill: color,
-          stroke: '#fff',
-          strokeWidth: 2,
-          strokeOpacity: 1
-        }}
-      />
-      <text
-        x={x + width / 2}
-        y={y + height / 2 - 7}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fontSize: width < 50 ? '10px' : width < 100 ? '12px' : '14px',
-          fontWeight: 'bold',
-          fill: getContrastText(color || '#000000'),
-          pointerEvents: 'none',
-        }}
-      >
-        {name}
-      </text>
-      <text
-        x={x + width / 2}
-        y={y + height / 2 + 10}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fontSize: '10px',
-          fill: getContrastText(color || '#000000'),
-          pointerEvents: 'none',
-        }}
-      >
-        {payload && payload.revenue_percentage ? formatPercent(payload.revenue_percentage) : ""}
-      </text>
+      <rect x={x} y={y} width={width} height={height} style={{ fill: fillColor, stroke: 'none' }} />
+      {words.length > 1 ? (
+        <>
+          {/* Afficher les mots sur plusieurs lignes */}
+          {words.map((word, i) => (
+            <text
+              key={i}
+              x={x + width / 2}
+              y={y + height / 2 - 10 + (i * 16)}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{
+                fontSize: '11px',
+                fontWeight: 'bold',
+                fill: textColor,
+                pointerEvents: 'none',
+              }}
+            >
+              {word}
+            </text>
+          ))}
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 16}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{
+              fontSize: '10px',
+              fill: textColor,
+              pointerEvents: 'none',
+            }}
+          >
+            {payload && payload.revenue_percentage ? formatPercent(payload.revenue_percentage) : ""}
+          </text>
+        </>
+      ) : (
+        <>
+          {/* Afficher le nom sur une seule ligne */}
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - 7}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{
+              fontSize: '12px',
+              fontWeight: 'bold',
+              fill: textColor,
+              pointerEvents: 'none',
+            }}
+          >
+            {displayName}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 10}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{
+              fontSize: '10px',
+              fill: textColor,
+              pointerEvents: 'none',
+            }}
+          >
+            {payload && payload.revenue_percentage ? formatPercent(payload.revenue_percentage) : ""}
+          </text>
+        </>
+      )}
     </g>
   );
 };
@@ -242,17 +317,23 @@ const UniverseTreemap: React.FC = () => {
 
   const formattedData = formatDataForTreemap(data);
   
-  // Trier les données selon le critère sélectionné
-  const sortedData = [...formattedData].sort((a, b) => {
-    if (sortBy === 'margin') {
-      return b.margin - a.margin;
-    }
-    return b.value - a.value;
-  });
-  
   // Calculer les totaux
   const totalRevenue = formattedData.reduce((sum, item) => sum + item.value, 0);
   const totalMargin = formattedData.reduce((sum, item) => sum + item.margin, 0);
+  
+  // Trier les données selon le critère sélectionné
+  const sortedData = [...formattedData]
+    .sort((a, b) => {
+      if (sortBy === 'margin') {
+        return b.margin - a.margin;
+      }
+      return b.value - a.value;
+    })
+    // Assurer que les petites valeurs sont toujours visibles
+    .map(item => ({ 
+      ...item, 
+      size: Math.max(item.size, totalRevenue * 0.005) // Minimum 0.5% du total
+    }));
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8">
@@ -269,7 +350,7 @@ const UniverseTreemap: React.FC = () => {
               {sortBy === 'revenue' 
                 ? `CA Total: ${formatCurrency(totalRevenue)}`
                 : `Marge Totale: ${formatCurrency(totalMargin)}`}
-              {' • '}{data.length} univers
+              {' • '}{formattedData.length} univers
             </p>
           </div>
         </div>
@@ -302,9 +383,9 @@ const UniverseTreemap: React.FC = () => {
         <ResponsiveContainer width="100%" height="100%">
           <Treemap
             data={sortedData}
-            dataKey={sortBy === 'revenue' ? 'value' : 'margin'}
+            dataKey="size"
             aspectRatio={4/3}
-            stroke="#fff"
+            stroke="none"
             content={<CustomTreemapContent />}
           >
             <Tooltip 

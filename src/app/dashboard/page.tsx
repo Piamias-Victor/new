@@ -57,11 +57,11 @@ export default function Dashboard() {
         {/* Navigation Cards */}
         <NavigationCards />
         
-        {/* Component de débogage pour l'univers */}
-        <UniverseTreemap />
-        
         {/* Nouveau composant d'évolution des ventes */}
         <SalesEvolutionChart />
+
+        {/* Component de débogage pour l'univers */}
+        <UniverseTreemap />
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">

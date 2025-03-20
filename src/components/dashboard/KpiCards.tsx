@@ -327,7 +327,7 @@ export function KpiCards() {
   } : undefined;
   
   const marginMoneyView = {
-    title: "Marge",
+    title: "Marge €",
     value: formatCurrency(totalMargin),
     change: comparison ? {
       displayValue: comparison.evolution.margin.displayValue,
@@ -343,7 +343,7 @@ export function KpiCards() {
   } : undefined;
   
   const stockUnitsView = {
-    title: "Stock",
+    title: "Stock en unités",
     value: formatNumber(totalUnits),
     change: stockComparison ? {
       displayValue: stockComparison.evolution.units.displayValue,
@@ -422,7 +422,7 @@ export function KpiCards() {
       {/* Marge */}
       <KpiCard
         icon={<FiTrendingUp size={24} />}
-        title="Marge"
+        title="Taux de marge"
         value={`${marginPercentage.toFixed(1)}%`}
         change={marginPercentChange}
         alternateView={marginMoneyView}
@@ -433,7 +433,7 @@ export function KpiCards() {
       {/* Stock */}
       <KpiCard
         icon={<FiPackage size={24} />}
-        title="Stock"
+        title="Stock €"
         value={formatCurrency(totalStockValueHT)}
         change={stockChange}
         alternateView={stockUnitsView}

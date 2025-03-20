@@ -1,23 +1,22 @@
-// src/hooks/useSalesByUniverse.ts
-import { useState, useEffect } from 'react';
-import { useDateRange } from '@/contexts/DateRangeContext';
-import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useDateRange } from "@/contexts/DateRangeContext";
+import { usePharmacySelection } from "@/providers/PharmacyProvider";
+import { useState, useEffect } from "react";
 
-export interface UniverseSalesItem {
-  universe: string;
-  revenue: number;
-  margin: number;
-  quantity: number;
-  revenue_percentage: number;
-  margin_percentage: number;
-}
-
-interface SalesByUniverseData {
-  data: UniverseSalesItem[];
+// Define the SalesByUniverseData type
+type SalesByUniverseData = {
+  data: {
+    universe: string;
+    revenue: number;
+    margin: number;
+    quantity: number;
+    revenue_percentage: number;
+    margin_percentage: number;
+  }[];
   isLoading: boolean;
   error: string | null;
-}
+};
 
+// src/hooks/useSalesByUniverse.ts - Version améliorée
 export function useSalesByUniverse(): SalesByUniverseData {
   const [data, setData] = useState<SalesByUniverseData>({
     data: [],
@@ -63,8 +62,18 @@ export function useSalesByUniverse(): SalesByUniverseData {
         
         const result = await response.json();
         
+        // Assurer que tous les champs numériques sont bien des nombres
+        const processedData = (result.data || []).map(item => ({
+          universe: item.universe || "Non catégorisé",
+          revenue: Number(item.revenue) || 0,
+          margin: Number(item.margin) || 0,
+          quantity: Number(item.quantity) || 0,
+          revenue_percentage: Number(item.revenue_percentage) || 0,
+          margin_percentage: Number(item.margin_percentage) || 0
+        }));
+        
         setData({
-          data: result.data || [],
+          data: processedData,
           isLoading: false,
           error: null
         });
