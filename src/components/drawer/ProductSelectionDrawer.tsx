@@ -5,6 +5,7 @@ import { LabSearch } from './search/LabSearch';
 import { ProductSearch } from './search/ProductSearch';
 import { SegmentSearch } from './search/SegmentSearch';
 import { Product } from './search/ProductSearchResults';
+import { Laboratory } from './search/LabSearchResults';
 
 interface ProductSelectionDrawerProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface ProductSelectionDrawerProps {
   onClose: () => void;
   selectedProducts: Product[];
   onToggleProduct: (product: Product) => void;
+  selectedLabs?: Laboratory[];
+  onToggleLab?: (lab: Laboratory) => void;
   onConfirmSelection?: () => void;
 }
 
@@ -26,11 +29,16 @@ export function ProductSelectionDrawer({
   onClose, 
   selectedProducts,
   onToggleProduct,
+  selectedLabs = [],
+  onToggleLab = () => {},
   onConfirmSelection
 }: ProductSelectionDrawerProps) {
   const [activeTab, setActiveTab] = useState<SearchTab>('product');
 
   if (!isOpen) return null;
+
+  // Calculer le nombre total de produits/laboratoires sélectionnés
+  const totalSelected = selectedProducts.length + selectedLabs.length;
 
   return (
     <>
@@ -51,7 +59,7 @@ export function ProductSelectionDrawer({
               Sélection de produits
             </h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedProducts.length} produit(s) sélectionné(s)
+              {totalSelected} produit(s) et laboratoire(s) sélectionné(s)
             </span>
           </div>
           <button 
@@ -104,19 +112,24 @@ export function ProductSelectionDrawer({
               onToggleProduct={onToggleProduct} 
             />
           )}
-          {activeTab === 'laboratory' && <LabSearch />}
+          {activeTab === 'laboratory' && (
+            <LabSearch 
+              selectedLabs={selectedLabs}
+              onToggleLab={onToggleLab}
+            />
+          )}
           {activeTab === 'segment' && <SegmentSearch />}
         </div>
 
         {/* Pied du drawer avec bouton de confirmation */}
-        {selectedProducts.length > 0 && (
+        {totalSelected > 0 && (
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={onConfirmSelection}
               className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg flex items-center justify-center"
             >
               <FiCheck className="mr-2" size={16} />
-              Confirmer la sélection ({selectedProducts.length})
+              Confirmer la sélection ({totalSelected})
             </button>
           </div>
         )}

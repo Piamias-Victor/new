@@ -14,6 +14,7 @@ import { ProductSelectionDrawer } from '../drawer/ProductSelectionDrawer';
 import { useDrawerState } from '@/hooks/useDrawerState';
 import { ProductSelectionButton } from './header/ProductSelectionButton';
 import { Product } from '../drawer/search/ProductSearchResults';
+import { Laboratory } from '../drawer/search/LabSearchResults';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -46,6 +47,7 @@ export function Header() {
   };
 
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [selectedLabs, setSelectedLabs] = useState<Laboratory[]>([]);
 
   // Fonction pour ajouter/retirer un produit de la sélection
   const handleToggleProduct = (product: Product) => {
@@ -62,14 +64,30 @@ export function Header() {
       }
     });
   };
+
+  // Fonction pour ajouter/retirer un laboratoire de la sélection
+  const handleToggleLab = (lab: Laboratory) => {
+    setSelectedLabs(prevSelected => {
+      // Vérifier si le laboratoire est déjà sélectionné
+      const isSelected = prevSelected.some(l => l.name === lab.name);
+      
+      if (isSelected) {
+        // Si déjà sélectionné, le retirer
+        return prevSelected.filter(l => l.name !== lab.name);
+      } else {
+        // Sinon, l'ajouter
+        return [...prevSelected, lab];
+      }
+    });
+  };
   
   // Fonction pour confirmer la sélection (à implémenter selon vos besoins)
   const handleConfirmSelection = () => {
-    console.log('Produits sélectionnés confirmés:', selectedProducts);
-    // Vous pouvez stocker ces produits dans un état global, les envoyer à l'API, etc.
+    console.log('Produits sélectionnés:', selectedProducts);
+    console.log('Laboratoires sélectionnés:', selectedLabs);
+    // Vous pouvez stocker ces produits et laboratoires dans un état global, les envoyer à l'API, etc.
     closeDrawer();
   };
-  
 
   return (
     <>
@@ -161,8 +179,16 @@ export function Header() {
       </header>
 
       {/* Drawer de sélection de produits (en dehors du header) */}
-      <ProductSelectionDrawer isOpen={isOpen} onClose={closeDrawer} isClosing={useDrawerState().isClosing}  selectedProducts={selectedProducts}
-  onToggleProduct={handleToggleProduct}
-  onConfirmSelection={handleConfirmSelection} />    </>
+      <ProductSelectionDrawer 
+        isOpen={isOpen} 
+        onClose={closeDrawer} 
+        isClosing={useDrawerState().isClosing}  
+        selectedProducts={selectedProducts}
+        onToggleProduct={handleToggleProduct}
+        selectedLabs={selectedLabs}
+        onToggleLab={handleToggleLab}
+        onConfirmSelection={handleConfirmSelection} 
+      />
+    </>
   );
 }
