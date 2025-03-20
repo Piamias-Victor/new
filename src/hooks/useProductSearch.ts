@@ -1,4 +1,3 @@
-// Mise à jour de useProductSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
@@ -20,16 +19,13 @@ interface SearchState {
   error: string | null;
 }
 
-// Mise à jour de l'interface pour inclure le type 'suffix'
 interface SearchParams {
   term: string;
-  type: 'name' | 'code' | 'suffix' | 'lab' | 'category';
+  type: 'name' | 'code' | 'list';
+  pharmacyIds?: string[];
+  limit?: number;
 }
 
-/**
- * Hook pour la recherche de produits
- * Permet de chercher des produits selon différents critères
- */
 export function useProductSearch() {
   const [state, setState] = useState<SearchState>({
     results: [],
@@ -54,54 +50,123 @@ export function useProductSearch() {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      // Construire les paramètres de la requête
-      const queryParams = new URLSearchParams();
+      let searchResults: SearchProduct[] = [];
       
-      // Ajouter le terme de recherche selon le type
-      switch (params.type) {
-        case 'name':
-          queryParams.append('name', params.term);
-          break;
-        case 'code':
-          queryParams.append('code', params.term);
-          break;
-        case 'suffix':
-          // Enlever l'astérisque et envoyer juste le suffixe
-          queryParams.append('suffix', params.term.replace(/^\*+/, ''));
-          break;
-        case 'lab':
-          queryParams.append('lab', params.term);
-          break;
-        case 'category':
-          queryParams.append('category', params.term);
-          break;
-      }
-      
-      // Ajouter les pharmacies sélectionnées
-      if (selectedPharmacyIds.length > 0) {
-        selectedPharmacyIds.forEach(id => {
-          queryParams.append('pharmacyIds', id);
+      if (params.type === 'name') {
+        const queryParams = new URLSearchParams({
+          name: params.term,
+          limit: (params.limit || 200).toString()
         });
+        
+        // Ajouter les pharmacies sélectionnées
+        if (selectedPharmacyIds.length > 0) {
+          selectedPharmacyIds.forEach(id => {
+            queryParams.append('pharmacyIds', id);
+          });
+        }
+        
+        const response = await fetch(`/api/search/products?${queryParams}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        searchResults = data.products || [];
+      } else if (params.type === 'code') {
+        const queryParams = new URLSearchParams({
+          code: params.term,
+          limit: (params.limit || 200).toString()
+        });
+        
+        // Ajouter les pharmacies sélectionnées
+        if (selectedPharmacyIds.length > 0) {
+          selectedPharmacyIds.forEach(id => {
+            queryParams.append('pharmacyIds', id);
+          });
+        }
+        
+        const response = await fetch(`/api/search/products?${queryParams}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        searchResults = data.products || [];
+      } else if (params.type === 'list') {
+        // Diviser la liste et rechercher chaque code
+        const codes = params.term
+          .split(/[\n,;\s\t]+/) 
+          .map(code => code.trim())
+          .filter(Boolean);
+        
+        // Si aucun code valide, on lance pas la recherche
+        if (codes.length === 0) {
+          setState(prev => ({
+            ...prev,
+            results: [],
+            isLoading: false,
+            error: 'Aucun code valide n\'a été trouvé'
+          }));
+          return;
+        }
+        
+        // Recherche pour chaque code
+        const searchPromises = codes.map(async (code) => {
+          const queryParams = new URLSearchParams({
+            code: code,
+            limit: '1'
+          });
+          
+          // Ajouter les pharmacies sélectionnées
+          if (selectedPharmacyIds.length > 0) {
+            selectedPharmacyIds.forEach(id => {
+              queryParams.append('pharmacyIds', id);
+            });
+          }
+          
+          const response = await fetch(`/api/search/products?${queryParams}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            cache: 'no-store'
+          });
+          
+          if (!response.ok) {
+            console.error(`Erreur pour le code ${code}`);
+            return [];
+          }
+          
+          const data = await response.json();
+          return data.products || [];
+        });
+        
+        // Attendre toutes les recherches
+        const resultSets = await Promise.all(searchPromises);
+        
+        // Aplatir et filtrer les résultats uniques
+        searchResults = resultSets.flat().filter((product, index, self) => 
+          index === self.findIndex((p) => p.code_13_ref === product.code_13_ref)
+        );
       }
-      
-      // Effectuer la requête avec fetch au lieu d'apiClient
-      const response = await fetch(`/api/search/products?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
       
       // Mettre à jour l'état avec les résultats
       setState({
-        results: data.products || [],
+        results: searchResults,
         isLoading: false,
         error: null
       });

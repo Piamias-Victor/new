@@ -2,9 +2,10 @@
 import React, { InputHTMLAttributes } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 
-interface SearchInputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface SearchInputProps extends InputHTMLAttributes<HTMLInputElement | HTMLTextAreaElement> {
   onSearch: () => void;
   onClear?: () => void;
+  multiline?: boolean;
 }
 
 /**
@@ -15,18 +16,29 @@ export function SearchInput({
   onClear,
   className, 
   value,
+  multiline = false,
   ...props 
 }: SearchInputProps) {
+  const baseClasses = `w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg 
+    shadow-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent
+    bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${className}`;
+
   return (
     <div className="relative">
-      <input
-        type="text"
-        className={`w-full p-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg 
-          shadow-sm focus:ring-2 focus:ring-sky-500 focus:border-transparent
-          bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${className}`}
-        value={value}
-        {...props}
-      />
+      {multiline ? (
+        <textarea
+          className={`${baseClasses} min-h-[100px] resize-y`}
+          value={value}
+          {...props as React.TextareaHTMLAttributes<HTMLTextAreaElement>}
+        />
+      ) : (
+        <input
+          type="text"
+          className={baseClasses}
+          value={value}
+          {...props as React.InputHTMLAttributes<HTMLInputElement>}
+        />
+      )}
       
       {/* Bouton de nettoyage visible si valeur non vide et si onClear fourni */}
       {value && onClear && (
