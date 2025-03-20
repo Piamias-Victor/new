@@ -42,10 +42,6 @@ export function MobileMenu({ isDashboard, status, sessionData, closeMenu, handle
         {/* Actions utilisateur mobile */}
         {status === 'authenticated' ? (
           <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <div className="px-3 py-2 text-gray-700 dark:text-gray-300 font-medium">
-              <FiUser className="mr-2 inline-block" />
-              Bonjour, {sessionData?.user?.name || 'Utilisateur'}
-            </div>
             {!isDashboard && (
               <Link 
                 href="/dashboard" 

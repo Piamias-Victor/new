@@ -28,10 +28,6 @@ export function DesktopNav({ isDashboard, status, sessionData, handleSignOut }: 
       {/* Actions utilisateur */}
       {status === 'authenticated' ? (
         <div className="flex items-center space-x-2">
-          <div className="text-gray-700 dark:text-gray-300 text-sm font-medium px-3 py-1">
-            <FiUser className="mr-2 inline-block" />
-            Bonjour, {sessionData?.user?.name || 'Utilisateur'}
-          </div>
           {!isDashboard && (
             <Link href="/dashboard" className="flex items-center px-4 py-2 rounded-md bg-sky-600 text-white hover:bg-sky-700 transition-colors duration-200 text-sm font-medium">
               <FiBarChart2 className="mr-2" />
