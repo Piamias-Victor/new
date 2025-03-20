@@ -1,80 +1,116 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
-import productService, { Product, SearchParams } from '@/services/productService';
+import apiClient from '@/utils/apiUtils';
 
-interface UseProductSearchResult {
-  results: Product[];
-  isLoading: boolean;
-  error: string | null;
-  searchProducts: (params: Omit<SearchParams, 'pharmacyIds'>) => Promise<void>;
-  clearResults: () => void;
+export interface SearchProduct {
+  id: string;
+  name: string;
+  display_name: string;
+  code_13_ref: string;
+  category?: string;
+  brand_lab?: string;
+  price_with_tax?: number;
+  current_stock?: number;
+  tva_rate?: number;
 }
 
-export function useProductSearch(initialLimit = 200): UseProductSearchResult {
-  const [results, setResults] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+interface SearchState {
+  results: SearchProduct[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface SearchParams {
+  term: string;
+  searchType: 'name' | 'code' | 'lab' | 'category';
+}
+
+/**
+ * Hook pour la recherche de produits
+ * Permet de chercher des produits selon différents critères
+ */
+export function useProductSearch() {
+  const [state, setState] = useState<SearchState>({
+    results: [],
+    isLoading: false,
+    error: null
+  });
   
   const { selectedPharmacyIds } = usePharmacySelection();
   
-  const searchProducts = useCallback(async (params: Omit<SearchParams, 'pharmacyIds'>) => {
-    try {
-      // Validation des paramètres
-      if (!params.term || params.term.trim() === '') {
-        setError('Veuillez entrer un terme de recherche');
-        return;
-      }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      // Nettoyer le terme de recherche
-      const cleanTerm = params.term.trim();
-      
-      // Préparer les paramètres de recherche avec les pharmacies sélectionnées
-      const searchParams: SearchParams = {
-        ...params,
-        term: cleanTerm,
-        pharmacyIds: selectedPharmacyIds,
-        limit: params.limit || initialLimit
-      };
-      
-      // Traitement spécial pour le mode liste
-      if (params.type === 'list') {
-        // Vérifier s'il y a du contenu après nettoyage
-        const codes = cleanTerm.split(/[\n,;]/).map(code => code.trim()).filter(Boolean);
-        if (codes.length === 0) {
-          setError('Veuillez entrer au moins un code valide');
-          setIsLoading(false);
-          return;
-        }
-      }
-      
-      // Appeler le service de recherche
-      const data = await productService.searchProducts(searchParams);
-      setResults(data);
-    } catch (err) {
-      console.error('Erreur lors de la recherche:', err);
-      setError(err instanceof Error ? err.message : 'Erreur de recherche inconnue');
-      setResults([]);
-    } finally {
-      setIsLoading(false);
+  const searchProducts = useCallback(async (params: SearchParams) => {
+    // Validation de base
+    if (!params.term || params.term.trim().length < 2) {
+      setState(prev => ({
+        ...prev,
+        error: 'Veuillez saisir au moins 2 caractères',
+        results: []
+      }));
+      return;
     }
-  }, [selectedPharmacyIds, initialLimit]);
+    
+    // Démarrer le chargement
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      // Construire les paramètres de la requête
+      const queryParams = new URLSearchParams();
+      
+      // Ajouter le terme de recherche selon le type
+      switch (params.searchType) {
+        case 'name':
+          queryParams.append('name', params.term);
+          break;
+        case 'code':
+          queryParams.append('code', params.term);
+          break;
+        case 'lab':
+          queryParams.append('lab', params.term);
+          break;
+        case 'category':
+          queryParams.append('category', params.term);
+          break;
+      }
+      
+      // Ajouter les pharmacies sélectionnées
+      if (selectedPharmacyIds.length > 0) {
+        selectedPharmacyIds.forEach(id => {
+          queryParams.append('pharmacyIds', id);
+        });
+      }
+      
+      // Effectuer la requête
+      const response = await apiClient.get(`/api/search/products?${queryParams}`);
+      
+      // Mettre à jour l'état avec les résultats
+      setState({
+        results: response.data.products || [],
+        isLoading: false,
+        error: null
+      });
+    } catch (error) {
+      // Gérer les erreurs
+      setState({
+        results: [],
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Erreur lors de la recherche'
+      });
+    }
+  }, [selectedPharmacyIds]);
   
+  // Fonction pour réinitialiser les résultats
   const clearResults = useCallback(() => {
-    setResults([]);
-    setError(null);
+    setState({
+      results: [],
+      isLoading: false,
+      error: null
+    });
   }, []);
   
-  return { 
-    results, 
-    isLoading, 
-    error, 
+  return {
+    ...state,
     searchProducts,
     clearResults
   };
 }
-
-export default useProductSearch;
