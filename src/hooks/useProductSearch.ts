@@ -1,4 +1,4 @@
-// src/hooks/useProductSearch.ts
+// Mise à jour de useProductSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
@@ -20,9 +20,10 @@ interface SearchState {
   error: string | null;
 }
 
+// Mise à jour de l'interface pour inclure le type 'suffix'
 interface SearchParams {
   term: string;
-  type: 'name' | 'code' | 'lab' | 'category';
+  type: 'name' | 'code' | 'suffix' | 'lab' | 'category';
 }
 
 /**
@@ -63,6 +64,10 @@ export function useProductSearch() {
           break;
         case 'code':
           queryParams.append('code', params.term);
+          break;
+        case 'suffix':
+          // Enlever l'astérisque et envoyer juste le suffixe
+          queryParams.append('suffix', params.term.replace(/^\*+/, ''));
           break;
         case 'lab':
           queryParams.append('lab', params.term);

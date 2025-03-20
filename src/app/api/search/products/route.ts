@@ -8,13 +8,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const name = searchParams.get('name');
     const code = searchParams.get('code');
+    const suffix = searchParams.get('suffix');
     const lab = searchParams.get('lab');
     const category = searchParams.get('category');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     
     // Vérifier qu'au moins un paramètre de recherche est présent
-    if (!name && !code && !lab && !category) {
+    if (!name && !code && !suffix && !lab && !category) {
       return NextResponse.json(
         { error: 'Au moins un critère de recherche est requis' },
         { status: 400 }
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     
     try {
       // Le terme de recherche
-      const searchTerm = name || code || lab || category || '';
+      const searchTerm = name || code || suffix || lab || category || '';
       
       // Construction de la requête
       let query = '';
@@ -95,6 +96,13 @@ export async function GET(request: Request) {
       if (code) {
         whereConditions.push(`p.code_13_ref_id LIKE $${paramIndex}`);
         params.push('%' + code + '%');
+        paramIndex++;
+      }
+      
+      // Recherche par suffixe (fin de code)
+      if (suffix) {
+        whereConditions.push(`p.code_13_ref_id LIKE $${paramIndex}`);
+        params.push('%' + suffix);
         paramIndex++;
       }
       
