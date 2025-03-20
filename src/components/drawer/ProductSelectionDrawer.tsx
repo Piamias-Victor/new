@@ -1,9 +1,9 @@
-// src/components/drawer/ProductSelectionDrawer.tsx
 import React, { useState } from 'react';
+import { SegmentSearch } from './search/SegmentSearch';
+import { Segment } from './search/SegmentSearchResults';
 import { FiX, FiCheck } from 'react-icons/fi';
 import { LabSearch } from './search/LabSearch';
 import { ProductSearch } from './search/ProductSearch';
-import { SegmentSearch } from './search/SegmentSearch';
 import { Product } from './search/ProductSearchResults';
 import { Laboratory } from './search/LabSearchResults';
 
@@ -15,14 +15,13 @@ interface ProductSelectionDrawerProps {
   onToggleProduct: (product: Product) => void;
   selectedLabs?: Laboratory[];
   onToggleLab?: (lab: Laboratory) => void;
+  selectedSegments?: Segment[];
+  onToggleSegment?: (segment: Segment) => void;
   onConfirmSelection?: () => void;
 }
 
 type SearchTab = 'product' | 'laboratory' | 'segment';
 
-/**
- * Drawer de sélection de produits avec 3 onglets de recherche
- */
 export function ProductSelectionDrawer({ 
   isOpen, 
   isClosing, 
@@ -31,14 +30,16 @@ export function ProductSelectionDrawer({
   onToggleProduct,
   selectedLabs = [],
   onToggleLab = () => {},
+  selectedSegments = [],
+  onToggleSegment = () => {},
   onConfirmSelection
 }: ProductSelectionDrawerProps) {
   const [activeTab, setActiveTab] = useState<SearchTab>('product');
 
   if (!isOpen) return null;
 
-  // Calculer le nombre total de produits/laboratoires sélectionnés
-  const totalSelected = selectedProducts.length + selectedLabs.length;
+  // Calculer le nombre total de produits/laboratoires/segments sélectionnés
+  const totalSelected = selectedProducts.length + selectedLabs.length + selectedSegments.length;
 
   return (
     <>
@@ -59,7 +60,7 @@ export function ProductSelectionDrawer({
               Sélection de produits
             </h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {totalSelected} produit(s) et laboratoire(s) sélectionné(s)
+              {totalSelected} produit(s), laboratoire(s) et segment(s) sélectionné(s)
             </span>
           </div>
           <button 
@@ -102,10 +103,7 @@ export function ProductSelectionDrawer({
           >
             Par segment
           </button>
-        </div>
-
-        {/* Contenu du drawer - change selon l'onglet actif */}
-        <div className="flex-1 overflow-y-auto p-4">
+        </div><div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'product' && (
             <ProductSearch 
               selectedProducts={selectedProducts} 
@@ -118,7 +116,12 @@ export function ProductSelectionDrawer({
               onToggleLab={onToggleLab}
             />
           )}
-          {activeTab === 'segment' && <SegmentSearch />}
+          {activeTab === 'segment' && (
+            <SegmentSearch
+              selectedSegments={selectedSegments}
+              onToggleSegment={onToggleSegment}
+            />
+          )}
         </div>
 
         {/* Pied du drawer avec bouton de confirmation */}

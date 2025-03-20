@@ -1,8 +1,7 @@
-// src/components/drawer/search/SegmentSearchResults.tsx
 import React from 'react';
-import { FiGrid, FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { FiGrid, FiAlertCircle, FiLoader, FiCheck } from 'react-icons/fi';
 
-interface Segment {
+export interface Segment {
   id: string;
   name: string;
   parentCategory?: string;
@@ -13,12 +12,22 @@ interface SegmentSearchResultsProps {
   results: Segment[];
   isLoading: boolean;
   error: string | null;
+  selectedSegments: Segment[];
+  onToggleSegment: (segment: Segment) => void;
 }
 
-/**
- * Composant pour afficher les résultats de recherche de segments
- */
-export function SegmentSearchResults({ results, isLoading, error }: SegmentSearchResultsProps) {
+export function SegmentSearchResults({ 
+  results, 
+  isLoading, 
+  error, 
+  selectedSegments,
+  onToggleSegment
+}: SegmentSearchResultsProps) {
+  // Vérifier si un segment est sélectionné
+  const isSelected = (segment: Segment) => {
+    return selectedSegments.some(s => s.id === segment.id);
+  };
+
   // État de chargement
   if (isLoading) {
     return (
@@ -72,16 +81,29 @@ export function SegmentSearchResults({ results, isLoading, error }: SegmentSearc
           {segments.map(segment => (
             <div 
               key={segment.id}
-              className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer"
+              className={`p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer transition-colors ${
+                isSelected(segment) 
+                  ? 'border-sky-400 dark:border-sky-500 bg-sky-50 dark:bg-sky-900/20' 
+                  : 'border-gray-200 dark:border-gray-700'
+              }`}
+              onClick={() => onToggleSegment(segment)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-full mr-3">
-                    <FiGrid size={18} />
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  {/* Icône de sélection */}
+                  <div className={`mr-3 p-1 rounded-full ${
+                    isSelected(segment) 
+                      ? 'bg-sky-100 text-sky-500 dark:bg-sky-900/30 dark:text-sky-400' 
+                      : 'bg-gray-100 text-gray-400 dark:bg-gray-700/50 dark:text-gray-500'
+                  }`}>
+                    <FiCheck size={14} />
                   </div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    {segment.name}
-                  </h3>
+                  
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      {segment.name}
+                    </h3>
+                  </div>
                 </div>
                 
                 {/* Badge avec le nombre de produits */}

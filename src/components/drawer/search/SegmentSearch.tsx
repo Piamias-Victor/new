@@ -1,80 +1,41 @@
-// src/components/drawer/search/SegmentSearch.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { SearchInput } from './SearchInput';
-import { SegmentSearchResults } from './SegmentSearchResults';
+import { SegmentSearchResults, Segment } from './SegmentSearchResults';
+import { useSegmentSearch } from '@/hooks/useSegmentSearch';
 
-
-interface Segment {
-  id: string;
-  name: string;
-  parentCategory?: string;
-  productCount: number;
+interface SegmentSearchProps {
+  selectedSegments?: Segment[];
+  onToggleSegment?: (segment: Segment) => void;
 }
 
-/**
- * Composant de recherche par segment (catégorie/segment)
- */
-export function SegmentSearch() {
+export function SegmentSearch({ 
+  selectedSegments = [], 
+  onToggleSegment = () => {} 
+}: SegmentSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<Segment[]>([]);
-  const [allSegments, setAllSegments] = useState<Segment[]>([]);
+  const { results, isLoading, error, searchSegments, clearResults } = useSegmentSearch();
 
-  // Chargement initial des segments
-  useEffect(() => {
-    const fetchSegments = async () => {
-      setIsLoading(true);
-      try {
-        // Simulation de chargement - à remplacer par un appel API réel
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Données fictives pour l'exemple
-        const demoSegments: Segment[] = [
-          { id: '1', name: 'ANTIBIOTIQUES', parentCategory: 'MÉDICAMENTS', productCount: 120 },
-          { id: '2', name: 'ANTALGIQUES', parentCategory: 'MÉDICAMENTS', productCount: 95 },
-          { id: '3', name: 'ANTIHISTAMINIQUES', parentCategory: 'MÉDICAMENTS', productCount: 85 },
-          { id: '4', name: 'SOINS VISAGE', parentCategory: 'DERMOCOSMÉTIQUE', productCount: 150 },
-          { id: '5', name: 'SOINS CORPS', parentCategory: 'DERMOCOSMÉTIQUE', productCount: 130 },
-          { id: '6', name: 'SOLAIRES', parentCategory: 'DERMOCOSMÉTIQUE', productCount: 75 },
-          { id: '7', name: 'COMPLÉMENTS ALIMENTAIRES', parentCategory: 'NATUREL', productCount: 110 },
-          { id: '8', name: 'PHYTOTHÉRAPIE', parentCategory: 'NATUREL', productCount: 95 },
-          { id: '9', name: 'MATÉRIEL MÉDICAL', productCount: 60 },
-          { id: '10', name: 'ORTHOPÉDIE', productCount: 45 }
-        ];
-        
-        setAllSegments(demoSegments);
-        setResults(demoSegments);
-      } catch (err) {
-        setError("Erreur lors du chargement des segments");
-        console.error("Erreur lors du chargement des segments:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  console.log('Résultats de recherche de segments:', { results, isLoading, error });
 
-    fetchSegments();
-  }, []);
-
-  // Filtrer les résultats selon le terme de recherche
+  // Gérer la recherche
   const handleSearch = () => {
-    if (searchTerm.trim() === '') {
-      setResults(allSegments);
-      return;
+    console.log('Déclenchement de la recherche de segments');
+    if (searchTerm.trim().length >= 2) {
+      searchSegments(searchTerm);
     }
-    
-    const filtered = allSegments.filter(segment => 
-      segment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (segment.parentCategory && segment.parentCategory.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-    
-    setResults(filtered);
   };
 
+  // Soumettre avec touche Entrée
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && searchTerm.trim().length >= 2) {
       handleSearch();
     }
+  };
+
+  // Effacer la recherche
+  const handleClear = () => {
+    setSearchTerm('');
+    clearResults();
   };
 
   return (
@@ -87,6 +48,7 @@ export function SegmentSearch() {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           onSearch={handleSearch}
+          onClear={handleClear}
         />
 
         {/* Compteur de résultats */}
@@ -101,6 +63,8 @@ export function SegmentSearch() {
           results={results} 
           isLoading={isLoading} 
           error={error}
+          selectedSegments={selectedSegments}
+          onToggleSegment={onToggleSegment}
         />
       </div>
     </div>

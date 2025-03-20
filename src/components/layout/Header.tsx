@@ -15,6 +15,7 @@ import { useDrawerState } from '@/hooks/useDrawerState';
 import { ProductSelectionButton } from './header/ProductSelectionButton';
 import { Product } from '../drawer/search/ProductSearchResults';
 import { Laboratory } from '../drawer/search/LabSearchResults';
+import { Segment } from '../drawer/search/SegmentSearchResults';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -48,6 +49,7 @@ export function Header() {
 
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [selectedLabs, setSelectedLabs] = useState<Laboratory[]>([]);
+  const [selectedSegments, setSelectedSegments] = useState<Segment[]>([]);
 
   // Fonction pour ajouter/retirer un produit de la sélection
   const handleToggleProduct = (product: Product) => {
@@ -80,12 +82,29 @@ export function Header() {
       }
     });
   };
+
+  // Fonction pour ajouter/retirer un segment de la sélection
+  const handleToggleSegment = (segment: Segment) => {
+    setSelectedSegments(prevSelected => {
+      // Vérifier si le segment est déjà sélectionné
+      const isSelected = prevSelected.some(s => s.id === segment.id);
+      
+      if (isSelected) {
+        // Si déjà sélectionné, le retirer
+        return prevSelected.filter(s => s.id !== segment.id);
+      } else {
+        // Sinon, l'ajouter
+        return [...prevSelected, segment];
+      }
+    });
+  };
   
   // Fonction pour confirmer la sélection (à implémenter selon vos besoins)
   const handleConfirmSelection = () => {
     console.log('Produits sélectionnés:', selectedProducts);
     console.log('Laboratoires sélectionnés:', selectedLabs);
-    // Vous pouvez stocker ces produits et laboratoires dans un état global, les envoyer à l'API, etc.
+    console.log('Segments sélectionnés:', selectedSegments);
+    // Vous pouvez stocker ces produits, laboratoires et segments dans un état global, les envoyer à l'API, etc.
     closeDrawer();
   };
 
@@ -187,6 +206,8 @@ export function Header() {
         onToggleProduct={handleToggleProduct}
         selectedLabs={selectedLabs}
         onToggleLab={handleToggleLab}
+        selectedSegments={selectedSegments}
+        onToggleSegment={handleToggleSegment}
         onConfirmSelection={handleConfirmSelection} 
       />
     </>
