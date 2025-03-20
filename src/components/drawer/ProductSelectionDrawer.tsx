@@ -1,24 +1,19 @@
 // src/components/drawer/ProductSelectionDrawer.tsx
+'use client';
+
 import React, { useState } from 'react';
 import { FiX, FiCheck } from 'react-icons/fi';
 import { LabSearch } from './search/LabSearch';
 import { ProductSearch } from './search/ProductSearch';
-import { Product } from './search/ProductSearchResults';
-import { Laboratory } from './search/LabSearchResults';
+import { UnifiedSegmentSearch } from './search/SegmentSearch';
 import { SelectionSummary } from './SelectionSummary';
-import { UnifiedSegment, UnifiedSegmentSearch } from './search/SegmentSearch';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface ProductSelectionDrawerProps {
   isOpen: boolean;
   isClosing?: boolean;
   onClose: () => void;
-  selectedProducts: Product[];
-  onToggleProduct: (product: Product) => void;
-  selectedLabs?: Laboratory[];
-  onToggleLab?: (lab: Laboratory) => void;
-  selectedSegments?: UnifiedSegment[];
-  onToggleSegment?: (segment: UnifiedSegment) => void;
-  onConfirmSelection?: () => void;
+  onApplyFilter?: () => void;
 }
 
 type SearchTab = 'product' | 'laboratory' | 'segment';
@@ -27,55 +22,30 @@ export function ProductSelectionDrawer({
   isOpen, 
   isClosing, 
   onClose, 
-  selectedProducts,
-  onToggleProduct,
-  selectedLabs = [],
-  onToggleLab = () => {},
-  selectedSegments = [],
-  onToggleSegment = () => {},
-  onConfirmSelection
+  onApplyFilter 
 }: ProductSelectionDrawerProps) {
   const [activeTab, setActiveTab] = useState<SearchTab>('product');
+  
+  const {
+    selectedProducts,
+    selectedLabs,
+    selectedSegments,
+    selectedCodes,
+    toggleProduct,
+    toggleLab,
+    toggleSegment,
+    clearFilters,
+    totalSelectedCount
+  } = useProductFilter();
 
   if (!isOpen) return null;
-
-  // Calculer le nombre total de produits/laboratoires/segments sélectionnés
-  const totalSelected = selectedProducts.length + selectedLabs.length + selectedSegments.length;
   
-  // Calculer le nombre total de codes EAN associés
-  const totalCodes = [
-    ...selectedProducts.map(p => p.code_13_ref),
-    ...selectedLabs.flatMap(lab => lab.code_13_refs || []),
-    ...selectedSegments.flatMap(segment => segment.code_13_refs || [])
-  ].filter((code, index, self) => self.indexOf(code) === index).length;
-  
-  // Fonctions pour supprimer des éléments
-  const handleRemoveProduct = (product: Product) => {
-    onToggleProduct(product);
-  };
-  
-  const handleRemoveLab = (lab: Laboratory) => {
-    if (onToggleLab) onToggleLab(lab);
-  };
-  
-  const handleRemoveSegment = (segment: UnifiedSegment) => {
-    if (onToggleSegment) onToggleSegment(segment);
-  };
-  
-  // Fonction pour tout effacer
-  const handleClearAll = () => {
-    // Désélectionner tous les produits
-    selectedProducts.forEach(product => onToggleProduct(product));
-    
-    // Désélectionner tous les laboratoires
-    if (onToggleLab) {
-      selectedLabs.forEach(lab => onToggleLab(lab));
+  // Gérer la confirmation
+  const handleApplyFilter = () => {
+    if (onApplyFilter) {
+      onApplyFilter();
     }
-    
-    // Désélectionner tous les segments
-    if (onToggleSegment) {
-      selectedSegments.forEach(segment => onToggleSegment(segment));
-    }
+    onClose();
   };
 
   return (
@@ -96,9 +66,6 @@ export function ProductSelectionDrawer({
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Sélection de produits
             </h2>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {totalSelected} éléments sélectionnés • {totalCodes} codes EAN associés
-            </span>
           </div>
           <button 
             onClick={onClose} 
@@ -107,6 +74,22 @@ export function ProductSelectionDrawer({
             <FiX size={20} />
           </button>
         </div>
+        <div className='p-2'>
+           {/* Afficher le sommaire de la sélection */}
+        {totalSelectedCount > 0 && (
+            <SelectionSummary
+              selectedProducts={selectedProducts}
+              selectedLabs={selectedLabs}
+              selectedSegments={selectedSegments}
+              onRemoveProduct={toggleProduct}
+              onRemoveLab={toggleLab}
+              onRemoveSegment={toggleSegment}
+              onClearAll={clearFilters}
+            />
+          )}
+        </div>
+
+       
 
         {/* Onglets de recherche */}
         <div className="flex border-b border-gray-200 dark:border-gray-700">
@@ -146,45 +129,33 @@ export function ProductSelectionDrawer({
           {activeTab === 'product' && (
             <ProductSearch 
               selectedProducts={selectedProducts} 
-              onToggleProduct={onToggleProduct} 
+              onToggleProduct={toggleProduct} 
             />
           )}
           {activeTab === 'laboratory' && (
             <LabSearch 
               selectedLabs={selectedLabs}
-              onToggleLab={onToggleLab}
+              onToggleLab={toggleLab}
             />
           )}
           {activeTab === 'segment' && (
             <UnifiedSegmentSearch
               selectedSegments={selectedSegments}
-              onToggleSegment={onToggleSegment}
+              onToggleSegment={toggleSegment}
             />
           )}
           
-          {/* Afficher le sommaire de la sélection */}
-          {totalSelected > 0 && (
-            <SelectionSummary
-              selectedProducts={selectedProducts}
-              selectedLabs={selectedLabs}
-              selectedSegments={selectedSegments}
-              onRemoveProduct={handleRemoveProduct}
-              onRemoveLab={handleRemoveLab}
-              onRemoveSegment={handleRemoveSegment}
-              onClearAll={handleClearAll}
-            />
-          )}
         </div>
 
         {/* Pied du drawer avec bouton de confirmation */}
-        {totalSelected > 0 && (
+        {totalSelectedCount > 0 && (
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <button
-              onClick={onConfirmSelection}
+              onClick={handleApplyFilter}
               className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg flex items-center justify-center"
             >
               <FiCheck className="mr-2" size={16} />
-              Confirmer la sélection ({totalSelected} éléments, {totalCodes} codes)
+              Appliquer le filtre ({selectedCodes.length} codes)
             </button>
           </div>
         )}
