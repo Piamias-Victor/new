@@ -1,7 +1,6 @@
 // src/hooks/useProductSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
-import apiClient from '@/utils/apiUtils';
 
 export interface SearchProduct {
   id: string;
@@ -23,7 +22,7 @@ interface SearchState {
 
 interface SearchParams {
   term: string;
-  searchType: 'name' | 'code' | 'lab' | 'category';
+  type: 'name' | 'code' | 'lab' | 'category';
 }
 
 /**
@@ -58,7 +57,7 @@ export function useProductSearch() {
       const queryParams = new URLSearchParams();
       
       // Ajouter le terme de recherche selon le type
-      switch (params.searchType) {
+      switch (params.type) {
         case 'name':
           queryParams.append('name', params.term);
           break;
@@ -80,16 +79,30 @@ export function useProductSearch() {
         });
       }
       
-      // Effectuer la requête
-      const response = await apiClient.get(`/api/search/products?${queryParams}`);
+      // Effectuer la requête avec fetch au lieu d'apiClient
+      const response = await fetch(`/api/search/products?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
       
       // Mettre à jour l'état avec les résultats
       setState({
-        results: response.data.products || [],
+        results: data.products || [],
         isLoading: false,
         error: null
       });
     } catch (error) {
+      console.error('Erreur de recherche:', error);
+      
       // Gérer les erreurs
       setState({
         results: [],

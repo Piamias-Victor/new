@@ -1,28 +1,44 @@
 // src/components/drawer/search/ProductSearch.tsx
 import React, { useState } from 'react';
-import { useProductSearch } from '@/hooks/useProductSearch';
-import { FiBox } from 'react-icons/fi';
-import { ProductSearchResults } from './ProductSearchResults';
+import { FiBox, FiHash } from 'react-icons/fi';
+import { ProductSearchResults, Product } from './ProductSearchResults';
 import { SearchInput } from './SearchInput';
+import { useProductSearch } from '@/hooks/useProductSearch';
+
+interface ProductSearchProps {
+  selectedProducts: Product[];
+  onToggleProduct: (product: Product) => void;
+}
 
 /**
  * Composant de recherche par produit (nom ou code)
  */
-export function ProductSearch() {
+export function ProductSearch({ selectedProducts, onToggleProduct }: ProductSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'code'>('name');
-  const { results, isLoading, error, searchProducts } = useProductSearch();
+  const { results, isLoading, error, searchProducts, clearResults } = useProductSearch();
 
+  // Gérer la recherche
   const handleSearch = () => {
-    if (searchTerm.trim().length > 2) {
-      searchProducts({ term: searchTerm, type: searchType });
+    if (searchTerm.trim().length >= 2) {
+      searchProducts({
+        term: searchTerm,
+        type: searchType
+      });
     }
   };
 
+  // Soumettre avec touche Entrée
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && searchTerm.trim().length >= 2) {
       handleSearch();
     }
+  };
+
+  // Effacer la recherche
+  const handleClear = () => {
+    setSearchTerm('');
+    clearResults();
   };
 
   return (
@@ -49,7 +65,7 @@ export function ProductSearch() {
                 : 'text-gray-600 dark:text-gray-300'
             }`}
           >
-            <FiBox size={16} />
+            <FiHash size={16} />
             <span>Par code</span>
           </button>
         </div>
@@ -61,13 +77,14 @@ export function ProductSearch() {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           onSearch={handleSearch}
+          onClear={handleClear}
         />
 
         {/* Message d'aide */}
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {searchType === 'name' 
-            ? "Saisissez au moins 3 caractères pour rechercher un produit par son nom" 
-            : "Saisissez un code EAN13 complet ou partiel pour rechercher un produit"}
+            ? "Saisissez au moins 2 caractères pour rechercher par nom" 
+            : "Saisissez un code EAN13 complet ou partiel pour rechercher"}
         </p>
       </div>
 
@@ -77,6 +94,8 @@ export function ProductSearch() {
           results={results} 
           isLoading={isLoading} 
           error={error}
+          selectedProducts={selectedProducts}
+          onToggleProduct={onToggleProduct}
         />
       </div>
     </div>

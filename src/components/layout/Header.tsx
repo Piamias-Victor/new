@@ -13,6 +13,7 @@ import { AnalysisNavMenu } from './header/AnalysisNavMenu';
 import { ProductSelectionDrawer } from '../drawer/ProductSelectionDrawer';
 import { useDrawerState } from '@/hooks/useDrawerState';
 import { ProductSelectionButton } from './header/ProductSelectionButton';
+import { Product } from '../drawer/search/ProductSearchResults';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,6 +44,32 @@ export function Header() {
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
   };
+
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+
+  // Fonction pour ajouter/retirer un produit de la sélection
+  const handleToggleProduct = (product: Product) => {
+    setSelectedProducts(prevSelected => {
+      // Vérifier si le produit est déjà sélectionné
+      const isSelected = prevSelected.some(p => p.id === product.id);
+      
+      if (isSelected) {
+        // Si déjà sélectionné, le retirer
+        return prevSelected.filter(p => p.id !== product.id);
+      } else {
+        // Sinon, l'ajouter
+        return [...prevSelected, product];
+      }
+    });
+  };
+  
+  // Fonction pour confirmer la sélection (à implémenter selon vos besoins)
+  const handleConfirmSelection = () => {
+    console.log('Produits sélectionnés confirmés:', selectedProducts);
+    // Vous pouvez stocker ces produits dans un état global, les envoyer à l'API, etc.
+    closeDrawer();
+  };
+  
 
   return (
     <>
@@ -134,6 +161,8 @@ export function Header() {
       </header>
 
       {/* Drawer de sélection de produits (en dehors du header) */}
-      <ProductSelectionDrawer isOpen={isOpen} onClose={closeDrawer} isClosing={useDrawerState().isClosing} />    </>
+      <ProductSelectionDrawer isOpen={isOpen} onClose={closeDrawer} isClosing={useDrawerState().isClosing}  selectedProducts={selectedProducts}
+  onToggleProduct={handleToggleProduct}
+  onConfirmSelection={handleConfirmSelection} />    </>
   );
 }

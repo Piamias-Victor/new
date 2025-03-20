@@ -1,18 +1,34 @@
 // src/components/drawer/search/ProductSearchResults.tsx
 import React from 'react';
-import { FiBox, FiAlertCircle, FiLoader } from 'react-icons/fi';
-import { Product } from '@/services/productService';
+import { FiBox, FiAlertCircle, FiLoader, FiShoppingBag, FiPackage, FiCheck } from 'react-icons/fi';
+
+export interface Product {
+  id: string;
+  display_name: string;
+  code_13_ref: string;
+  category?: string;
+  brand_lab?: string;
+  universe?: string;
+}
 
 interface ProductSearchResultsProps {
   results: Product[];
   isLoading: boolean;
   error: string | null;
+  selectedProducts: Product[];
+  onToggleProduct: (product: Product) => void;
 }
 
 /**
  * Composant pour afficher les résultats de recherche de produits
  */
-export function ProductSearchResults({ results, isLoading, error }: ProductSearchResultsProps) {
+export function ProductSearchResults({ 
+  results, 
+  isLoading, 
+  error, 
+  selectedProducts,
+  onToggleProduct
+}: ProductSearchResultsProps) {
   // État de chargement
   if (isLoading) {
     return (
@@ -44,59 +60,65 @@ export function ProductSearchResults({ results, isLoading, error }: ProductSearc
     );
   }
 
+  // Vérifier si un produit est sélectionné
+  const isSelected = (product: Product) => {
+    return selectedProducts.some(p => p.id === product.id);
+  };
+
+  // Obtenir l'icône appropriée pour l'univers du produit
+  const getUniverseIcon = (universe?: string) => {
+    if (universe === 'Médicaments') {
+      return <FiShoppingBag className="mr-1 text-blue-500" size={12} />;
+    }
+    return <FiPackage className="mr-1 text-blue-500" size={12} />;
+  };
+
   // Affichage des résultats
   return (
     <div className="space-y-2">
       {results.map(product => (
         <div 
-          key={product.id || product.product_id}
-          className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 cursor-pointer"
+          key={product.id}
+          className={`p-3 border ${isSelected(product) 
+            ? 'border-sky-400 dark:border-sky-500 bg-sky-50 dark:bg-sky-900/20' 
+            : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'} 
+            rounded-lg cursor-pointer transition-colors`}
+          onClick={() => onToggleProduct(product)}
         >
           <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white">
-                {product.display_name || product.name}
-              </h3>
-              
-              <div className="mt-1 text-xs flex flex-wrap gap-2">
-                {/* Code EAN13 */}
-                <span className="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 font-mono">
-                  {product.ean || product.code_13_ref}
-                </span>
-                
-                {/* Catégorie si disponible */}
-                {product.category && (
-                  <span className="inline-flex items-center bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md text-blue-600 dark:text-blue-300">
-                    {product.category}
-                  </span>
-                )}
-                
-                {/* Laboratoire si disponible */}
-                {product.brand_lab && (
-                  <span className="inline-flex items-center bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-md text-purple-600 dark:text-purple-300">
-                    {product.brand_lab}
-                  </span>
-                )}
+            <div className="flex items-start">
+              {/* Icône de sélection */}
+              <div className={`mr-3 p-1 rounded-full ${isSelected(product) 
+                ? 'bg-sky-100 text-sky-500 dark:bg-sky-900/30 dark:text-sky-400' 
+                : 'bg-gray-100 text-gray-400 dark:bg-gray-700/50 dark:text-gray-500'}`}>
+                <FiCheck size={14} />
               </div>
-            </div>
-            
-            {/* Informations complémentaires à droite */}
-            <div className="text-right">
-              {product.price_with_tax !== undefined && (
-                <div className="font-bold text-gray-900 dark:text-white">
-                  {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(product.price_with_tax)}
-                </div>
-              )}
               
-              {product.current_stock !== undefined && (
-                <div className={`text-sm ${
-                  product.current_stock <= 0 ? 'text-red-500 dark:text-red-400' :
-                  product.current_stock < 5 ? 'text-amber-500 dark:text-amber-400' :
-                  'text-green-500 dark:text-green-400'
-                }`}>
-                  Stock: {product.current_stock}
+              <div>
+                <h3 className="font-medium text-gray-900 dark:text-white">
+                  {product.display_name}
+                </h3>
+                
+                <div className="mt-1 text-xs flex flex-wrap gap-2">
+                  {/* Code EAN13 */}
+                  <span className="inline-flex items-center bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md text-gray-700 dark:text-gray-300 font-mono">
+                    {product.code_13_ref}
+                  </span>
+                  
+                  {/* Univers */}
+                  <span className="inline-flex items-center bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md text-blue-600 dark:text-blue-300">
+                    {getUniverseIcon(product.universe)}
+                    {product.universe || 'Autre'}
+                  </span>
+                  
+                  {/* Laboratoire si disponible */}
+                  {product.brand_lab && (
+                    <span className="inline-flex items-center bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-md text-purple-600 dark:text-purple-300">
+                      {product.brand_lab}
+                    </span>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
