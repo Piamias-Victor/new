@@ -121,7 +121,7 @@ export function SalesDistribution() {
       fill: COLORS.medicaments
     },
     {
-      name: 'Parapharmacie',
+      name: 'Para',
       value: Number(parapharmacieData.revenue_percentage),
       revenue: Number(parapharmacieData.total_revenue),
       quantity: Number(parapharmacieData.total_quantity),

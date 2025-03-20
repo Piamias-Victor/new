@@ -146,12 +146,13 @@ const ProductRow: React.FC<ProductRowProps> = ({ product, index, sortBy }) => {
 // Composant principal
 export function TopProducts() {
   const [sortBy, setSortBy] = useState<SortByType>('revenue');
-  const { byRevenue, byQuantity, isLoading, error } = useTopProducts(10);
+  const { byRevenue, byQuantity, byMargin, isLoading, error } = useTopProducts(10);
   
   // Obtenir les produits en fonction du tri sélectionné
   const getProductsBySortType = () => {
     switch (sortBy) {
       case 'quantity': return byQuantity || [];
+      case 'margin': return byMargin || [];
       default: return byRevenue || [];
     }
   };
@@ -160,6 +161,7 @@ export function TopProducts() {
   const getTitleBySortType = () => {
     switch (sortBy) {
       case 'quantity': return 'Top produits en volume';
+      case 'margin': return 'Top produits en marge';
       default: return 'Top produits en CA';
     }
   };
@@ -168,6 +170,7 @@ export function TopProducts() {
   const getIconBySortType = () => {
     switch (sortBy) {
       case 'quantity': return <FiShoppingCart size={20} />;
+      case 'margin': return <FiTrendingUp size={20} />;
       default: return <FiBarChart2 size={20} />;
     }
   };
@@ -263,6 +266,16 @@ export function TopProducts() {
               }`}
             >
               Quantité
+            </button>
+            <button
+              onClick={() => setSortBy('margin')}
+              className={`px-3 py-1.5 text-xs font-medium rounded ${
+                sortBy === 'margin' 
+                  ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              Marge
             </button>
           </div>
         </div>

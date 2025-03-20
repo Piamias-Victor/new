@@ -73,7 +73,7 @@ export default function Dashboard() {
               Répartition des ventes
             </h2>
             
-            {/* <SalesDistribution /> */}
+            <SalesDistribution />
           </div>
         </div>
       </div>
