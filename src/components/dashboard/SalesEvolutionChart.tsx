@@ -20,7 +20,7 @@ type IntervalType = 'day' | 'week' | 'month';
 export function SalesEvolutionChart() {
   const [interval, setInterval] = useState<IntervalType>('day');
   const [showMargin, setShowMargin] = useState(true);
-  const [showSellIn, setShowSellIn] = useState(false);
+  const [showSellIn, setShowSellIn] = useState(true);
   
   // Récupérer les données sell-out (ventes)
   const { data: sellOutData, isLoading: isSellOutLoading, error: sellOutError } = useSalesEvolution(interval);
