@@ -98,15 +98,30 @@ export function Header() {
       }
     });
   };
+
   
-  // Fonction pour confirmer la sélection (à implémenter selon vos besoins)
-  const handleConfirmSelection = () => {
-    console.log('Produits sélectionnés:', selectedProducts);
-    console.log('Laboratoires sélectionnés:', selectedLabs);
-    console.log('Segments sélectionnés:', selectedSegments);
-    // Vous pouvez stocker ces produits, laboratoires et segments dans un état global, les envoyer à l'API, etc.
-    closeDrawer();
-  };
+  
+// Fonction pour confirmer la sélection
+const handleConfirmSelection = () => {
+  // Collecter tous les codes EAN13 des produits, laboratoires et segments sélectionnés
+  const productCodes = selectedProducts.map(p => p.code_13_ref);
+  
+  const labCodes = selectedLabs.flatMap(lab => lab.code_13_refs || []);
+  
+  const segmentCodes = selectedSegments.flatMap(segment => segment.code_13_refs || []);
+  
+  // Fusionner tous les codes uniques
+  const allCodes = [...new Set([...productCodes, ...labCodes, ...segmentCodes])];
+  
+  console.log('Produits sélectionnés:', selectedProducts);
+  console.log('Laboratoires sélectionnés:', selectedLabs);
+  console.log('Segments sélectionnés:', selectedSegments);
+  console.log('Codes EAN uniques sélectionnés:', allCodes);
+  
+  // Vous pouvez stocker ces codes dans un état global ou les utiliser pour une requête API
+  
+  closeDrawer();
+};
 
   return (
     <>

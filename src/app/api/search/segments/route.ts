@@ -3,22 +3,16 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function GET(request: Request) {
-  console.log('Route de recherche de segments appelée');
-
   try {
     // Récupérer les paramètres de recherche
     const { searchParams } = new URL(request.url);
-    const searchTerm = searchParams.get('name');
+    const name = searchParams.get('name') || '';
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     
-    console.log('Terme de recherche:', searchTerm);
-    console.log('IDs de pharmacies:', pharmacyIds);
-
     // Validation des paramètres
-    if (!searchTerm) {
-      console.warn('Aucun terme de recherche fourni');
+    if (!name || name.trim().length < 2) {
       return NextResponse.json(
-        { error: 'Le terme de recherche est requis' },
+        { error: 'Un terme de recherche d\'au moins 2 caractères est requis' },
         { status: 400 }
       );
     }
@@ -26,93 +20,205 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     
     try {
-      let query: string;
-      let params: any[];
+      let query;
+      let params = [name + '%', '%' + name + '%']; // Recherche par préfixe et contient
       
-      // Requête pour rechercher des segments avec filtrage par pharmacie
       if (pharmacyIds.length === 0) {
-        // Requête sans filtre de pharmacie
+        // Pour toutes les pharmacies - MODIFIÉ pour inclure la recherche dans les univers, familles et sous-familles
         query = `
-          WITH segment_stats AS (
-            SELECT 
-              sub_category AS name,
-              category AS parent_category,
-              COUNT(DISTINCT code_13_ref) AS product_count
+          WITH segment_search AS (
+            SELECT DISTINCT
+              universe,
+              category,
+              sub_category,
+              family,
+              sub_family
             FROM 
               data_globalproduct
             WHERE 
-              LOWER(sub_category) LIKE LOWER($1)
-              OR LOWER(category) LIKE LOWER($1)
-            GROUP BY 
-              sub_category, category
+              universe ILIKE $1 OR universe ILIKE $2 OR
+              category ILIKE $1 OR category ILIKE $2 OR
+              sub_category ILIKE $1 OR sub_category ILIKE $2 OR
+              family ILIKE $1 OR family ILIKE $2 OR
+              sub_family ILIKE $1 OR sub_family ILIKE $2
+          ),
+          product_counts AS (
+            SELECT
+              ss.universe,
+              ss.category,
+              ss.sub_category,
+              ss.family,
+              ss.sub_family,
+              COUNT(DISTINCT gp.code_13_ref) as product_count,
+              ARRAY_AGG(DISTINCT gp.code_13_ref) as code_13_refs
+            FROM
+              segment_search ss
+            JOIN
+              data_globalproduct gp ON 
+                (ss.universe = gp.universe OR ss.universe IS NULL) AND
+                (ss.category = gp.category OR ss.category IS NULL) AND
+                (ss.sub_category = gp.sub_category OR ss.sub_category IS NULL) AND
+                (ss.family = gp.family OR ss.family IS NULL) AND
+                (ss.sub_family = gp.sub_family OR ss.sub_family IS NULL)
+            GROUP BY
+              ss.universe, ss.category, ss.sub_category, ss.family, ss.sub_family
           )
-          SELECT 
-            name,
-            parent_category,
-            product_count
-          FROM 
-            segment_stats
-          WHERE 
-            product_count > 0
-          ORDER BY 
+          SELECT
+            CASE 
+              WHEN universe IS NOT NULL AND category IS NOT NULL AND sub_category IS NOT NULL THEN 
+                universe || '-' || category || '-' || sub_category
+              WHEN universe IS NOT NULL AND category IS NOT NULL THEN 
+                universe || '-' || category
+              WHEN universe IS NOT NULL THEN 
+                universe
+              WHEN category IS NOT NULL AND sub_category IS NOT NULL THEN
+                category || '-' || sub_category
+              WHEN family IS NOT NULL AND sub_family IS NOT NULL THEN
+                family || '-' || sub_family
+              WHEN family IS NOT NULL THEN
+                family
+              ELSE COALESCE(category, family, universe)
+            END as id,
+            COALESCE(
+              sub_category, 
+              category, 
+              sub_family,
+              family,
+              universe
+            ) as name,
+            universe,
+            COALESCE(category, family) as parent_category,
+            family,
+            sub_family,
+            product_count,
+            code_13_refs,
+            CASE
+              WHEN sub_family IS NOT NULL THEN 'subfamily'
+              WHEN family IS NOT NULL THEN 'family'
+              WHEN sub_category IS NOT NULL THEN 'subcategory'
+              WHEN category IS NOT NULL THEN 'category'
+              WHEN universe IS NOT NULL THEN 'universe'
+              ELSE 'other'
+            END as segment_type
+          FROM
+            product_counts
+          ORDER BY
             product_count DESC
-          LIMIT 50
         `;
-        params = [`%${searchTerm}%`];
       } else {
-        // Requête avec filtre de pharmacie
-        const pharmacyPlaceholders = pharmacyIds.map((_, index) => `$${index + 2}`).join(',');
+        // Pour pharmacies spécifiques
+        const pharmacyPlaceholders = pharmacyIds.map((_, index) => `$${index + 3}`).join(',');
         
         query = `
-          WITH segment_stats AS (
-            SELECT 
-              dg.sub_category AS name,
-              dg.category AS parent_category,
-              COUNT(DISTINCT dg.code_13_ref) AS product_count
+          WITH segment_search AS (
+            SELECT DISTINCT
+              universe,
+              category,
+              sub_category,
+              family,
+              sub_family
             FROM 
-              data_globalproduct dg
-            JOIN 
-              data_internalproduct dip ON dg.code_13_ref = dip.code_13_ref_id
+              data_globalproduct
             WHERE 
-              (LOWER(dg.sub_category) LIKE LOWER($1)
-              OR LOWER(dg.category) LIKE LOWER($1))
-              AND dip.pharmacy_id IN (${pharmacyPlaceholders})
-            GROUP BY 
-              dg.sub_category, dg.category
+              universe ILIKE $1 OR universe ILIKE $2 OR
+              category ILIKE $1 OR category ILIKE $2 OR
+              sub_category ILIKE $1 OR sub_category ILIKE $2 OR
+              family ILIKE $1 OR family ILIKE $2 OR
+              sub_family ILIKE $1 OR sub_family ILIKE $2
+          ),
+          pharmacy_products AS (
+            SELECT DISTINCT
+              ip.code_13_ref_id
+            FROM
+              data_internalproduct ip
+            WHERE
+              ip.pharmacy_id IN (${pharmacyPlaceholders})
+          ),
+          product_counts AS (
+            SELECT
+              ss.universe,
+              ss.category,
+              ss.sub_category,
+              ss.family,
+              ss.sub_family,
+              COUNT(DISTINCT gp.code_13_ref) as product_count,
+              ARRAY_AGG(DISTINCT gp.code_13_ref) as code_13_refs
+            FROM
+              segment_search ss
+            JOIN
+              data_globalproduct gp ON 
+                (ss.universe = gp.universe OR ss.universe IS NULL) AND
+                (ss.category = gp.category OR ss.category IS NULL) AND
+                (ss.sub_category = gp.sub_category OR ss.sub_category IS NULL) AND
+                (ss.family = gp.family OR ss.family IS NULL) AND
+                (ss.sub_family = gp.sub_family OR ss.sub_family IS NULL)
+            JOIN
+              pharmacy_products pp ON gp.code_13_ref = pp.code_13_ref_id
+            GROUP BY
+              ss.universe, ss.category, ss.sub_category, ss.family, ss.sub_family
           )
-          SELECT 
-            name,
-            parent_category,
-            product_count
-          FROM 
-            segment_stats
-          WHERE 
-            product_count > 0
-          ORDER BY 
+          SELECT
+            CASE 
+              WHEN universe IS NOT NULL AND category IS NOT NULL AND sub_category IS NOT NULL THEN 
+                universe || '-' || category || '-' || sub_category
+              WHEN universe IS NOT NULL AND category IS NOT NULL THEN 
+                universe || '-' || category
+              WHEN universe IS NOT NULL THEN 
+                universe
+              WHEN category IS NOT NULL AND sub_category IS NOT NULL THEN
+                category || '-' || sub_category
+              WHEN family IS NOT NULL AND sub_family IS NOT NULL THEN
+                family || '-' || sub_family
+              WHEN family IS NOT NULL THEN
+                family
+              ELSE COALESCE(category, family, universe)
+            END as id,
+            COALESCE(
+              sub_category, 
+              category, 
+              sub_family,
+              family,
+              universe
+            ) as name,
+            universe,
+            COALESCE(category, family) as parent_category,
+            family,
+            sub_family,
+            product_count,
+            code_13_refs,
+            CASE
+              WHEN sub_family IS NOT NULL THEN 'subfamily'
+              WHEN family IS NOT NULL THEN 'family'
+              WHEN sub_category IS NOT NULL THEN 'subcategory'
+              WHEN category IS NOT NULL THEN 'category'
+              WHEN universe IS NOT NULL THEN 'universe'
+              ELSE 'other'
+            END as segment_type
+          FROM
+            product_counts
+          ORDER BY
             product_count DESC
-          LIMIT 50
         `;
-        params = [`%${searchTerm}%`, ...pharmacyIds];
+        params = [...params, ...pharmacyIds];
       }
       
       const result = await client.query(query, params);
       
-      console.log('Nombre de segments trouvés:', result.rows.length);
-      
-      // Transformer les résultats avec un id unique
-      const segments = result.rows.map((row, index) => ({
-        id: `segment_${index}`,
+      // Transformation du résultat pour correspondre au format Segment
+      const segments = result.rows.map(row => ({
+        id: row.id || `segment-${row.name}`,
         name: row.name,
-        parentCategory: row.parent_category || undefined,
-        productCount: parseInt(row.product_count)
+        universe: row.universe,
+        parentCategory: row.parent_category,
+        family: row.family,
+        subFamily: row.sub_family,
+        productCount: row.product_count || 0,
+        code_13_refs: row.code_13_refs || [],
+        segmentType: row.segment_type || 'other'
       }));
-      
-      console.log('Segments transformés:', segments);
-      
+
       return NextResponse.json({
-        segments,
-        total: segments.length,
-        searchTerm
+        segments
       });
     } finally {
       client.release();
@@ -120,10 +226,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Erreur lors de la recherche de segments:', error);
     return NextResponse.json(
-      { 
-        error: 'Erreur lors de la recherche de segments', 
-        details: error instanceof Error ? error.message : 'Erreur inconnue' 
-      },
+      { error: 'Erreur lors de la recherche de segments', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

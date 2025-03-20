@@ -40,6 +40,13 @@ export function ProductSelectionDrawer({
 
   // Calculer le nombre total de produits/laboratoires/segments sélectionnés
   const totalSelected = selectedProducts.length + selectedLabs.length + selectedSegments.length;
+  
+  // Calculer le nombre total de codes EAN associés
+  const totalCodes = [
+    ...selectedProducts.map(p => p.code_13_ref),
+    ...selectedLabs.flatMap(lab => lab.code_13_refs || []),
+    ...selectedSegments.flatMap(segment => segment.code_13_refs || [])
+  ].filter((code, index, self) => self.indexOf(code) === index).length;
 
   return (
     <>
@@ -60,7 +67,7 @@ export function ProductSelectionDrawer({
               Sélection de produits
             </h2>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {totalSelected} produit(s), laboratoire(s) et segment(s) sélectionné(s)
+              {totalSelected} éléments sélectionnés • {totalCodes} codes EAN associés
             </span>
           </div>
           <button 
@@ -103,7 +110,9 @@ export function ProductSelectionDrawer({
           >
             Par segment
           </button>
-        </div><div className="flex-1 overflow-y-auto p-4">
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'product' && (
             <ProductSearch 
               selectedProducts={selectedProducts} 
@@ -132,7 +141,7 @@ export function ProductSelectionDrawer({
               className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-700 text-white font-medium rounded-lg flex items-center justify-center"
             >
               <FiCheck className="mr-2" size={16} />
-              Confirmer la sélection ({totalSelected})
+              Confirmer la sélection ({totalSelected} éléments, {totalCodes} codes)
             </button>
           </div>
         )}

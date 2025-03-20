@@ -1,3 +1,4 @@
+// src/hooks/useSegmentSearch.ts
 import { useState, useCallback } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { Segment } from '@/components/drawer/search/SegmentSearchResults';
@@ -18,12 +19,8 @@ export function useSegmentSearch() {
   const { selectedPharmacyIds } = usePharmacySelection();
   
   const searchSegments = useCallback(async (term: string) => {
-    console.log('Recherche de segments avec le terme:', term);
-    console.log('Pharmacies sélectionnées:', selectedPharmacyIds);
-
     // Validation de base
     if (!term || term.trim().length < 2) {
-      console.warn('Terme de recherche trop court');
       setState(prev => ({
         ...prev,
         error: 'Veuillez saisir au moins 2 caractères',
@@ -48,8 +45,6 @@ export function useSegmentSearch() {
         });
       }
       
-      console.log('URL de requête:', `/api/search/segments?${queryParams}`);
-      
       // Effectuer la requête
       const response = await fetch(`/api/search/segments?${queryParams}`, {
         method: 'GET',
@@ -59,19 +54,12 @@ export function useSegmentSearch() {
         cache: 'no-store'
       });
       
-      console.log('Réponse HTTP:', response.status);
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Erreur de réponse:', errorText);
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
       
       const data = await response.json();
       
-      console.log('Données reçues:', data);
-      
-      // Mettre à jour l'état avec les résultats
       setState({
         results: data.segments || [],
         isLoading: false,
@@ -80,7 +68,6 @@ export function useSegmentSearch() {
     } catch (error) {
       console.error('Erreur de recherche:', error);
       
-      // Gérer les erreurs
       setState({
         results: [],
         isLoading: false,
