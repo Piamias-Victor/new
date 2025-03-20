@@ -1,16 +1,15 @@
+// src/app/dashboard/page.tsx
 'use client';
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { PharmacyDataCard } from '@/components/dashboard/PharmacyDataCard';
-import { DatePeriodDisplay } from '@/components/shared/DatePeriodDisplay';
 import { NavigationCards } from '@/components/dashboard/NavigationCards';
 import { KpiCards } from '@/components/dashboard/KpiCards';
 import { SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { SalesDistribution } from '@/components/dashboard/SalesDistribution';
-
+import UniverseTreemap from '@/components/dashboard/UniverseTreemap';
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -21,6 +20,7 @@ export default function Dashboard() {
       router.push('/auth/login');
     }
   }, [status, router]);
+
 
   // Afficher un état de chargement si la session est en cours de chargement
   if (status === 'loading') {
@@ -38,6 +38,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Ajouter l'indicateur de chargement global */}      
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -55,6 +56,9 @@ export default function Dashboard() {
 
         {/* Navigation Cards */}
         <NavigationCards />
+        
+        {/* Component de débogage pour l'univers */}
+        <UniverseTreemap />
         
         {/* Nouveau composant d'évolution des ventes */}
         <SalesEvolutionChart />

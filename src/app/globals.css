@@ -123,3 +123,14 @@ html {
   background-size: 200% 200%;
   animation: shine 8s ease infinite;
 }
+
+/* Ajouter ceci à src/app/globals.css */
+.animate-loading-bar {
+  width: 30%;
+  animation: loading-bar 1.5s infinite ease-in-out;
+}
+
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}

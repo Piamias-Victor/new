@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
-    const limit = parseInt(searchParams.get('limit') || '50', 50);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
     
     // Validation des paramètres
     if (!startDate || !endDate) {
