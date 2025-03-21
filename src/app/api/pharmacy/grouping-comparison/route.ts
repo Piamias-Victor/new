@@ -337,8 +337,21 @@ async function processGroupingComparison(
     // Exécuter les deux requêtes avec les bons paramètres
     const pharmacyParams = [pharmacyId, startDate, endDate, ...codeFilterParams];
     const pharmacyResult = await client.query(pharmacyQuery, pharmacyParams);
+
+    console.log('\n--- Requête de groupe ---');
+    console.log('Paramètres:', groupParams);
     
     const groupResult = await client.query(groupQuery, groupParams);
+
+    console.log('\n--- Résultats de la requête de groupe ---');
+    console.log('Nombre de lignes:', groupResult.rows.length);
+    console.log('Détails des résultats:');
+    groupResult.rows.forEach((row, index) => {
+      console.log(`Ligne ${index + 1}:`);
+      console.log('Nombre de pharmacies:', row.debug_pharmacy_count);
+      console.log('Total sell-out brut:', row.debug_total_sellout);
+      console.log('Moyenne sell-out:', row.avg_sellout);
+    });
     
     let response;
     
@@ -438,7 +451,16 @@ async function processGroupingComparison(
       
       const pharmacyTotals = pharmacyTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
       const groupTotals = groupTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
+      const pharmacyCount = groupResult.rows[0].pharmacy_count || 1; // Éviter une division par zéro
+
+      console.log('pharmacyCount', pharmacyCount)
       
+      // Diviser les totaux du groupe par le nombre de pharmacies
+      const totalGroupSellout = groupTotals.total_sellout / pharmacyCount;
+      const totalGroupSellin = groupTotals.total_sellin / pharmacyCount;   
+      
+      console.log('totalGroupSellout', totalGroupSellout)
+      console.log('groupTotals.total_sellout', groupTotals.total_sellout)
       // Calculer les pourcentages pour la pharmacie
       const pharmacySelloutPercentage = pharmacyTotals.total_sellout > 0 
         ? (pharmacyResult.rows[0].total_sellout / pharmacyTotals.total_sellout * 100) 
@@ -450,12 +472,12 @@ async function processGroupingComparison(
       
       // Calculer les pourcentages pour le groupe
       const groupSelloutPercentage = groupTotals.total_sellout > 0 
-        ? (groupResult.rows[0].raw_total_sellout / groupTotals.total_sellout * 100) 
-        : 0;
+      ? (groupResult.rows[0].raw_total_sellout / groupTotals.total_sellout * 100) 
+      : 0;
         
-      const groupSellinPercentage = groupTotals.total_sellin > 0 
-        ? (groupResult.rows[0].raw_total_sellin / groupTotals.total_sellin * 100) 
-        : 0;
+    const groupSellinPercentage = groupTotals.total_sellin > 0 
+      ? (groupResult.rows[0].raw_total_sellin / groupTotals.total_sellin * 100) 
+      : 0;
       
       // Préparer la réponse avec les pourcentages
       response = {
@@ -468,8 +490,8 @@ async function processGroupingComparison(
         },
         group: {
           ...groupResult.rows[0],
-          total_group_sellout: groupTotals.total_sellout,
-          total_group_sellin: groupTotals.total_sellin,
+          total_group_sellout: totalGroupSellout ,
+          total_group_sellin: totalGroupSellin,
           sellout_percentage: groupSelloutPercentage,
           sellin_percentage: groupSellinPercentage
         },
