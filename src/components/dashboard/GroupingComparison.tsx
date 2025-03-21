@@ -29,7 +29,6 @@ const formatLargeNumber = (num: number, isPercentage = false) => {
   }
 };
 
-// Composant pour afficher un indicateur de comparaison
 // Composant pour afficher un indicateur de comparaison avec part totale
 interface ComparisonIndicatorProps {
   title: string;
@@ -232,6 +231,10 @@ export function GroupingComparison() {
         pharmacyValue={pharmacy.total_margin}
         groupValue={group.avg_margin}
         formatValue={formatCurrency}
+        totalPharmacyValue={pharmacy.total_pharmacy_margin}
+        totalGroupValue={group.total_group_margin}
+        pharmacyPercentage={pharmacy.margin_percentage_of_total}
+        groupPercentage={group.margin_percentage}
       />
       
       {/* Taux de marge */}
@@ -251,6 +254,10 @@ export function GroupingComparison() {
         pharmacyValue={pharmacy.total_stock}
         groupValue={group.avg_stock}
         formatValue={formatCurrency}
+        totalPharmacyValue={pharmacy.total_pharmacy_stock}
+        totalGroupValue={group.total_group_stock}
+        pharmacyPercentage={pharmacy.stock_percentage}
+        groupPercentage={group.stock_percentage}
       />
       
       {/* Références */}

@@ -11,11 +11,15 @@ interface PharmacyData {
   total_sellin: number;
   total_stock: number;
   evolution_percentage: number;
-  // Nouvelles propriétés
+  // Propriétés pour les pourcentages et totaux
   sellout_percentage: number;
   sellin_percentage: number;
-  total_pharmacy_sellout: number; // Total absolu de la pharmacie
-  total_pharmacy_sellin: number;  // Total absolu de la pharmacie
+  margin_percentage_of_total: number;
+  stock_percentage: number;
+  total_pharmacy_sellout: number;
+  total_pharmacy_sellin: number;
+  total_pharmacy_margin: number;
+  total_pharmacy_stock: number;
 }
 
 interface GroupData {
@@ -27,11 +31,15 @@ interface GroupData {
   avg_sellin: number;
   avg_stock: number;
   avg_evolution_percentage: number;
-  // Nouvelles propriétés
-  total_group_sellout: number;   // Total absolu du groupe
-  total_group_sellin: number;    // Total absolu du groupe
-  sellout_percentage: number;    // Pourcentage que représente la sélection
-  sellin_percentage: number;     // Pourcentage que représente la sélection
+  // Propriétés pour les pourcentages et totaux
+  total_group_sellout: number;
+  total_group_sellin: number;
+  total_group_margin: number;
+  total_group_stock: number;
+  sellout_percentage: number;
+  sellin_percentage: number;
+  margin_percentage: number;
+  stock_percentage: number;
 }
 
 interface ComparisonData {
@@ -53,8 +61,12 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       evolution_percentage: 0,
       sellout_percentage: 0,
       sellin_percentage: 0,
+      margin_percentage_of_total: 0,
+      stock_percentage: 0,
       total_pharmacy_sellout: 0,
-      total_pharmacy_sellin: 0
+      total_pharmacy_sellin: 0,
+      total_pharmacy_margin: 0,
+      total_pharmacy_stock: 0
     },
     group: {
       pharmacy_count: 0,
@@ -67,8 +79,12 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       avg_evolution_percentage: 0,
       total_group_sellout: 0,
       total_group_sellin: 0,
+      total_group_margin: 0,
+      total_group_stock: 0,
       sellout_percentage: 0,
-      sellin_percentage: 0
+      sellin_percentage: 0,
+      margin_percentage: 0,
+      stock_percentage: 0
     },
     isLoading: true,
     error: null
@@ -101,7 +117,7 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
               startDate,
               endDate,
               code13refs: isFilterActive ? selectedCodes : [],
-              includeTotals: true // Nouveau paramètre pour indiquer qu'on veut les totaux
+              includeTotals: true // Paramètre pour inclure les totaux
             }),
             cache: 'no-store'
           });
@@ -110,7 +126,7 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
             pharmacyId,
             startDate,
             endDate,
-            includeTotals: 'true' // Nouveau paramètre
+            includeTotals: 'true'
           });
           
           if (isFilterActive && selectedCodes.length > 0) {

@@ -185,7 +185,6 @@ async function processGroupingComparison(
     const groupParams = [startDate, endDate];
     
     // Condition pour les codes EAN13 dans les requêtes de groupe
-    // Condition distincte pour chaque table impliquée
     let codeFilterStr = '';
     if (code13refs.length > 0) {
       // Ajouter les codes aux paramètres
@@ -322,9 +321,11 @@ async function processGroupingComparison(
         gsi.total_sellin / NULLIF(gpc.pharmacy_count, 0) AS avg_sellin,
         gst.total_stock / NULLIF(gpc.pharmacy_count, 0) AS avg_stock,
         ge.evolution_percentage AS avg_evolution_percentage,
-        -- Ajouter les totaux bruts pour calculer les pourcentages
+        -- Totaux bruts pour calculer les pourcentages
         gs.total_sellout AS raw_total_sellout,
-        gsi.total_sellin AS raw_total_sellin
+        gsi.total_sellin AS raw_total_sellin,
+        gs.total_margin AS raw_total_margin,
+        gst.total_stock AS raw_total_stock
       FROM 
         group_pharmacy_count gpc
       CROSS JOIN group_references gr
@@ -337,21 +338,7 @@ async function processGroupingComparison(
     // Exécuter les deux requêtes avec les bons paramètres
     const pharmacyParams = [pharmacyId, startDate, endDate, ...codeFilterParams];
     const pharmacyResult = await client.query(pharmacyQuery, pharmacyParams);
-
-    console.log('\n--- Requête de groupe ---');
-    console.log('Paramètres:', groupParams);
-    
     const groupResult = await client.query(groupQuery, groupParams);
-
-    console.log('\n--- Résultats de la requête de groupe ---');
-    console.log('Nombre de lignes:', groupResult.rows.length);
-    console.log('Détails des résultats:');
-    groupResult.rows.forEach((row, index) => {
-      console.log(`Ligne ${index + 1}:`);
-      console.log('Nombre de pharmacies:', row.debug_pharmacy_count);
-      console.log('Total sell-out brut:', row.debug_total_sellout);
-      console.log('Moyenne sell-out:', row.avg_sellout);
-    });
     
     let response;
     
@@ -393,14 +380,50 @@ async function processGroupingComparison(
           WHERE 
             o.pharmacy_id = $1
             AND o.sent_date BETWEEN $2 AND $3
+        ),
+        
+        -- Total de la marge pour cette pharmacie sans filtre
+        pharmacy_total_margin AS (
+          SELECT 
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) AS total_margin
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            p.pharmacy_id = $1
+            AND s.date BETWEEN $2 AND $3
+        ),
+        
+        -- Total du stock pour cette pharmacie sans filtre
+        pharmacy_total_stock AS (
+          SELECT 
+            SUM(i.stock * i.weighted_average_price) AS total_stock
+          FROM 
+            data_inventorysnapshot i
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            p.pharmacy_id = $1
+            AND i.date = (
+              SELECT MAX(date)
+              FROM data_inventorysnapshot
+              WHERE date <= $3
+            )
         )
         
         SELECT 
           pts.total_sellout, 
-          ptsi.total_sellin
+          ptsi.total_sellin,
+          ptm.total_margin,
+          ptst.total_stock
         FROM 
           pharmacy_total_sellout pts, 
-          pharmacy_total_sellin ptsi
+          pharmacy_total_sellin ptsi,
+          pharmacy_total_margin ptm,
+          pharmacy_total_stock ptst
       `;
       
       const groupTotalsQuery = `
@@ -436,31 +459,75 @@ async function processGroupingComparison(
             data_internalproduct p ON po.product_id = p.id
           WHERE 
             o.sent_date BETWEEN $1 AND $2
+        ),
+        
+        -- Total de la marge pour toutes les pharmacies sans filtre
+        group_total_margin AS (
+          SELECT 
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) AS total_margin
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            s.date BETWEEN $1 AND $2
+        ),
+        
+        -- Total du stock pour toutes les pharmacies sans filtre
+        group_total_stock AS (
+          SELECT 
+            SUM(i.stock * i.weighted_average_price) AS total_stock
+          FROM 
+            data_inventorysnapshot i
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            i.date = (
+              SELECT MAX(date)
+              FROM data_inventorysnapshot
+              WHERE date <= $2
+            )
         )
         
         SELECT 
           gts.total_sellout, 
-          gtsi.total_sellin
+          gtsi.total_sellin,
+          gtm.total_margin,
+          gtst.total_stock
         FROM 
           group_total_sellout gts, 
-          group_total_sellin gtsi
+          group_total_sellin gtsi,
+          group_total_margin gtm,
+          group_total_stock gtst
       `;
       
       const pharmacyTotalsResult = await client.query(pharmacyTotalsQuery, [pharmacyId, startDate, endDate]);
       const groupTotalsResult = await client.query(groupTotalsQuery, [startDate, endDate]);
       
-      const pharmacyTotals = pharmacyTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
-      const groupTotals = groupTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
+      const pharmacyTotals = pharmacyTotalsResult.rows[0] || { 
+        total_sellout: 0, 
+        total_sellin: 0,
+        total_margin: 0,
+        total_stock: 0
+      };
+      
+      const groupTotals = groupTotalsResult.rows[0] || { 
+        total_sellout: 0, 
+        total_sellin: 0,
+        total_margin: 0,
+        total_stock: 0
+      };
+      
       const pharmacyCount = groupResult.rows[0].pharmacy_count || 1; // Éviter une division par zéro
-
-      console.log('pharmacyCount', pharmacyCount)
       
       // Diviser les totaux du groupe par le nombre de pharmacies
       const totalGroupSellout = groupTotals.total_sellout / pharmacyCount;
-      const totalGroupSellin = groupTotals.total_sellin / pharmacyCount;   
+      const totalGroupSellin = groupTotals.total_sellin / pharmacyCount;
+      const totalGroupMargin = groupTotals.total_margin / pharmacyCount;
+      const totalGroupStock = groupTotals.total_stock / pharmacyCount;
       
-      console.log('totalGroupSellout', totalGroupSellout)
-      console.log('groupTotals.total_sellout', groupTotals.total_sellout)
       // Calculer les pourcentages pour la pharmacie
       const pharmacySelloutPercentage = pharmacyTotals.total_sellout > 0 
         ? (pharmacyResult.rows[0].total_sellout / pharmacyTotals.total_sellout * 100) 
@@ -469,15 +536,31 @@ async function processGroupingComparison(
       const pharmacySellinPercentage = pharmacyTotals.total_sellin > 0 
         ? (pharmacyResult.rows[0].total_sellin / pharmacyTotals.total_sellin * 100) 
         : 0;
+        
+      const pharmacyMarginPercentage = pharmacyTotals.total_margin > 0 
+        ? (pharmacyResult.rows[0].total_margin / pharmacyTotals.total_margin * 100) 
+        : 0;
+        
+      const pharmacyStockPercentage = pharmacyTotals.total_stock > 0 
+        ? (pharmacyResult.rows[0].total_stock / pharmacyTotals.total_stock * 100) 
+        : 0;
       
       // Calculer les pourcentages pour le groupe
       const groupSelloutPercentage = groupTotals.total_sellout > 0 
-      ? (groupResult.rows[0].raw_total_sellout / groupTotals.total_sellout * 100) 
-      : 0;
+        ? (groupResult.rows[0].raw_total_sellout / groupTotals.total_sellout * 100) 
+        : 0;
         
-    const groupSellinPercentage = groupTotals.total_sellin > 0 
-      ? (groupResult.rows[0].raw_total_sellin / groupTotals.total_sellin * 100) 
-      : 0;
+      const groupSellinPercentage = groupTotals.total_sellin > 0 
+        ? (groupResult.rows[0].raw_total_sellin / groupTotals.total_sellin * 100) 
+        : 0;
+        
+      const groupMarginPercentage = groupTotals.total_margin > 0 
+        ? (groupResult.rows[0].raw_total_margin / groupTotals.total_margin * 100) 
+        : 0;
+        
+      const groupStockPercentage = groupTotals.total_stock > 0 
+        ? (groupResult.rows[0].raw_total_stock / groupTotals.total_stock * 100) 
+        : 0;
       
       // Préparer la réponse avec les pourcentages
       response = {
@@ -485,15 +568,23 @@ async function processGroupingComparison(
           ...pharmacyResult.rows[0],
           total_pharmacy_sellout: pharmacyTotals.total_sellout,
           total_pharmacy_sellin: pharmacyTotals.total_sellin,
+          total_pharmacy_margin: pharmacyTotals.total_margin,
+          total_pharmacy_stock: pharmacyTotals.total_stock,
           sellout_percentage: pharmacySelloutPercentage,
-          sellin_percentage: pharmacySellinPercentage
+          sellin_percentage: pharmacySellinPercentage,
+          margin_percentage_of_total: pharmacyMarginPercentage,
+          stock_percentage: pharmacyStockPercentage
         },
         group: {
           ...groupResult.rows[0],
-          total_group_sellout: totalGroupSellout ,
+          total_group_sellout: totalGroupSellout,
           total_group_sellin: totalGroupSellin,
+          total_group_margin: totalGroupMargin,
+          total_group_stock: totalGroupStock,
           sellout_percentage: groupSelloutPercentage,
-          sellin_percentage: groupSellinPercentage
+          sellin_percentage: groupSellinPercentage,
+          margin_percentage: groupMarginPercentage,
+          stock_percentage: groupStockPercentage
         },
         filters: {
           pharmacyId,
@@ -506,6 +597,8 @@ async function processGroupingComparison(
       // Supprimer les champs raw_ qui sont juste des intermédiaires de calcul
       delete response.group.raw_total_sellout;
       delete response.group.raw_total_sellin;
+      delete response.group.raw_total_margin;
+      delete response.group.raw_total_stock;
     } else {
       // Réponse standard sans les pourcentages
       response = {
@@ -520,24 +613,27 @@ async function processGroupingComparison(
       };
       
       // Supprimer les champs raw_ qui sont juste des intermédiaires de calcul
-      if (response.group.raw_total_sellout) delete response.group.raw_total_sellout;
-      if (response.group.raw_total_sellin) delete response.group.raw_total_sellin;
-    }
-    
-    return NextResponse.json(response);
-  } finally {
-    client.release();
-  }
+     // Supprimer les champs raw_ qui sont juste des intermédiaires de calcul
+     if (response.group.raw_total_sellout) delete response.group.raw_total_sellout;
+     if (response.group.raw_total_sellin) delete response.group.raw_total_sellin;
+     if (response.group.raw_total_margin) delete response.group.raw_total_margin;
+     if (response.group.raw_total_stock) delete response.group.raw_total_stock;
+   }
+   
+   return NextResponse.json(response);
+ } finally {
+   client.release();
+ }
 }
 
 // Fonction utilitaire pour gérer les erreurs
 function handleError(error: unknown) {
-  console.error('Erreur lors de la récupération des données de comparaison:', error);
-  return NextResponse.json(
-    { 
-      error: 'Erreur lors de la récupération des données', 
-      details: error instanceof Error ? error.message : 'Erreur inconnue' 
-    },
-    { status: 500 }
-  );
+ console.error('Erreur lors de la récupération des données de comparaison:', error);
+ return NextResponse.json(
+   { 
+     error: 'Erreur lors de la récupération des données', 
+     details: error instanceof Error ? error.message : 'Erreur inconnue' 
+   },
+   { status: 500 }
+ );
 }
