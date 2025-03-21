@@ -37,7 +37,8 @@ export function SalesProjection() {
   useEffect(() => {
     if (!annualData.isLoading) {
       // Calcul des projections Sell-Out
-      const projectedSellOut = (annualData.sellOutRevenue / annualData.yearProgressPercentage) * 100;
+      const evolutionRate = annualData.sellOutRevenue / annualData.previousYearSellOut;
+      const projectedSellOut = annualData.lastYearTotal.sellOut * evolutionRate;
       const sellOutGrowthPercent = ((projectedSellOut / annualData.lastYearTotal.sellOut) - 1) * 100;
       setSellOutGoalPercent(parseFloat(sellOutGrowthPercent.toFixed(1)));
       setSellOutGoalAmount(projectedSellOut);
