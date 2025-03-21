@@ -162,7 +162,7 @@ function buildSellInQuery(startDate: string, endDate: string, pharmacyIds: strin
   query = `
     SELECT 
       COALESCE(SUM(
-        po.qte_r * (
+        po.qte * (
           SELECT COALESCE(weighted_average_price, 0)
           FROM data_inventorysnapshot
           WHERE product_id = po.product_id

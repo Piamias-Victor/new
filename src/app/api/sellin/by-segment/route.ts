@@ -73,7 +73,7 @@ export async function POST(request: Request) {
           SELECT 
             COALESCE(g.${segmentType}, 'Non catégorisé') AS segment_value,
             po.product_id,
-            po.qte_r AS quantity,
+            po.qte AS quantity,
             (
               SELECT COALESCE(weighted_average_price, 0)
               FROM data_inventorysnapshot
@@ -92,7 +92,6 @@ export async function POST(request: Request) {
           WHERE 
             o.sent_date BETWEEN $1 AND $2
             ${whereClause}
-            AND po.qte_r > 0
         ),
         segment_aggregation AS (
           SELECT 

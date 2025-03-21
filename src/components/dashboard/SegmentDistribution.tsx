@@ -96,7 +96,7 @@ export function EnhancedSegmentDistribution() {
         : 0;
       
       return {
-        name: item.segment || 'Non défini',
+        name: item.segment || 'Autre',
         color: COLORS[index % COLORS.length],
         sellout: Number(item.total_revenue) || 0,
         sellin: sellinItem ? Number(sellinItem.total_amount) || 0 : 0,

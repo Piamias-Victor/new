@@ -15,8 +15,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Requête modifiée pour ne prendre en compte que les commandes avec quantité reçue > 0
-    // et pour filtrer par codes EAN13 si spécifié
+    // Requête modifiée pour prendre en compte toutes les commandes 
+    // et filtrer par codes EAN13 si spécifié
     const query = `
       WITH filtered_global_products AS (
         SELECT code_13_ref
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
           SUM(
             CASE WHEN dpo.qte_r > 0 THEN GREATEST(0, dpo.qte - dpo.qte_r) * COALESCE(lp.cost_price, 0) ELSE 0 END
           ) AS stock_break_amount,
-          SUM(dpo.qte_r * COALESCE(lp.cost_price, 0)) AS purchase_amount
+          SUM(dpo.qte * COALESCE(lp.cost_price, 0)) AS purchase_amount
         FROM data_order dor
         JOIN data_productorder dpo ON dor.id = dpo.order_id
         JOIN filtered_products fp ON dpo.product_id = fp.internal_product_id
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
           SUM(
             CASE WHEN dpo.qte_r > 0 THEN GREATEST(0, dpo.qte - dpo.qte_r) * COALESCE(lp.cost_price, 0) ELSE 0 END
           ) AS stock_break_amount,
-          SUM(dpo.qte_r * COALESCE(lp.cost_price, 0)) AS purchase_amount
+          SUM(dpo.qte * COALESCE(lp.cost_price, 0)) AS purchase_amount
         FROM data_order dor
         JOIN data_productorder dpo ON dor.id = dpo.order_id
         JOIN filtered_products fp ON dpo.product_id = fp.internal_product_id
@@ -147,12 +147,12 @@ export async function POST(req: NextRequest) {
       };
       
       const purchaseQuantityEvolution = {
-        value: parseInt(data.current_total_received) - parseInt(data.comparison_total_received),
-        percentage: parseInt(data.comparison_total_received) > 0 
-          ? ((parseInt(data.current_total_received) - parseInt(data.comparison_total_received)) / parseInt(data.comparison_total_received)) * 100 
+        value: parseInt(data.current_total_ordered) - parseInt(data.comparison_total_ordered),
+        percentage: parseInt(data.comparison_total_ordered) > 0 
+          ? ((parseInt(data.current_total_ordered) - parseInt(data.comparison_total_ordered)) / parseInt(data.comparison_total_ordered)) * 100 
           : 0,
-        isPositive: parseInt(data.current_total_received) >= parseInt(data.comparison_total_received),
-        displayValue: `${((parseInt(data.current_total_received) - parseInt(data.comparison_total_received)) / (parseInt(data.comparison_total_received) || 1) * 100).toFixed(1)}%`
+        isPositive: parseInt(data.current_total_ordered) >= parseInt(data.comparison_total_ordered),
+        displayValue: `${((parseInt(data.current_total_ordered) - parseInt(data.comparison_total_ordered)) / (parseInt(data.comparison_total_ordered) || 1) * 100).toFixed(1)}%`
       };
       
       const stockBreakAmountEvolution = {
@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
       const response = {
         current: {
           purchaseAmount: parseFloat(data.current_purchase_amount),
-          purchaseQuantity: parseInt(data.current_total_received),
+          purchaseQuantity: parseInt(data.current_total_ordered), // Changement ici
           stockBreakAmount: parseFloat(data.current_stock_break_amount),
           stockBreakQuantity: parseInt(data.current_stock_break_quantity),
           stockBreakRate: currentStockBreakRate,
@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
         },
         comparison: {
           purchaseAmount: parseFloat(data.comparison_purchase_amount),
-          purchaseQuantity: parseInt(data.comparison_total_received),
+          purchaseQuantity: parseInt(data.comparison_total_ordered), // Changement ici
           stockBreakAmount: parseFloat(data.comparison_stock_break_amount),
           stockBreakQuantity: parseInt(data.comparison_stock_break_quantity),
           stockBreakRate: comparisonStockBreakRate,

@@ -98,9 +98,9 @@ async function processSellInEvolution(
         WITH sellin_data AS (
           SELECT 
             date_trunc('${timeInterval}', o.sent_date) AS period,
-            SUM(po.qte_r) AS total_quantity,
+            SUM(po.qte) AS total_quantity,
             SUM(
-              po.qte_r * (
+              po.qte * (
                 SELECT COALESCE(weighted_average_price, 0)
                 FROM data_inventorysnapshot
                 WHERE product_id = po.product_id
@@ -153,9 +153,9 @@ async function processSellInEvolution(
         WITH sellin_data AS (
           SELECT 
             date_trunc('${timeInterval}', o.sent_date) AS period,
-            SUM(po.qte_r) AS total_quantity,
+            SUM(po.qte) AS total_quantity,
             SUM(
-              po.qte_r * (
+              po.qte * (
                 SELECT COALESCE(weighted_average_price, 0)
                 FROM data_inventorysnapshot
                 WHERE product_id = po.product_id
