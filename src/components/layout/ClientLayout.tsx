@@ -7,7 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { PharmacyProvider } from "@/providers/PharmacyProvider";
-import { ProductSelectionProvider } from '@/contexts/ProductSelectionContext';
 import { ProductFilterProvider } from '@/contexts/ProductFilterContext';
 
 interface ClientLayoutProps {

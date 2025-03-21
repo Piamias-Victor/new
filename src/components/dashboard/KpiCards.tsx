@@ -1,10 +1,13 @@
 // src/components/dashboard/KpiCards.tsx
 import React, { useState } from 'react';
-import { useRevenue } from "@/hooks/useRevenue";
-import { useInventoryValuation } from "@/hooks/useInventoryValuation";
-import { useSellIn } from "@/hooks/useSellIn";
 import { FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
-         FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat } from "react-icons/fi";
+         FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat, 
+         FiFilter} from "react-icons/fi";
+import { useProductFilter } from '@/contexts/ProductFilterContext';
+import { FilterBadge } from '@/components/filters/FilterBadge';
+import { useRevenueWithFilter } from '@/hooks/useRevenue';
+import { useInventoryValuationWithFilter } from '@/hooks/useInventoryValuation';
+import { useSellInWithFilter } from '@/hooks/useSellIn';
 
 // Types pour les props du composant KpiCard
 interface KpiCardProps {
@@ -44,6 +47,9 @@ function KpiCard({
 }: KpiCardProps) {
   const [showAlternate, setShowAlternate] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const { isFilterActive, selectedCodes } = useProductFilter(); // Ajoutez cette ligne
+
+  console.log('change', change);
   
   // Déterminer la couleur en fonction de isPositive
   const getColorClass = (isPositive: boolean) => {
@@ -73,6 +79,7 @@ function KpiCard({
             </div>
             <div>
               <h3 className="font-medium text-sm text-gray-900 dark:text-white">{title}</h3>
+              {isFilterActive && <FilterBadge count={selectedCodes.length} size="sm" />}
               {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>}
             </div>
           </div>
@@ -106,7 +113,7 @@ function KpiCard({
               {change.displayValue}
             </span>
             
-            {change.previousValue && (
+            {change?.previousValue && !isNaN(Number(change.previousValue.replace(/[^0-9.-]+/g,''))) && (
               <span className="text-gray-500 dark:text-gray-400 ml-2">
                 ({change.previousValue})
               </span>
@@ -215,6 +222,8 @@ function KpiCard({
 
 // Composant principal pour afficher toutes les cartes KPI
 export function KpiCards() {
+  const { isFilterActive, selectedCodes } = useProductFilter(); // Ajoutez cette ligne
+
   const { 
     totalRevenue, 
     totalMargin, 
@@ -224,7 +233,7 @@ export function KpiCards() {
     uniqueReferences,
     isLoading: revenueLoading,
     actualDateRange
-  } = useRevenue();
+  } = useRevenueWithFilter();
   
   const { 
     totalStockValueHT, 
@@ -232,7 +241,7 @@ export function KpiCards() {
     comparison: stockComparison,
     stockDays,
     isLoading: stockLoading 
-  } = useInventoryValuation();
+  } = useInventoryValuationWithFilter();
   
   const { 
     totalPurchaseQuantity,
@@ -243,7 +252,7 @@ export function KpiCards() {
     stockBreakRate,
     comparison: sellInComparison,
     isLoading: sellInLoading 
-  } = useSellIn();
+  } = useSellInWithFilter();
 
   const tooltips = {
     sellOut: "Montant total des ventes (TTC) réalisées sur la période sélectionnée. Indicateur principal de l'activité commerciale.",
@@ -271,10 +280,12 @@ export function KpiCards() {
     return new Intl.NumberFormat('fr-FR').format(num);
   };
 
+  console.log('stockComparison', stockComparison);
+
   // Préparer les données pour les KPI Cards
   const revenueChange = comparison ? {
     displayValue: comparison.evolution.revenue.displayValue,
-    previousValue: formatCurrency(comparison.totalRevenue),
+    previousValue: formatNumber(comparison.revenue),
     isPositive: comparison.evolution.revenue.isPositive
   } : undefined;
   
@@ -283,14 +294,14 @@ export function KpiCards() {
     value: formatNumber(totalQuantity),
     change: comparison?.evolution?.quantity ? {
       displayValue: comparison.evolution.quantity.displayValue,
-      previousValue: formatNumber(comparison.totalQuantity),
+      previousValue: formatNumber(comparison.quantity),
       isPositive: comparison.evolution.quantity.isPositive
     } : undefined
   };
   
   const sellInAmountChange = sellInComparison ? {
     displayValue: sellInComparison.evolution.purchaseAmount.displayValue,
-    previousValue: formatCurrency(sellInComparison.totalPurchaseAmount),
+    previousValue: formatCurrency(sellInComparison.purchaseAmount),
     isPositive: sellInComparison.evolution.purchaseAmount.isPositive
   } : undefined;
   
@@ -299,7 +310,7 @@ export function KpiCards() {
     value: formatNumber(totalPurchaseQuantity),
     change: sellInComparison ? {
       displayValue: sellInComparison.evolution.purchaseQuantity.displayValue,
-      previousValue: formatNumber(sellInComparison.totalPurchaseQuantity),
+      previousValue: formatNumber(sellInComparison.purchaseQuantity),
       isPositive: sellInComparison.evolution.purchaseQuantity.isPositive
     } : undefined
   };
@@ -315,7 +326,7 @@ export function KpiCards() {
     value: formatCurrency(totalStockBreakAmount),
     change: sellInComparison ? {
       displayValue: sellInComparison.evolution.stockBreakAmount.displayValue,
-      previousValue: formatCurrency(sellInComparison.totalStockBreakAmount),
+      previousValue: formatCurrency(sellInComparison.stockBreakAmount),
       isPositive: sellInComparison.evolution.stockBreakAmount.isPositive
     } : undefined
   };
@@ -331,7 +342,7 @@ export function KpiCards() {
     value: formatCurrency(totalMargin),
     change: comparison ? {
       displayValue: comparison.evolution.margin.displayValue,
-      previousValue: formatCurrency(comparison.totalMargin),
+      previousValue: formatCurrency(comparison.margin),
       isPositive: comparison.evolution.margin.isPositive
     } : undefined
   };
@@ -383,8 +394,30 @@ export function KpiCards() {
       isPositive: rotationDiff > 0
     };
   }
+
+  const FilterNotification = ({ count }: { count: number }) => {
+    return (
+      <div className="mb-4 bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800 rounded-lg p-4">
+        <div className="flex items-center">
+          <div className="p-2 rounded-full bg-sky-100 dark:bg-sky-800 text-sky-600 dark:text-sky-300 mr-3">
+            <FiFilter size={18} />
+          </div>
+          <div>
+            <h3 className="text-base font-medium text-gray-900 dark:text-white">
+              Filtre actif sur {count} code{count > 1 ? 's' : ''} EAN
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Les KPIs affichés concernent uniquement les produits sélectionnés.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   return (
+    <>
+      {isFilterActive && <FilterNotification count={selectedCodes.length} />}
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* CA Sell-out */}
       <KpiCard
@@ -479,5 +512,7 @@ export function KpiCards() {
         infoTooltip={tooltips.references}
       />
     </div>
+    </>
+    
   );
 }

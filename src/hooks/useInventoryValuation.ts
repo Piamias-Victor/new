@@ -1,7 +1,8 @@
-// src/hooks/useInventoryValuation.ts
+// src/hooks/useInventoryValuationWithFilter.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface InventoryData {
   totalStockValueHT: number;
@@ -18,9 +19,11 @@ interface InventoryData {
       averagePrice: { percentage: number; isPositive: boolean; displayValue: string };
     }
   };
+  isLoading: boolean;
+  error: string | null;
 }
 
-export function useInventoryValuation() {
+export function useInventoryValuationWithFilter() {
   const [data, setData] = useState<InventoryData>({
     totalStockValueHT: 0,
     totalUnits: 0,
@@ -35,21 +38,20 @@ export function useInventoryValuation() {
         units: { percentage: 0, isPositive: false, displayValue: '+0.0%' },
         averagePrice: { percentage: 0, isPositive: true, displayValue: '+0.0%' }
       }
-    }
+    },
+    isLoading: true,
+    error: null
   });
-  
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   
   const { startDate, endDate, comparisonStartDate, comparisonEndDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchData() {
       if (!startDate || !endDate) return;
       
-      setIsLoading(true);
-      setError(null);
+      setData(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
         const response = await fetch('/api/kpi/stock', {
@@ -62,7 +64,9 @@ export function useInventoryValuation() {
             endDate,
             comparisonStartDate: comparisonStartDate || startDate,
             comparisonEndDate: comparisonEndDate || endDate,
-            pharmacyIds: selectedPharmacyIds
+            pharmacyIds: selectedPharmacyIds,
+            // Ajouter les codes EAN13 sélectionnés si le filtre est actif
+            code13refs: isFilterActive ? selectedCodes : undefined
           }),
         });
         
@@ -72,14 +76,7 @@ export function useInventoryValuation() {
         
         const jsonData = await response.json();
         
-        // Préparation des affichages avec signes
-        // Pour stock et unités, une DIMINUTION est positive (en vert)
-        const stockValueDisplayValue = `${jsonData.evolution.stockValue.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockValue.percentage.toFixed(1)}%`;
-        const unitsDisplayValue = `${jsonData.evolution.units.percentage >= 0 ? '+' : ''}${jsonData.evolution.units.percentage.toFixed(1)}%`;
-        
-        // Pour prix moyen, une AUGMENTATION est positive
-        const avgPriceDisplayValue = `${jsonData.evolution.averagePrice.percentage >= 0 ? '+' : ''}${jsonData.evolution.averagePrice.percentage.toFixed(1)}%`;
-        
+        // Mettre à jour l'état avec les données reçues
         setData({
           totalStockValueHT: jsonData.current.stockValueHT,
           totalUnits: jsonData.current.stockUnits,
@@ -89,36 +86,23 @@ export function useInventoryValuation() {
             totalStockValueHT: jsonData.comparison.stockValueHT,
             totalUnits: jsonData.comparison.stockUnits,
             averagePrice: jsonData.comparison.averagePrice,
-            evolution: {
-              // Pour ces métriques, une DIMINUTION est positive (en vert)
-              stockValue: { 
-                percentage: jsonData.evolution.stockValue.percentage,
-                isPositive: jsonData.evolution.stockValue.percentage < 0,
-                displayValue: stockValueDisplayValue
-              },
-              units: { 
-                percentage: jsonData.evolution.units.percentage,
-                isPositive: jsonData.evolution.units.percentage < 0,
-                displayValue: unitsDisplayValue
-              },
-              averagePrice: { 
-                percentage: jsonData.evolution.averagePrice.percentage,
-                isPositive: jsonData.evolution.averagePrice.percentage >= 0,
-                displayValue: avgPriceDisplayValue
-              }
-            }
-          }
+            evolution: jsonData.evolution
+          },
+          isLoading: false,
+          error: null
         });
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
-        setError(error instanceof Error ? error.message : 'Erreur inconnue');
-      } finally {
-        setIsLoading(false);
+        setData(prev => ({
+          ...prev,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Erreur inconnue'
+        }));
       }
     }
     
     fetchData();
-  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds]);
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, selectedCodes, isFilterActive]);
   
-  return { ...data, isLoading, error };
+  return data;
 }

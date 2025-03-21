@@ -1,7 +1,8 @@
-// src/hooks/useSellIn.ts
+// src/hooks/useSellInWithFilter.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface SellInData {
   totalPurchaseAmount: number;
@@ -26,9 +27,11 @@ interface SellInData {
       orders: { percentage: number; isPositive: boolean; displayValue: string };
     }
   };
+  isLoading: boolean;
+  error: string | null;
 }
 
-export function useSellIn() {
+export function useSellInWithFilter() {
   const [data, setData] = useState<SellInData>({
     totalPurchaseAmount: 0,
     totalPurchaseQuantity: 0,
@@ -51,21 +54,20 @@ export function useSellIn() {
         stockBreakRate: { points: 0, isPositive: false, displayValue: '+0.0%' },
         orders: { percentage: 0, isPositive: false, displayValue: '+0.0%' }
       }
-    }
+    },
+    isLoading: true,
+    error: null
   });
-  
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   
   const { startDate, endDate, comparisonStartDate, comparisonEndDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchData() {
       if (!startDate || !endDate) return;
       
-      setIsLoading(true);
-      setError(null);
+      setData(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
         const response = await fetch('/api/kpi/sell-in', {
@@ -78,7 +80,9 @@ export function useSellIn() {
             endDate,
             comparisonStartDate: comparisonStartDate || startDate,
             comparisonEndDate: comparisonEndDate || endDate,
-            pharmacyIds: selectedPharmacyIds
+            pharmacyIds: selectedPharmacyIds,
+            // Ajouter les codes EAN13 sélectionnés si le filtre est actif
+            code13refs: isFilterActive ? selectedCodes : undefined
           }),
         });
         
@@ -88,17 +92,7 @@ export function useSellIn() {
         
         const jsonData = await response.json();
         
-        // Pour ruptures et commandes: une diminution est positive (vert)
-        // Préparation des strings d'affichage avec signes +/-
-        const purchaseAmountDisplayValue = `${jsonData.evolution.purchaseAmount.percentage >= 0 ? '+' : ''}${jsonData.evolution.purchaseAmount.percentage.toFixed(1)}%`;
-        const purchaseQuantityDisplayValue = `${jsonData.evolution.purchaseQuantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.purchaseQuantity.percentage.toFixed(1)}%`;
-        
-        // Pour ces métriques une baisse est positive (en vert)
-        const stockBreakAmountDisplayValue = `${jsonData.evolution.stockBreakAmount.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockBreakAmount.percentage.toFixed(1)}%`;
-        const stockBreakQuantityDisplayValue = `${jsonData.evolution.stockBreakQuantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.stockBreakQuantity.percentage.toFixed(1)}%`;
-        const stockBreakRateDisplayValue = `${jsonData.evolution.stockBreakRate.points >= 0 ? '+' : ''}${jsonData.evolution.stockBreakRate.points.toFixed(1)}%`;
-        const ordersDisplayValue = `${jsonData.evolution.orders.percentage >= 0 ? '+' : ''}${jsonData.evolution.orders.percentage.toFixed(1)}%`;
-        
+        // Mettre à jour l'état avec les données reçues
         setData({
           totalPurchaseAmount: jsonData.current.purchaseAmount,
           totalPurchaseQuantity: jsonData.current.purchaseQuantity,
@@ -106,58 +100,22 @@ export function useSellIn() {
           totalStockBreakQuantity: jsonData.current.stockBreakQuantity,
           stockBreakRate: jsonData.current.stockBreakRate,
           totalOrders: jsonData.current.ordersCount,
-          comparison: {
-            totalPurchaseAmount: jsonData.comparison.purchaseAmount,
-            totalPurchaseQuantity: jsonData.comparison.purchaseQuantity,
-            totalStockBreakAmount: jsonData.comparison.stockBreakAmount,
-            totalStockBreakQuantity: jsonData.comparison.stockBreakQuantity,
-            stockBreakRate: jsonData.comparison.stockBreakRate,
-            totalOrders: jsonData.comparison.ordersCount,
-            evolution: {
-              purchaseAmount: { 
-                percentage: jsonData.evolution.purchaseAmount.percentage,
-                isPositive: jsonData.evolution.purchaseAmount.percentage >= 0,
-                displayValue: purchaseAmountDisplayValue
-              },
-              purchaseQuantity: { 
-                percentage: jsonData.evolution.purchaseQuantity.percentage,
-                isPositive: jsonData.evolution.purchaseQuantity.percentage >= 0,
-                displayValue: purchaseQuantityDisplayValue
-              },
-              // Pour ces métriques, une DIMINUTION est positive (en vert)
-              stockBreakAmount: { 
-                percentage: jsonData.evolution.stockBreakAmount.percentage,
-                isPositive: jsonData.evolution.stockBreakAmount.percentage < 0,
-                displayValue: stockBreakAmountDisplayValue
-              },
-              stockBreakQuantity: { 
-                percentage: jsonData.evolution.stockBreakQuantity.percentage,
-                isPositive: jsonData.evolution.stockBreakQuantity.percentage < 0,
-                displayValue: stockBreakQuantityDisplayValue
-              },
-              stockBreakRate: { 
-                points: jsonData.evolution.stockBreakRate.points,
-                isPositive: jsonData.evolution.stockBreakRate.points < 0,
-                displayValue: stockBreakRateDisplayValue
-              },
-              orders: { 
-                percentage: jsonData.evolution.orders.percentage,
-                isPositive: jsonData.evolution.orders.percentage < 0,
-                displayValue: ordersDisplayValue
-              }
-            }
-          }
+          comparison: jsonData.comparison,
+          isLoading: false,
+          error: null
         });
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
-        setError(error instanceof Error ? error.message : 'Erreur inconnue');
-      } finally {
-        setIsLoading(false);
+        setData(prev => ({
+          ...prev,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Erreur inconnue'
+        }));
       }
     }
     
     fetchData();
-  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds]);
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, selectedCodes, isFilterActive]);
   
-  return { ...data, isLoading, error };
+  return data;
 }

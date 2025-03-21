@@ -1,7 +1,8 @@
-// src/hooks/useRevenue.ts
+// src/hooks/useRevenueWithFilter.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface RevenueData {
   totalRevenue: number;
@@ -26,9 +27,11 @@ interface RevenueData {
   };
   isComparisonEnabled: boolean;
   actualDateRange?: { min: string; max: string; days: number };
+  isLoading: boolean;
+  error: string | null;
 }
 
-export function useRevenue() {
+export function useRevenueWithFilter() {
   const [data, setData] = useState<RevenueData>({
     totalRevenue: 0,
     totalMargin: 0,
@@ -49,21 +52,20 @@ export function useRevenue() {
         uniqueReferences: { percentage: 0, isPositive: true, displayValue: '+0.0%' }
       }
     },
-    isComparisonEnabled: true
+    isComparisonEnabled: true,
+    isLoading: true,
+    error: null
   });
-  
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   
   const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchData() {
       if (!startDate || !endDate) return;
       
-      setIsLoading(true);
-      setError(null);
+      setData(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
         const response = await fetch('/api/kpi/sell-out', {
@@ -76,7 +78,9 @@ export function useRevenue() {
             endDate,
             comparisonStartDate: comparisonStartDate || startDate,
             comparisonEndDate: comparisonEndDate || endDate,
-            pharmacyIds: selectedPharmacyIds
+            pharmacyIds: selectedPharmacyIds,
+            // Ajouter cette ligne pour envoyer les codes EAN13 sélectionnés
+            code13refs: isFilterActive ? selectedCodes : undefined
           }),
         });
         
@@ -91,75 +95,34 @@ export function useRevenue() {
         const endDateObj = new Date(endDate);
         const daysInPeriod = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         
-        // Préparation des valeurs d'affichage avec signes +/-
-        const revenueDisplayValue = `${jsonData.evolution.revenue.percentage >= 0 ? '+' : ''}${jsonData.evolution.revenue.percentage.toFixed(1)}%`;
-        const marginDisplayValue = `${jsonData.evolution.margin.percentage >= 0 ? '+' : ''}${jsonData.evolution.margin.percentage.toFixed(1)}%`;
-        const quantityDisplayValue = `${jsonData.evolution.quantity.percentage >= 0 ? '+' : ''}${jsonData.evolution.quantity.percentage.toFixed(1)}%`;
-        const marginPointsDisplayValue = `${jsonData.evolution.marginPercentage.points >= 0 ? '+' : ''}${jsonData.evolution.marginPercentage.points.toFixed(1)} pts`;
-        const refDisplayValue = `${jsonData.evolution.uniqueReferences.percentage >= 0 ? '+' : ''}${jsonData.evolution.uniqueReferences.percentage.toFixed(1)}%`;
-        
         setData({
           totalRevenue: jsonData.current.revenue,
           totalMargin: jsonData.current.margin,
           totalQuantity: jsonData.current.quantity,
           marginPercentage: jsonData.current.marginPercentage,
           uniqueReferences: jsonData.current.uniqueReferences,
-          comparison: {
-            totalRevenue: jsonData.comparison.revenue,
-            totalMargin: jsonData.comparison.margin,
-            totalQuantity: jsonData.comparison.quantity,
-            marginPercentage: jsonData.comparison.marginPercentage,
-            uniqueReferences: jsonData.comparison.uniqueReferences,
-            evolution: {
-              revenue: { 
-                percentage: jsonData.evolution.revenue.percentage,
-                isPositive: jsonData.evolution.revenue.percentage >= 0,
-                displayValue: revenueDisplayValue
-              },
-              margin: { 
-                percentage: jsonData.evolution.margin.percentage,
-                isPositive: jsonData.evolution.margin.percentage >= 0,
-                displayValue: marginDisplayValue
-              },
-              quantity: { 
-                percentage: jsonData.evolution.quantity.percentage,
-                isPositive: jsonData.evolution.quantity.percentage >= 0,
-                displayValue: quantityDisplayValue
-              },
-              marginPercentage: { 
-                points: jsonData.evolution.marginPercentage.points,
-                isPositive: jsonData.evolution.marginPercentage.points >= 0,
-                displayValue: marginPointsDisplayValue
-              },
-              uniqueReferences: { 
-                percentage: jsonData.evolution.uniqueReferences.percentage,
-                isPositive: jsonData.evolution.uniqueReferences.percentage >= 0,
-                displayValue: refDisplayValue
-              }
-            },
-            actualDateRange: {
-              min: startDate,
-              max: endDate,
-              days: daysInPeriod
-            }
-          },
+          comparison: jsonData.comparison,
           isComparisonEnabled,
           actualDateRange: {
-            min: startDate,
-            max: endDate,
-            days: daysInPeriod
-          }
+            min: jsonData.actualDateRange?.min || startDate,
+            max: jsonData.actualDateRange?.max || endDate,
+            days: jsonData.actualDateRange?.days || daysInPeriod
+          },
+          isLoading: false,
+          error: null
         });
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
-        setError(error instanceof Error ? error.message : 'Erreur inconnue');
-      } finally {
-        setIsLoading(false);
+        setData(prev => ({
+          ...prev,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Erreur inconnue'
+        }));
       }
     }
     
     fetchData();
-  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled]);
+  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled, selectedCodes, isFilterActive]);
   
-  return { ...data, isLoading, error };
+  return data;
 }
