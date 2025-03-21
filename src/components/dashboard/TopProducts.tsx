@@ -288,7 +288,7 @@ export function TopProducts() {
       </div>
       
       {/* Liste des produits */}
-      <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
+      <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
         {products.length === 0 ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
             <FiPackage size={40} className="mx-auto mb-4 opacity-30" />

@@ -44,7 +44,8 @@ export function SalesProjection() {
       setSellOutGoalAmount(projectedSellOut);
       
       // Calcul des projections Sell-In
-      const projectedSellIn = (annualData.sellInRevenue / annualData.yearProgressPercentage) * 100;
+      const evolutionRateSellIn = annualData.sellInRevenue / annualData.previousYearSellIn;
+      const projectedSellIn = annualData.lastYearTotal.sellIn * evolutionRateSellIn;
       const sellInGrowthPercent = ((projectedSellIn / annualData.lastYearTotal.sellIn) - 1) * 100;
       setSellInGoalPercent(parseFloat(sellInGrowthPercent.toFixed(1)));
       setSellInGoalAmount(projectedSellIn);
