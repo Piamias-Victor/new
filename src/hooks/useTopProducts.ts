@@ -1,7 +1,8 @@
-// src/hooks/useTopProducts.ts
+// src/hooks/useTopProducts.ts - Modifié pour le filtrage EAN
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext'; // Ajouté pour le filtrage
 
 export type SortByType = 'revenue' | 'quantity' | 'margin';
 
@@ -39,6 +40,7 @@ export function useTopProducts(limit: number = 10): TopProductsData {
   
   const { startDate, endDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter(); // Accès au contexte de filtrage
   
   useEffect(() => {
     async function fetchTopProducts() {
@@ -57,10 +59,17 @@ export function useTopProducts(limit: number = 10): TopProductsData {
           limit: limit.toString()
         });
         
-        // Si on a une sélection spécifique, on l'ajoute aux paramètres
+        // Si on a une sélection spécifique de pharmacies, on l'ajoute aux paramètres
         if (selectedPharmacyIds.length > 0) {
           selectedPharmacyIds.forEach(id => {
             params.append('pharmacyIds', id);
+          });
+        }
+        
+        // Si le filtre est actif, ajouter les codes EAN sélectionnés
+        if (isFilterActive && selectedCodes.length > 0) {
+          selectedCodes.forEach(code => {
+            params.append('code13refs', code);
           });
         }
         
@@ -133,7 +142,7 @@ export function useTopProducts(limit: number = 10): TopProductsData {
     }
     
     fetchTopProducts();
-  }, [startDate, endDate, selectedPharmacyIds, limit]);
+  }, [startDate, endDate, selectedPharmacyIds, limit, selectedCodes, isFilterActive]); // Ajout des dépendances pour le filtrage
   
   return data;
 }

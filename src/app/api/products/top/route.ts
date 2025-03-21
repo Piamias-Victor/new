@@ -1,4 +1,4 @@
-// src/app/api/products/top/route.ts
+// src/app/api/products/top/route.ts - Modifié pour supporter les filtres de codes EAN
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
+    const code13refs = searchParams.getAll('code13refs'); // Ajout du support pour les codes EAN
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     
     // Validation des paramètres
@@ -22,6 +23,21 @@ export async function GET(request: Request) {
     const client = await pool.connect();
     
     try {
+      // Construire la condition WHERE pour les pharmacies et les codes EAN
+      let whereConditions = [];
+      if (pharmacyIds.length > 0) {
+        whereConditions.push(`p.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${idx + 3}`).join(',')})`);
+      }
+      
+      // Ajouter la condition pour les codes EAN si spécifiés
+      if (code13refs.length > 0) {
+        const startIdx = pharmacyIds.length > 0 ? pharmacyIds.length + 3 : 3;
+        whereConditions.push(`p.code_13_ref_id IN (${code13refs.map((_, idx) => `$${idx + startIdx}`).join(',')})`);
+      }
+      
+      // Assembler la clause WHERE complète
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
       // Requête commune pour calculer les métriques de produits
       const productMetricsQuery = `
         WITH product_metrics AS (
@@ -56,16 +72,19 @@ export async function GET(request: Request) {
             data_sales s ON i.id = s.product_id AND s.date BETWEEN $1 AND $2
           LEFT JOIN 
             data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
-          ${pharmacyIds.length > 0 ? `WHERE p.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${idx + 3}`).join(',')})` : ''}
+          ${whereClause}
           GROUP BY 
             p.id, p.name, g.category, g.brand_lab, g.tva_percentage, p."TVA", p.code_13_ref_id
         )
       `;
 
-      // Paramètres de base
+      // Paramètres de base et paramètres additionnels
       const params = [startDate, endDate];
       if (pharmacyIds.length > 0) {
         params.push(...pharmacyIds);
+      }
+      if (code13refs.length > 0) {
+        params.push(...code13refs);
       }
 
       // Requête pour les produits triés par chiffre d'affaires

@@ -1,7 +1,9 @@
-// src/components/dashboard/TopProducts.tsx
+// src/components/dashboard/TopProducts.tsx - Modifié pour le filtrage EAN
 import React, { useState } from 'react';
 import { FiPackage, FiBarChart2, FiShoppingCart, FiTrendingUp } from 'react-icons/fi';
 import { useTopProducts, SortByType, TopProduct } from '@/hooks/useTopProducts';
+import { useProductFilter } from '@/contexts/ProductFilterContext'; // Ajouté pour accéder au contexte de filtrage
+import { FilterBadge } from '@/components/filters/FilterBadge'; // Composant pour afficher le badge de filtrage
 
 // Composant pour afficher le badge du taux de TVA
 const TvaBadge: React.FC<{ tva: number }> = ({ tva }) => {
@@ -147,6 +149,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product, index, sortBy }) => {
 export function TopProducts() {
   const [sortBy, setSortBy] = useState<SortByType>('revenue');
   const { byRevenue, byQuantity, byMargin, isLoading, error } = useTopProducts(10);
+  const { isFilterActive, selectedCodes } = useProductFilter(); // Accès au contexte de filtrage
   
   // Obtenir les produits en fonction du tri sélectionné
   const getProductsBySortType = () => {
@@ -240,9 +243,15 @@ export function TopProducts() {
             <div className="p-2 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
               {getIconBySortType()}
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {getTitleBySortType()}
-            </h2>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {getTitleBySortType()}
+                </h2>
+                {/* Ajout du badge de filtrage si le filtre est actif */}
+                {isFilterActive && <FilterBadge count={selectedCodes.length} size="sm" />}
+              </div>
+            </div>
           </div>
           
           {/* Options de tri */}

@@ -69,7 +69,7 @@ export default function Dashboard() {
               Top produits
             </h2>
             
-            {/* <TopProducts /> */}
+            <TopProducts />
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
