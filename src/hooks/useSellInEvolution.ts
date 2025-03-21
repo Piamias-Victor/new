@@ -1,7 +1,8 @@
-// src/hooks/useSellInEvolution.ts
+// src/hooks/useSellInEvolutionWithFilter.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface SellInEvolutionItem {
   period: string;
@@ -15,7 +16,7 @@ interface SellInEvolutionData {
   error: string | null;
 }
 
-export function useSellInEvolution(interval: 'day' | 'week' | 'month' = 'day'): SellInEvolutionData {
+export function useSellInEvolutionWithFilter(interval: 'day' | 'week' | 'month' = 'day'): SellInEvolutionData {
   const [data, setData] = useState<SellInEvolutionData>({
     data: [],
     isLoading: true,
@@ -24,6 +25,7 @@ export function useSellInEvolution(interval: 'day' | 'week' | 'month' = 'day'): 
   
   const { startDate, endDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchSellInEvolution() {
@@ -42,10 +44,17 @@ export function useSellInEvolution(interval: 'day' | 'week' | 'month' = 'day'): 
           interval
         });
         
-        // Si on a une sélection spécifique, on l'ajoute aux paramètres
+        // Si on a une sélection spécifique de pharmacies, on l'ajoute aux paramètres
         if (selectedPharmacyIds.length > 0) {
           selectedPharmacyIds.forEach(id => {
             params.append('pharmacyIds', id);
+          });
+        }
+        
+        // Ajouter les codes EAN13 sélectionnés si le filtre est actif
+        if (isFilterActive && selectedCodes.length > 0) {
+          selectedCodes.forEach(code => {
+            params.append('code13refs', code);
           });
         }
         
@@ -67,7 +76,7 @@ export function useSellInEvolution(interval: 'day' | 'week' | 'month' = 'day'): 
           error: null
         });
       } catch (error) {
-        console.error('Erreur dans useSellInEvolution:', error);
+        console.error('Erreur dans useSellInEvolutionWithFilter:', error);
         setData({
           data: [],
           isLoading: false,
@@ -77,7 +86,7 @@ export function useSellInEvolution(interval: 'day' | 'week' | 'month' = 'day'): 
     }
     
     fetchSellInEvolution();
-  }, [startDate, endDate, selectedPharmacyIds, interval]);
+  }, [startDate, endDate, selectedPharmacyIds, interval, selectedCodes, isFilterActive]);
   
   return data;
 }

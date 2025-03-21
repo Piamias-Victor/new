@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { NavigationCards } from '@/components/dashboard/NavigationCards';
 import { KpiCards } from '@/components/dashboard/KpiCards';
-import { SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
+import { FilteredSalesEvolutionChart, ImprovedSalesEvolutionChart, SalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { SalesDistribution } from '@/components/dashboard/SalesDistribution';
 import UniverseTreemap from '@/components/dashboard/UniverseTreemap';
@@ -58,7 +58,7 @@ export default function Dashboard() {
         <NavigationCards />
         
         {/* Nouveau composant d'évolution des ventes */}
-        {/* <SalesEvolutionChart /> */}
+        <ImprovedSalesEvolutionChart />
 
         {/* Component de débogage pour l'univers */}
         {/* <UniverseTreemap /> */}

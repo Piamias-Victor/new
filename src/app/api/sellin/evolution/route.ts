@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
+    const code13refs = searchParams.getAll('code13refs');
     const interval = searchParams.get('interval') || 'day'; // 'day', 'week', 'month'
     
     // Validation des paramètres
@@ -42,8 +43,8 @@ export async function GET(request: Request) {
       let query;
       const params: any[] = [startDate, endDate];
       
-      if (pharmacyIds.length === 0) {
-        // Pour toutes les pharmacies
+      if (pharmacyIds.length === 0 && code13refs.length === 0) {
+        // Pour toutes les pharmacies sans filtre de produit
         query = `
           WITH sellin_data AS (
             SELECT 
@@ -77,8 +78,27 @@ export async function GET(request: Request) {
             sellin_data
         `;
       } else {
-        // Pour pharmacies spécifiques
-        const pharmacyPlaceholders = pharmacyIds.map((_, index) => `$${index + 3}`).join(',');
+        // Filtres additionnels
+        let conditions = [];
+        let paramIndex = 3;
+        
+        // Condition pour les pharmacies
+        if (pharmacyIds.length > 0) {
+          const pharmacyPlaceholders = pharmacyIds.map((_, index) => `$${paramIndex + index}`).join(',');
+          conditions.push(`o.pharmacy_id IN (${pharmacyPlaceholders})`);
+          params.push(...pharmacyIds);
+          paramIndex += pharmacyIds.length;
+        }
+        
+        // Condition pour les codes EAN13
+        if (code13refs.length > 0) {
+          const codePlaceholders = code13refs.map((_, index) => `$${paramIndex + index}`).join(',');
+          conditions.push(`gp.code_13_ref IN (${codePlaceholders})`);
+          params.push(...code13refs);
+        }
+        
+        // Construire la clause WHERE additionnelle
+        const additionalWhere = conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
         
         query = `
           WITH sellin_data AS (
@@ -98,9 +118,13 @@ export async function GET(request: Request) {
               data_order o
             JOIN 
               data_productorder po ON o.id = po.order_id
+            JOIN 
+              data_internalproduct ip ON po.product_id = ip.id
+            JOIN 
+              data_globalproduct gp ON ip.code_13_ref_id = gp.code_13_ref
             WHERE 
               o.sent_date BETWEEN $1 AND $2
-              AND o.pharmacy_id IN (${pharmacyPlaceholders})
+              ${additionalWhere}
             GROUP BY 
               period
             ORDER BY 
@@ -113,7 +137,6 @@ export async function GET(request: Request) {
           FROM 
             sellin_data
         `;
-        params.push(...pharmacyIds);
       }
       
       const result = await client.query(query, params);
@@ -123,6 +146,7 @@ export async function GET(request: Request) {
         endDate,
         interval,
         pharmacyIds: pharmacyIds.length > 0 ? pharmacyIds : 'all',
+        code13refs: code13refs.length > 0 ? code13refs : 'all',
         data: result.rows
       });
     } finally {

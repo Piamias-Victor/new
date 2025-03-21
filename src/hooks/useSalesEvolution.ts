@@ -1,7 +1,8 @@
-// src/hooks/useSalesEvolution.ts
+// src/hooks/useSalesEvolutionWithFilter.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 interface SalesEvolutionItem {
   period: string;
@@ -16,7 +17,7 @@ interface SalesEvolutionData {
   error: string | null;
 }
 
-export function useSalesEvolution(interval: 'day' | 'week' | 'month' = 'day'): SalesEvolutionData {
+export function useSalesEvolutionWithFilter(interval: 'day' | 'week' | 'month' = 'day'): SalesEvolutionData {
   const [data, setData] = useState<SalesEvolutionData>({
     data: [],
     isLoading: true,
@@ -25,6 +26,7 @@ export function useSalesEvolution(interval: 'day' | 'week' | 'month' = 'day'): S
   
   const { startDate, endDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchSalesEvolution() {
@@ -43,10 +45,17 @@ export function useSalesEvolution(interval: 'day' | 'week' | 'month' = 'day'): S
           interval
         });
         
-        // Si on a une sélection spécifique, on l'ajoute aux paramètres
+        // Si on a une sélection spécifique de pharmacies, on l'ajoute aux paramètres
         if (selectedPharmacyIds.length > 0) {
           selectedPharmacyIds.forEach(id => {
             params.append('pharmacyIds', id);
+          });
+        }
+        
+        // Ajouter les codes EAN13 sélectionnés si le filtre est actif
+        if (isFilterActive && selectedCodes.length > 0) {
+          selectedCodes.forEach(code => {
+            params.append('code13refs', code);
           });
         }
         
@@ -63,12 +72,12 @@ export function useSalesEvolution(interval: 'day' | 'week' | 'month' = 'day'): S
         const result = await response.json();
         
         setData({
-          data: result.data,
+          data: result.data || [],
           isLoading: false,
           error: null
         });
       } catch (error) {
-        console.error('Erreur dans useSalesEvolution:', error);
+        console.error('Erreur dans useSalesEvolutionWithFilter:', error);
         setData({
           data: [],
           isLoading: false,
@@ -78,7 +87,7 @@ export function useSalesEvolution(interval: 'day' | 'week' | 'month' = 'day'): S
     }
     
     fetchSalesEvolution();
-  }, [startDate, endDate, selectedPharmacyIds, interval]);
+  }, [startDate, endDate, selectedPharmacyIds, interval, selectedCodes, isFilterActive]);
   
   return data;
 }

@@ -1,5 +1,5 @@
-// src/components/dashboard/SalesEvolutionChart.tsx
-import { useState, useMemo } from 'react';
+// src/components/dashboard/ImprovedSalesEvolutionChart.tsx
+import { useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -11,42 +11,79 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { FiTrendingUp, FiArrowUpRight, FiArrowDownRight, FiShoppingCart, FiShoppingBag } from 'react-icons/fi';
-import { useSalesEvolution } from '@/hooks/useSalesEvolution';
-import { useSellInEvolution } from '@/hooks/useSellInEvolution';
-import { SalesInsights } from './SalesInsights';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
+import { FilterBadge } from '@/components/filters/FilterBadge';
+import { useSalesEvolutionWithFilter } from '@/hooks/useSalesEvolution';
+import { useSellInEvolutionWithFilter } from '@/hooks/useSellInEvolution';
 
 type IntervalType = 'day' | 'week' | 'month';
 
-export function SalesEvolutionChart() {
+// Interface pour les données combinées
+interface CombinedDataItem {
+  period: string;
+  revenue: number;
+  margin: number;
+  margin_percentage: number;
+  sellInAmount: number;
+}
+
+export function ImprovedSalesEvolutionChart() {
   const [interval, setInterval] = useState<IntervalType>('day');
   const [showMargin, setShowMargin] = useState(true);
   const [showSellIn, setShowSellIn] = useState(true);
   
-  // Récupérer les données sell-out (ventes)
-  const { data: sellOutData, isLoading: isSellOutLoading, error: sellOutError } = useSalesEvolution(interval);
-  
-  // Récupérer les données sell-in (achats)
-  const { data: sellInData, isLoading: isSellInLoading, error: sellInError } = useSellInEvolution(interval);
+  // Utilisation des hooks avec filtrage
+  const { data: sellOutData, isLoading: isSellOutLoading, error: sellOutError } = useSalesEvolutionWithFilter(interval);
+  const { data: sellInData, isLoading: isSellInLoading, error: sellInError } = useSellInEvolutionWithFilter(interval);
+  const { isFilterActive, selectedCodes } = useProductFilter();
   
   // État de chargement global
   const isLoading = isSellOutLoading || isSellInLoading;
   const error = sellOutError || sellInError;
   
   // Combiner les données pour l'affichage sur le même graphique
-  const combinedData = useMemo(() => {
-    if (!sellOutData || sellOutData.length === 0) return [];
+  const combinedData: CombinedDataItem[] = [];
+  
+  if (sellOutData && sellInData) {
+    // Créer un objet avec les périodes comme clés
+    const periodMap = new Map<string, CombinedDataItem>();
     
-    return sellOutData.map(sellOutItem => {
-      // Trouver l'entrée correspondante dans les données sell-in
-      const sellInItem = sellInData?.find(item => item.period === sellOutItem.period);
-      
-      return {
-        ...sellOutItem,
-        // Ajouter les données sell-in (si disponibles)
-        sellInAmount: sellInItem?.amount || 0
-      };
+    // Ajouter d'abord les données de vente
+    sellOutData.forEach(item => {
+      periodMap.set(item.period, {
+        period: item.period,
+        revenue: item.revenue || 0,
+        margin: item.margin || 0,
+        margin_percentage: item.margin_percentage || 0,
+        sellInAmount: 0
+      });
     });
-  }, [sellOutData, sellInData]);
+    
+    // Ajouter ensuite les données d'achat
+    sellInData.forEach(item => {
+      if (periodMap.has(item.period)) {
+        // Mettre à jour une entrée existante
+        const existing = periodMap.get(item.period)!;
+        existing.sellInAmount = item.amount || 0;
+      } else {
+        // Créer une nouvelle entrée
+        periodMap.set(item.period, {
+          period: item.period,
+          revenue: 0,
+          margin: 0,
+          margin_percentage: 0,
+          sellInAmount: item.amount || 0
+        });
+      }
+    });
+    
+    // Convertir la Map en tableau et trier par période
+    Array.from(periodMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([_, value]) => {
+        combinedData.push(value);
+      });
+  }
   
   // Formatter les dates selon l'intervalle choisi
   const formatXAxis = (tickItem: string) => {
@@ -95,7 +132,7 @@ export function SalesEvolutionChart() {
   
   // Calculer la tendance (% d'évolution)
   const calculateTrend = () => {
-    if (!combinedData || combinedData.length < 2) return { value: 0, isPositive: true };
+    if (combinedData.length < 2) return { value: 0, isPositive: true };
     
     const firstValue = combinedData[0]?.revenue || 0;
     const lastValue = combinedData[combinedData.length - 1]?.revenue || 0;
@@ -108,23 +145,6 @@ export function SalesEvolutionChart() {
       isPositive: percentChange >= 0
     };
   };
-  
-  // Calculer les bornes du domaine Y pour s'assurer que toutes les valeurs sont visibles
-  const yDomain = useMemo(() => {
-    if (!combinedData || combinedData.length === 0) return [0, 0];
-    
-    // Trouver la valeur maximale pour déterminer le domaine Y
-    const maxRevenue = Math.max(...combinedData.map(item => item.revenue || 0));
-    const maxMargin = showMargin ? Math.max(...combinedData.map(item => item.margin || 0)) : 0;
-    const maxSellIn = showSellIn ? Math.max(...combinedData.map(item => item.sellInAmount || 0)) : 0;
-    
-    const maxValue = Math.max(maxRevenue, maxMargin, maxSellIn);
-    
-    // Ajouter une marge de 10% au-dessus du maximum pour éviter les coupures
-    const topMargin = maxValue * 0.1;
-    
-    return [0, maxValue + topMargin];
-  }, [combinedData, showMargin, showSellIn]);
   
   const trend = calculateTrend();
 
@@ -164,9 +184,12 @@ export function SalesEvolutionChart() {
             <FiTrendingUp size={20} />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Évolution des ventes
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Évolution des ventes
+              </h2>
+              {isFilterActive && <FilterBadge count={selectedCodes.length} size="sm" />}
+            </div>
             <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Tendance : 
               <span className={`font-medium ml-1 flex items-center ${
@@ -304,7 +327,6 @@ export function SalesEvolutionChart() {
                 width={60}
                 axisLine={false}
                 tickLine={false}
-                domain={yDomain} // Définir explicitement les limites de l'axe Y
               />
               <Tooltip 
                 formatter={(value: number) => [formatTooltipValue(value)]}
@@ -363,9 +385,6 @@ export function SalesEvolutionChart() {
           </ResponsiveContainer>
         )}
       </div>
-      {sellOutData && sellOutData.length > 0 && (
-        <SalesInsights data={sellOutData} interval={interval} />
-      )}
     </div>
   );
 }
