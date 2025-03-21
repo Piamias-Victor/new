@@ -11,6 +11,8 @@ import { TopProducts } from '@/components/dashboard/TopProducts';
 import { SalesDistribution } from '@/components/dashboard/SalesDistribution';
 import UniverseTreemap from '@/components/dashboard/UniverseTreemap';
 import { EnhancedSegmentDistribution, SegmentDistribution } from '@/components/dashboard/SegmentDistribution';
+import { ProjectionDashboard } from '@/components/dashboard/ProjectionDashboard';
+import { SalesProjection } from '@/components/dashboard/SalesProjection';
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -82,6 +84,10 @@ export default function Dashboard() {
         </div>
         <div className="mt-8">
           <EnhancedSegmentDistribution />
+        </div>
+
+        <div className="mt-8">
+          <SalesProjection />
         </div>
 
       </div>
