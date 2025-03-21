@@ -131,7 +131,7 @@ export async function GET(request: Request) {
         category_breakdown AS (
           -- Répartition par catégorie
           SELECT 
-            COALESCE(category, 'Non catégorisé') AS category,
+            COALESCE(category, 'Autre') AS category,
             SUM(total_quantity) AS total_quantity,
             SUM(total_revenue) AS total_revenue,
             SUM(total_margin) AS total_margin,
@@ -149,7 +149,7 @@ export async function GET(request: Request) {
         range_breakdown AS (
           -- Répartition par gamme
           SELECT 
-            COALESCE(range_name, 'Non catégorisé') AS range_name,
+            COALESCE(range_name, 'Autre') AS range_name,
             SUM(total_quantity) AS total_quantity,
             SUM(total_revenue) AS total_revenue,
             SUM(total_margin) AS total_margin,

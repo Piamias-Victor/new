@@ -64,7 +64,7 @@ export function useSalesByUniverse(): SalesByUniverseData {
         
         // Assurer que tous les champs numériques sont bien des nombres
         const processedData = (result.data || []).map(item => ({
-          universe: item.universe || "Non catégorisé",
+          universe: item.universe || "Autre",
           revenue: Number(item.revenue) || 0,
           margin: Number(item.margin) || 0,
           quantity: Number(item.quantity) || 0,

@@ -72,7 +72,7 @@ const formatDataForTreemap = (data: any[]): TreemapItem[] => {
   
   // S'assurer que tous les champs sont correctement typés
   return data.map((item, index) => ({
-    name: item.universe || "Non catégorisé",
+    name: item.universe || "Autre",
     size: item.revenue > 0 ? item.revenue : 0.1, // Assurer une taille minimale pour les petites valeurs
     value: item.revenue || 0,
     margin: item.margin || 0,

@@ -1,8 +1,8 @@
-// src/hooks/useTopProducts.ts - Modifié pour le filtrage EAN
+// src/hooks/useTopProducts.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
-import { useProductFilter } from '@/contexts/ProductFilterContext'; // Ajouté pour le filtrage
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 export type SortByType = 'revenue' | 'quantity' | 'margin';
 
@@ -40,7 +40,7 @@ export function useTopProducts(limit: number = 10): TopProductsData {
   
   const { startDate, endDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
-  const { selectedCodes, isFilterActive } = useProductFilter(); // Accès au contexte de filtrage
+  const { selectedCodes, isFilterActive } = useProductFilter();
   
   useEffect(() => {
     async function fetchTopProducts() {
@@ -52,31 +52,54 @@ export function useTopProducts(limit: number = 10): TopProductsData {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        // Préparer les paramètres de la requête
-        const params = new URLSearchParams({
-          startDate,
-          endDate,
-          limit: limit.toString()
-        });
+        let response;
         
-        // Si on a une sélection spécifique de pharmacies, on l'ajoute aux paramètres
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
-            params.append('pharmacyIds', id);
+        // Détermine si on doit utiliser GET ou POST en fonction de la taille des données
+        const shouldUsePost = isFilterActive && selectedCodes.length > 20;
+        
+        if (shouldUsePost) {
+          // Utiliser POST pour les grandes listes de codes
+          response = await fetch('/api/products/top', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              limit,
+              pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
+              code13refs: isFilterActive ? selectedCodes : []
+            }),
+            cache: 'no-store'
+          });
+        } else {
+          // Préparer les paramètres pour GET
+          const params = new URLSearchParams({
+            startDate,
+            endDate,
+            limit: limit.toString()
+          });
+          
+          // Si on a une sélection spécifique de pharmacies
+          if (selectedPharmacyIds.length > 0) {
+            selectedPharmacyIds.forEach(id => {
+              params.append('pharmacyIds', id);
+            });
+          }
+          
+          // Si on a une sélection de codes EAN13
+          if (isFilterActive && selectedCodes.length > 0) {
+            selectedCodes.forEach(code => {
+              params.append('code13refs', code);
+            });
+          }
+          
+          // Effectuer la requête GET
+          response = await fetch(`/api/products/top?${params}`, {
+            cache: 'no-store'
           });
         }
-        
-        // Si le filtre est actif, ajouter les codes EAN sélectionnés
-        if (isFilterActive && selectedCodes.length > 0) {
-          selectedCodes.forEach(code => {
-            params.append('code13refs', code);
-          });
-        }
-        
-        // Effectuer la requête
-        const response = await fetch(`/api/products/top?${params}`, {
-          cache: 'no-store'
-        });
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -142,7 +165,7 @@ export function useTopProducts(limit: number = 10): TopProductsData {
     }
     
     fetchTopProducts();
-  }, [startDate, endDate, selectedPharmacyIds, limit, selectedCodes, isFilterActive]); // Ajout des dépendances pour le filtrage
+  }, [startDate, endDate, selectedPharmacyIds, limit, selectedCodes, isFilterActive]);
   
   return data;
 }
