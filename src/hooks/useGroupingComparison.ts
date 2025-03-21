@@ -68,24 +68,46 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        // Préparer les paramètres
-        const params = new URLSearchParams({
-          pharmacyId,
-          startDate,
-          endDate
-        });
-        
-        // Ajouter les codes EAN13 si le filtre est actif
-        if (isFilterActive && selectedCodes.length > 0) {
-          selectedCodes.forEach(code => {
-            params.append('code13refs', code);
+        // Déterminer si on doit utiliser POST ou GET
+        // Utiliser POST si nous avons beaucoup de codes EAN ou si le filtre est actif
+        const shouldUsePost = isFilterActive && (selectedCodes.length > 20);
+        let response;
+
+        if (shouldUsePost) {
+          // Utiliser POST pour éviter les URL trop longs
+          response = await fetch('/api/pharmacy/grouping-comparison', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              pharmacyId,
+              startDate,
+              endDate,
+              code13refs: isFilterActive ? selectedCodes : []
+            }),
+            cache: 'no-store'
+          });
+        } else {
+          // Pour les cas simples avec peu de codes, on peut utiliser GET
+          const params = new URLSearchParams({
+            pharmacyId,
+            startDate,
+            endDate
+          });
+          
+          // Ajouter les codes EAN13 si le filtre est actif
+          if (isFilterActive && selectedCodes.length > 0) {
+            selectedCodes.forEach(code => {
+              params.append('code13refs', code);
+            });
+          }
+          
+          // Effectuer la requête
+          response = await fetch(`/api/pharmacy/grouping-comparison?${params}`, {
+            cache: 'no-store'
           });
         }
-        
-        // Effectuer la requête
-        const response = await fetch(`/api/pharmacy/grouping-comparison?${params}`, {
-          cache: 'no-store'
-        });
         
         if (!response.ok) {
           const errorData = await response.json();
