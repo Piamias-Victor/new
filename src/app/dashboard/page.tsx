@@ -10,6 +10,7 @@ import { FilteredSalesEvolutionChart, ImprovedSalesEvolutionChart, SalesEvolutio
 import { TopProducts } from '@/components/dashboard/TopProducts';
 import { SalesDistribution } from '@/components/dashboard/SalesDistribution';
 import UniverseTreemap from '@/components/dashboard/UniverseTreemap';
+import { SegmentDistribution } from '@/components/dashboard/SegmentDistribution';
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -77,9 +78,13 @@ export default function Dashboard() {
               Répartition des ventes
             </h2>
             
-            {/* <SalesDistribution /> */}
+            {/* <SegmentDistribution /> */}
           </div>
         </div>
+        <div className="mt-8">
+          <SegmentDistribution />
+        </div>
+
       </div>
     </div>
   );
