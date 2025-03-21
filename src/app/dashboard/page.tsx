@@ -13,6 +13,7 @@ import UniverseTreemap from '@/components/dashboard/UniverseTreemap';
 import { EnhancedSegmentDistribution, SegmentDistribution } from '@/components/dashboard/SegmentDistribution';
 import { ProjectionDashboard } from '@/components/dashboard/ProjectionDashboard';
 import { SalesProjection } from '@/components/dashboard/SalesProjection';
+import { GroupingComparison } from '@/components/dashboard/GroupingComparison';
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -77,16 +78,17 @@ export default function Dashboard() {
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-              Projection
+              Comparatif Groupement
             </h2>
             
+            <GroupingComparison />
           </div>
         </div>
         <div className="mt-8">
           <EnhancedSegmentDistribution />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <SalesProjection />
         </div>
 

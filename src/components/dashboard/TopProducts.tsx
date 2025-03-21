@@ -245,9 +245,6 @@ export function TopProducts() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {getTitleBySortType()}
-                </h2>
                 {/* Ajout du badge de filtrage si le filtre est actif */}
                 {isFilterActive && <FilterBadge count={selectedCodes.length} size="sm" />}
               </div>
