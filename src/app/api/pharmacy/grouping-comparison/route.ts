@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const code13refs = searchParams.getAll('code13refs');
+    const includeTotals = searchParams.get('includeTotals') === 'true';
     
     if (!pharmacyId || !startDate || !endDate) {
       return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     }
     
     // Utiliser la méthode commune pour traiter la requête
-    return await processGroupingComparison(pharmacyId, startDate, endDate, code13refs);
+    return await processGroupingComparison(pharmacyId, startDate, endDate, code13refs, includeTotals);
   } catch (error) {
     return handleError(error);
   }
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pharmacyId, startDate, endDate, code13refs = [] } = body;
+    const { pharmacyId, startDate, endDate, code13refs = [], includeTotals = false } = body;
     
     if (!pharmacyId || !startDate || !endDate) {
       return NextResponse.json(
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Utiliser la méthode commune pour traiter la requête
-    return await processGroupingComparison(pharmacyId, startDate, endDate, code13refs);
+    return await processGroupingComparison(pharmacyId, startDate, endDate, code13refs, includeTotals);
   } catch (error) {
     return handleError(error);
   }
@@ -50,7 +51,8 @@ async function processGroupingComparison(
   pharmacyId: string,
   startDate: string,
   endDate: string,
-  code13refs: string[]
+  code13refs: string[],
+  includeTotals: boolean = false
 ) {
   const client = await pool.connect();
   
@@ -319,7 +321,10 @@ async function processGroupingComparison(
         gr.total_refs / NULLIF(gpc.pharmacy_count, 0) AS avg_references_count,
         gsi.total_sellin / NULLIF(gpc.pharmacy_count, 0) AS avg_sellin,
         gst.total_stock / NULLIF(gpc.pharmacy_count, 0) AS avg_stock,
-        ge.evolution_percentage AS avg_evolution_percentage
+        ge.evolution_percentage AS avg_evolution_percentage,
+        -- Ajouter les totaux bruts pour calculer les pourcentages
+        gs.total_sellout AS raw_total_sellout,
+        gsi.total_sellin AS raw_total_sellin
       FROM 
         group_pharmacy_count gpc
       CROSS JOIN group_references gr
@@ -335,17 +340,167 @@ async function processGroupingComparison(
     
     const groupResult = await client.query(groupQuery, groupParams);
     
-    // Préparer la réponse
-    const response = {
-      pharmacy: pharmacyResult.rows[0] || {},
-      group: groupResult.rows[0] || {},
-      filters: {
-        pharmacyId,
-        startDate,
-        endDate,
-        code13refsCount: code13refs.length
-      }
-    };
+    let response;
+    
+    // Si on veut inclure les totaux pour calculer les pourcentages
+    if (includeTotals) {
+      // Requêtes pour obtenir les totaux complets (sans filtre de codes)
+      const pharmacyTotalsQuery = `
+        WITH 
+        -- Total des ventes (sell-out) pour cette pharmacie sans filtre
+        pharmacy_total_sellout AS (
+          SELECT SUM(s.quantity * i.price_with_tax) AS total_sellout
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            p.pharmacy_id = $1
+            AND s.date BETWEEN $2 AND $3
+        ),
+        
+        -- Total des achats (sell-in) pour cette pharmacie sans filtre
+        pharmacy_total_sellin AS (
+          SELECT 
+            SUM(po.qte * (
+              SELECT COALESCE(weighted_average_price, 0)
+              FROM data_inventorysnapshot
+              WHERE product_id = po.product_id
+              ORDER BY date DESC
+              LIMIT 1
+            )) AS total_sellin
+          FROM 
+            data_order o
+          JOIN 
+            data_productorder po ON o.id = po.order_id
+          JOIN
+            data_internalproduct p ON po.product_id = p.id
+          WHERE 
+            o.pharmacy_id = $1
+            AND o.sent_date BETWEEN $2 AND $3
+        )
+        
+        SELECT 
+          pts.total_sellout, 
+          ptsi.total_sellin
+        FROM 
+          pharmacy_total_sellout pts, 
+          pharmacy_total_sellin ptsi
+      `;
+      
+      const groupTotalsQuery = `
+        WITH 
+        -- Total des ventes (sell-out) pour toutes les pharmacies sans filtre
+        group_total_sellout AS (
+          SELECT SUM(s.quantity * i.price_with_tax) AS total_sellout
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN
+            data_internalproduct p ON i.product_id = p.id
+          WHERE 
+            s.date BETWEEN $1 AND $2
+        ),
+        
+        -- Total des achats (sell-in) pour toutes les pharmacies sans filtre
+        group_total_sellin AS (
+          SELECT 
+            SUM(po.qte * (
+              SELECT COALESCE(weighted_average_price, 0)
+              FROM data_inventorysnapshot
+              WHERE product_id = po.product_id
+              ORDER BY date DESC
+              LIMIT 1
+            )) AS total_sellin
+          FROM 
+            data_order o
+          JOIN 
+            data_productorder po ON o.id = po.order_id
+          JOIN
+            data_internalproduct p ON po.product_id = p.id
+          WHERE 
+            o.sent_date BETWEEN $1 AND $2
+        )
+        
+        SELECT 
+          gts.total_sellout, 
+          gtsi.total_sellin
+        FROM 
+          group_total_sellout gts, 
+          group_total_sellin gtsi
+      `;
+      
+      const pharmacyTotalsResult = await client.query(pharmacyTotalsQuery, [pharmacyId, startDate, endDate]);
+      const groupTotalsResult = await client.query(groupTotalsQuery, [startDate, endDate]);
+      
+      const pharmacyTotals = pharmacyTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
+      const groupTotals = groupTotalsResult.rows[0] || { total_sellout: 0, total_sellin: 0 };
+      
+      // Calculer les pourcentages pour la pharmacie
+      const pharmacySelloutPercentage = pharmacyTotals.total_sellout > 0 
+        ? (pharmacyResult.rows[0].total_sellout / pharmacyTotals.total_sellout * 100) 
+        : 0;
+        
+      const pharmacySellinPercentage = pharmacyTotals.total_sellin > 0 
+        ? (pharmacyResult.rows[0].total_sellin / pharmacyTotals.total_sellin * 100) 
+        : 0;
+      
+      // Calculer les pourcentages pour le groupe
+      const groupSelloutPercentage = groupTotals.total_sellout > 0 
+        ? (groupResult.rows[0].raw_total_sellout / groupTotals.total_sellout * 100) 
+        : 0;
+        
+      const groupSellinPercentage = groupTotals.total_sellin > 0 
+        ? (groupResult.rows[0].raw_total_sellin / groupTotals.total_sellin * 100) 
+        : 0;
+      
+      // Préparer la réponse avec les pourcentages
+      response = {
+        pharmacy: {
+          ...pharmacyResult.rows[0],
+          total_pharmacy_sellout: pharmacyTotals.total_sellout,
+          total_pharmacy_sellin: pharmacyTotals.total_sellin,
+          sellout_percentage: pharmacySelloutPercentage,
+          sellin_percentage: pharmacySellinPercentage
+        },
+        group: {
+          ...groupResult.rows[0],
+          total_group_sellout: groupTotals.total_sellout,
+          total_group_sellin: groupTotals.total_sellin,
+          sellout_percentage: groupSelloutPercentage,
+          sellin_percentage: groupSellinPercentage
+        },
+        filters: {
+          pharmacyId,
+          startDate,
+          endDate,
+          code13refsCount: code13refs.length
+        }
+      };
+      
+      // Supprimer les champs raw_ qui sont juste des intermédiaires de calcul
+      delete response.group.raw_total_sellout;
+      delete response.group.raw_total_sellin;
+    } else {
+      // Réponse standard sans les pourcentages
+      response = {
+        pharmacy: pharmacyResult.rows[0] || {},
+        group: groupResult.rows[0] || {},
+        filters: {
+          pharmacyId,
+          startDate,
+          endDate,
+          code13refsCount: code13refs.length
+        }
+      };
+      
+      // Supprimer les champs raw_ qui sont juste des intermédiaires de calcul
+      if (response.group.raw_total_sellout) delete response.group.raw_total_sellout;
+      if (response.group.raw_total_sellin) delete response.group.raw_total_sellin;
+    }
     
     return NextResponse.json(response);
   } finally {

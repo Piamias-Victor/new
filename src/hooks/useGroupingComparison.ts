@@ -11,6 +11,11 @@ interface PharmacyData {
   total_sellin: number;
   total_stock: number;
   evolution_percentage: number;
+  // Nouvelles propriétés
+  sellout_percentage: number;
+  sellin_percentage: number;
+  total_pharmacy_sellout: number; // Total absolu de la pharmacie
+  total_pharmacy_sellin: number;  // Total absolu de la pharmacie
 }
 
 interface GroupData {
@@ -22,6 +27,11 @@ interface GroupData {
   avg_sellin: number;
   avg_stock: number;
   avg_evolution_percentage: number;
+  // Nouvelles propriétés
+  total_group_sellout: number;   // Total absolu du groupe
+  total_group_sellin: number;    // Total absolu du groupe
+  sellout_percentage: number;    // Pourcentage que représente la sélection
+  sellin_percentage: number;     // Pourcentage que représente la sélection
 }
 
 interface ComparisonData {
@@ -41,6 +51,10 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       total_sellin: 0,
       total_stock: 0,
       evolution_percentage: 0,
+      sellout_percentage: 0,
+      sellin_percentage: 0,
+      total_pharmacy_sellout: 0,
+      total_pharmacy_sellin: 0
     },
     group: {
       pharmacy_count: 0,
@@ -51,6 +65,10 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       avg_sellin: 0,
       avg_stock: 0,
       avg_evolution_percentage: 0,
+      total_group_sellout: 0,
+      total_group_sellin: 0,
+      sellout_percentage: 0,
+      sellin_percentage: 0
     },
     isLoading: true,
     error: null
@@ -69,12 +87,10 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
         // Déterminer si on doit utiliser POST ou GET
-        // Utiliser POST si nous avons beaucoup de codes EAN ou si le filtre est actif
         const shouldUsePost = isFilterActive && (selectedCodes.length > 20);
         let response;
 
         if (shouldUsePost) {
-          // Utiliser POST pour éviter les URL trop longs
           response = await fetch('/api/pharmacy/grouping-comparison', {
             method: 'POST',
             headers: {
@@ -84,26 +100,25 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
               pharmacyId,
               startDate,
               endDate,
-              code13refs: isFilterActive ? selectedCodes : []
+              code13refs: isFilterActive ? selectedCodes : [],
+              includeTotals: true // Nouveau paramètre pour indiquer qu'on veut les totaux
             }),
             cache: 'no-store'
           });
         } else {
-          // Pour les cas simples avec peu de codes, on peut utiliser GET
           const params = new URLSearchParams({
             pharmacyId,
             startDate,
-            endDate
+            endDate,
+            includeTotals: 'true' // Nouveau paramètre
           });
           
-          // Ajouter les codes EAN13 si le filtre est actif
           if (isFilterActive && selectedCodes.length > 0) {
             selectedCodes.forEach(code => {
               params.append('code13refs', code);
             });
           }
           
-          // Effectuer la requête
           response = await fetch(`/api/pharmacy/grouping-comparison?${params}`, {
             cache: 'no-store'
           });

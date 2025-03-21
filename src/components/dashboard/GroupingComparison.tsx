@@ -30,6 +30,7 @@ const formatLargeNumber = (num: number, isPercentage = false) => {
 };
 
 // Composant pour afficher un indicateur de comparaison
+// Composant pour afficher un indicateur de comparaison avec part totale
 interface ComparisonIndicatorProps {
   title: string;
   icon: React.ReactNode;
@@ -38,6 +39,10 @@ interface ComparisonIndicatorProps {
   formatValue: (value: number) => string;
   isPercentage?: boolean;
   colorBasedOnComparison?: boolean;
+  totalPharmacyValue?: number;    // Valeur totale pour la pharmacie
+  totalGroupValue?: number;       // Valeur totale pour le groupe
+  pharmacyPercentage?: number;    // Pourcentage que représente la sélection pour la pharmacie
+  groupPercentage?: number;       // Pourcentage que représente la sélection pour le groupe
 }
 
 const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
@@ -47,7 +52,11 @@ const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
   groupValue,
   formatValue,
   isPercentage = false,
-  colorBasedOnComparison = true
+  colorBasedOnComparison = true,
+  totalPharmacyValue,
+  totalGroupValue,
+  pharmacyPercentage,
+  groupPercentage
 }) => {
   // Calculer la différence par rapport à la moyenne du groupement
   const difference = pharmacyValue - groupValue;
@@ -55,7 +64,6 @@ const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
   const { isFilterActive, selectedCodes } = useProductFilter();
   
   // Déterminer si la différence est positive (bonne performance) ou négative
-  // Pour certains KPIs (comme le stock), moins c'est mieux
   let isPositive = percentDifference >= 0;
   
   // Inverser pour certains indicateurs où moins est mieux
@@ -67,6 +75,12 @@ const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
   const colorClass = !colorBasedOnComparison ? 'text-gray-700 dark:text-gray-300' :
     isPositive ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
   
+  // Formatter les pourcentages
+  const formatPercentage = (value: number | undefined) => {
+    if (value === undefined) return null;
+    return `${value.toFixed(1)}%`;
+  };
+  
   return (
     <div className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg">
       <div className="flex items-center mb-2">
@@ -75,17 +89,22 @@ const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
       </div>
 
       {isFilterActive && (
-        <div className="mb-4 flex items-center">
+        <div className="mb-2 flex items-center">
           <FilterBadge count={selectedCodes.length} />
         </div>
       )}
       
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
           <div className="text-xs text-gray-500 dark:text-gray-400">Pharmacie</div>
           <div className="text-lg font-bold text-gray-800 dark:text-white">
             {formatValue(pharmacyValue)}
           </div>
+          {pharmacyPercentage !== undefined && (
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {formatPercentage(pharmacyPercentage)} du total ({totalPharmacyValue && formatValue(totalPharmacyValue)})
+            </div>
+          )}
         </div>
         
         <div>
@@ -93,6 +112,11 @@ const ComparisonIndicator: React.FC<ComparisonIndicatorProps> = ({
           <div className="text-lg font-semibold text-gray-600 dark:text-gray-300">
             {formatValue(groupValue)}
           </div>
+          {groupPercentage !== undefined && (
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {formatPercentage(groupPercentage)} du total ({totalGroupValue && formatValue(totalGroupValue)})
+            </div>
+          )}
         </div>
       </div>
       
@@ -146,7 +170,7 @@ export function GroupingComparison() {
       <div className="animate-pulse">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
           ))}
         </div>
       </div>
@@ -182,6 +206,10 @@ export function GroupingComparison() {
         pharmacyValue={pharmacy.total_sellout}
         groupValue={group.avg_sellout}
         formatValue={formatCurrency}
+        totalPharmacyValue={pharmacy.total_pharmacy_sellout}
+        totalGroupValue={group.total_group_sellout}
+        pharmacyPercentage={pharmacy.sellout_percentage}
+        groupPercentage={group.sellout_percentage}
       />
       
       {/* CA Sell-in */}
@@ -191,6 +219,10 @@ export function GroupingComparison() {
         pharmacyValue={pharmacy.total_sellin}
         groupValue={group.avg_sellin}
         formatValue={formatCurrency}
+        totalPharmacyValue={pharmacy.total_pharmacy_sellin}
+        totalGroupValue={group.total_group_sellin}
+        pharmacyPercentage={pharmacy.sellin_percentage}
+        groupPercentage={group.sellin_percentage}
       />
       
       {/* Marge */}
