@@ -10,6 +10,7 @@ import { ProductMarginsPanelFiltered } from '@/components/dashboard/margins/Prod
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { KpiCards } from '@/components/dashboard/KpiCards';
 import { ProductEvolutionPanel } from '@/components/dashboard/evolution/ProductEvolutionPanel';
+import { ProductPriceComparisonPanel } from '@/components/dashboard/price/ProductPriceComparisonPanel';
 
 export default function ProductDashboard() {
   const { data: session, status } = useSession();
@@ -76,7 +77,7 @@ export default function ProductDashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
               <ProductEvolutionPanel />
-              <ProductMarginsPanelFiltered />
+              <ProductPriceComparisonPanel />
             </div>
           </>
         )}

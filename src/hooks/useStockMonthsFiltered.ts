@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { StockProductData } from '@/hooks/useStockMonths';
+import { useDateRange } from '@/contexts/DateRangeContext';
 
 interface StockMonthsData {
   criticalLow: StockProductData[];
@@ -27,6 +28,8 @@ export function useStockMonthsFiltered(): StockMonthsData {
   
   const { selectedPharmacyIds } = usePharmacySelection();
   const { selectedCodes, isFilterActive } = useProductFilter();
+  const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
+  
   
   useEffect(() => {
     async function fetchStockMonths() {
@@ -115,7 +118,7 @@ export function useStockMonthsFiltered(): StockMonthsData {
     }
     
     fetchStockMonths();
-  }, [selectedPharmacyIds, selectedCodes, isFilterActive]);
+  }, [selectedPharmacyIds, selectedCodes, isFilterActive, startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled]);
   
   return data;
 }

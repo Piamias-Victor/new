@@ -45,6 +45,7 @@ interface SalesEvolutionComparisonData {
 }
 
 export function useSalesEvolutionComparison(): SalesEvolutionComparisonData {
+  
   const [data, setData] = useState<SalesEvolutionComparisonData>({
     categories: {
       strongDecrease: { 
