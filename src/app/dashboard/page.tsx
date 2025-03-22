@@ -59,7 +59,7 @@ export default function Dashboard() {
         </div>
 
         {/* Navigation Cards */}
-        <NavigationCards />
+        {/* <NavigationCards /> */}
         
         {/* Nouveau composant d'évolution des ventes */}
         <ImprovedSalesEvolutionChart />

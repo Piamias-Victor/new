@@ -187,7 +187,7 @@ export function MarginProductsModal({
                           product.margin_percentage <= 35 ? 'text-green-600 dark:text-green-400' :
                           'text-purple-600 dark:text-purple-400'
                         }`}>
-                          {product.margin_percentage.toFixed(2)}%
+                          {product.margin_percentage}%
                         </span>
                       </div>
                     </td>

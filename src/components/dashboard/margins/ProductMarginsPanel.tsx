@@ -1,124 +1,33 @@
-import React, { useState, useMemo } from 'react';
+// src/components/dashboard/margins/ProductMarginsPanelFiltered.tsx
+import React, { useState } from 'react';
 import { FiTrendingUp } from 'react-icons/fi';
-import { Product } from '@/services/productService';
-import { MarginProductData } from '@/hooks/useProductMargins';
 import { MarginSummaryCard } from './MarginSummaryCard';
 import { MarginProductsModal } from './MarginProductsModal';
+import { useProductMarginsFiltered } from '@/hooks/useProductMarginsFiltered';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
-interface ProductMarginsPanelProps {
-  products: Product[];
-  labData?: any;
-  isLoading: boolean;
-}
-
-export function ProductMarginsPanel({ 
-  products, 
-  labData = {}, 
-  isLoading 
-}: ProductMarginsPanelProps) {
+export function ProductMarginsPanelFiltered() {
   // État pour la modale
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<MarginProductData[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [modalTitle, setModalTitle] = useState('');
   
-  // Calculer les marges 
-  const marginCategories = useMemo(() => {
-    // Utiliser les données du laboratoire si disponibles
-    const negativeMargin = labData?.margins?.negativeMargin || [];
-    const lowMargin = labData?.margins?.lowMargin || [];
-    const mediumMargin = labData?.margins?.mediumMargin || [];
-    const goodMargin = labData?.margins?.goodMargin || [];
-    const excellentMargin = labData?.margins?.excellentMargin || [];
-
-    // Si les données du laboratoire existent et contiennent des catégories, les utiliser
-    if (negativeMargin.length || lowMargin.length || mediumMargin.length || 
-        goodMargin.length || excellentMargin.length) {
-      return {
-        negativeMargin,
-        lowMargin,
-        mediumMargin,
-        goodMargin,
-        excellentMargin
-      };
-    }
-
-    // Consolidation des produits par code_13_ref (identifiant unique du produit)
-    const consolidatedProducts = products.reduce((acc, product) => {
-      const existingProduct = acc.find(p => p.code_13_ref === product.code_13_ref);
-      
-      if (!existingProduct) {
-        // Premier produit de ce type
-        acc.push({
-          code_13_ref: product.code_13_ref || '',
-          display_name: product.display_name || product.name,
-          current_stock: Number(product.current_stock) || 0,
-          price_with_tax: Number(product.price_with_tax) || 0,
-          weighted_average_price: Number(product.weighted_average_price) || 0,
-          tva_rate: Number(product.tva_rate) || 0,
-          total_sales: Number(product.total_sales) || 0
-        });
-      } else {
-        // Accumulation des données pour ce produit
-        existingProduct.current_stock += Number(product.current_stock) || 0;
-        existingProduct.total_sales += Number(product.total_sales) || 0;
-        
-        // Prendre le prix et le coût du produit avec le plus de ventes
-        if (Number(product.total_sales) > existingProduct.total_sales) {
-          existingProduct.price_with_tax = Number(product.price_with_tax) || existingProduct.price_with_tax;
-          existingProduct.weighted_average_price = Number(product.weighted_average_price) || existingProduct.weighted_average_price;
-          existingProduct.tva_rate = Number(product.tva_rate) || existingProduct.tva_rate;
-        }
-      }
-      
-      return acc;
-    }, [] as Array<{
-      code_13_ref: string, 
-      display_name: string, 
-      current_stock: number,
-      price_with_tax: number,
-      weighted_average_price: number,
-      tva_rate: number,
-      total_sales: number
-    }>);
-
-    // Conversion en données de marge
-    const convertedProducts: MarginProductData[] = consolidatedProducts.map(product => {
-      // Calculer le prix HT
-      const priceHT = product.price_with_tax / (1 + product.tva_rate / 100);
-      
-      // Calculer la marge
-      const marginAmount = priceHT - product.weighted_average_price;
-      const marginPercentage = (marginAmount / product.weighted_average_price) * 100;
-      
-      return {
-        id: product.code_13_ref,
-        product_name: product.display_name,
-        global_name: product.display_name,
-        display_name: product.display_name,
-        category: '', // Pourrait être ajouté si nécessaire
-        brand_lab: '', // Pourrait être ajouté si nécessaire
-        code_13_ref: product.code_13_ref,
-        current_stock: product.current_stock,
-        price_with_tax: product.price_with_tax,
-        weighted_average_price: product.weighted_average_price,
-        margin_percentage: marginPercentage,
-        margin_amount: marginAmount * product.total_sales,
-        total_sales: product.total_sales
-      };
-    });
-    
-    // Classifier par catégories de marge
-    return {
-      negativeMargin: convertedProducts.filter(p => p.margin_percentage < 0),
-      lowMargin: convertedProducts.filter(p => p.margin_percentage >= 0 && p.margin_percentage < 10),
-      mediumMargin: convertedProducts.filter(p => p.margin_percentage >= 10 && p.margin_percentage < 20),
-      goodMargin: convertedProducts.filter(p => p.margin_percentage >= 20 && p.margin_percentage <= 35),
-      excellentMargin: convertedProducts.filter(p => p.margin_percentage > 35)
-    };
-  }, [products, labData]);
+  // Vérifier si un filtre est actif
+  const { isFilterActive } = useProductFilter();
+  
+  // Récupérer les données des marges avec le hook filtré
+  const { 
+    negativeMargin, 
+    lowMargin, 
+    mediumMargin, 
+    goodMargin, 
+    excellentMargin,
+    isLoading, 
+    error 
+  } = useProductMarginsFiltered();
   
   // Fonction pour ouvrir la modale avec une catégorie spécifique
-  const openModal = (products: MarginProductData[], title: string) => {
+  const openModal = (products, title) => {
     setSelectedProducts(products);
     setModalTitle(title);
     setModalOpen(true);
@@ -150,9 +59,29 @@ export function ProductMarginsPanel({
     );
   }
   
-  // Si pas de produits, ne rien afficher
-  if (!products.length) {
-    return null;
+  // Affichage en cas d'erreur
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <div className="text-red-500 dark:text-red-400">
+          Erreur: {error}
+        </div>
+      </div>
+    );
+  }
+  
+  // Si pas de filtre actif, afficher un message d'invite
+  if (!isFilterActive) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
+        <div className="text-center p-6">
+          <FiTrendingUp className="mx-auto text-gray-400 mb-3" size={24} />
+          <p className="text-gray-500 dark:text-gray-400">
+            Sélectionnez des produits via le filtre pour voir leur analyse de marge
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -168,46 +97,46 @@ export function ProductMarginsPanel({
         <MarginSummaryCard
           title="Marge négative"
           description="Produits vendus à perte"
-          count={marginCategories.negativeMargin.length}
+          count={negativeMargin.length}
           colorScheme="red"
           icon="negative"
-          onClick={() => openModal(marginCategories.negativeMargin, "Produits vendus à perte")}
+          onClick={() => openModal(negativeMargin, "Produits vendus à perte")}
         />
         
         <MarginSummaryCard
           title="Marge faible"
-          description="Produits avec marge inférieure à 10%"
-          count={marginCategories.lowMargin.length}
+          description="Produits avec marge inférieure à 25%"
+          count={lowMargin.length}
           colorScheme="amber"
           icon="low"
-          onClick={() => openModal(marginCategories.lowMargin, "Produits avec marge inférieure à 10%")}
+          onClick={() => openModal(lowMargin, "Produits avec marge inférieure à 25%")}
         />
         
         <MarginSummaryCard
           title="Marge moyenne"
           description="Produits avec marge entre 10% et 20%"
-          count={marginCategories.mediumMargin.length}
+          count={mediumMargin.length}
           colorScheme="blue"
           icon="medium"
-          onClick={() => openModal(marginCategories.mediumMargin, "Produits avec marge entre 10% et 20%")}
+          onClick={() => openModal(mediumMargin, "Produits avec marge entre 25% et 30%")}
         />
         
         <MarginSummaryCard
           title="Bonne marge"
           description="Produits avec marge entre 20% et 35%"
-          count={marginCategories.goodMargin.length}
+          count={goodMargin.length}
           colorScheme="green"
           icon="good"
-          onClick={() => openModal(marginCategories.goodMargin, "Produits avec marge entre 20% et 35%")}
+          onClick={() => openModal(goodMargin, "Produits avec marge entre 30% et 35%")}
         />
         
         <MarginSummaryCard
           title="Marge excellente"
           description="Produits avec marge supérieure à 35%"
-          count={marginCategories.excellentMargin.length}
+          count={excellentMargin.length}
           colorScheme="purple"
           icon="excellent"
-          onClick={() => openModal(marginCategories.excellentMargin, "Produits avec marge supérieure à 35%")}
+          onClick={() => openModal(excellentMargin, "Produits avec marge supérieure à 35%")}
         />
       </div>
       
