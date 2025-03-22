@@ -9,6 +9,7 @@ import { ProductStockMonthsPanelFiltered } from '@/components/dashboard/stock/Pr
 import { ProductMarginsPanelFiltered } from '@/components/dashboard/margins/ProductMarginsPanel';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { KpiCards } from '@/components/dashboard/KpiCards';
+import { ProductEvolutionPanel } from '@/components/dashboard/evolution/ProductEvolutionPanel';
 
 export default function ProductDashboard() {
   const { data: session, status } = useSession();
@@ -71,6 +72,10 @@ export default function ProductDashboard() {
             {/* Panneaux d'analyse côte à côte (Stock et Marges) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
               <ProductStockMonthsPanelFiltered />
+              <ProductMarginsPanelFiltered />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+              <ProductEvolutionPanel />
               <ProductMarginsPanelFiltered />
             </div>
           </>

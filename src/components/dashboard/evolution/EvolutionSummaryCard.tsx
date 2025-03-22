@@ -1,11 +1,11 @@
 // src/components/dashboard/evolution/EvolutionSummaryCard.tsx
 import React from 'react';
 import { 
-  FiPercent, 
+  FiTrendingDown, 
+  FiTrendingUp, 
   FiArrowDown, 
-  FiMinusCircle, 
   FiArrowUp, 
-  FiTrendingUp,
+  FiMinus,
   FiExternalLink 
 } from 'react-icons/fi';
 
@@ -17,7 +17,7 @@ interface EvolutionSummaryCardProps {
   description: string;
   count: number;
   colorScheme: ColorScheme;
-  icon: 'strongDecrease' | 'slightDecrease' | 'stable' | 'slightIncrease' | 'strongIncrease';
+  icon: 'strong-decrease' | 'slight-decrease' | 'stable' | 'slight-increase' | 'strong-increase';
   onClick: () => void;
 }
 
@@ -57,18 +57,18 @@ export function EvolutionSummaryCard({
   // Choix de l'icône
   const getIcon = () => {
     switch (icon) {
-      case 'strongDecrease':
-        return <FiArrowDown size={20} />;
-      case 'slightDecrease':
+      case 'strong-decrease':
+        return <FiTrendingDown size={20} />;
+      case 'slight-decrease':
         return <FiArrowDown size={20} />;
       case 'stable':
-        return <FiMinusCircle size={20} />;
-      case 'slightIncrease':
+        return <FiMinus size={20} />;
+      case 'slight-increase':
         return <FiArrowUp size={20} />;
-      case 'strongIncrease':
+      case 'strong-increase':
         return <FiTrendingUp size={20} />;
       default:
-        return <FiPercent size={20} />;
+        return <FiMinus size={20} />;
     }
   };
 

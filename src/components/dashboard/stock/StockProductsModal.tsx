@@ -70,7 +70,7 @@ export function StockProductsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-700 bg-opacity-30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-30 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* En-tête de la modale */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">

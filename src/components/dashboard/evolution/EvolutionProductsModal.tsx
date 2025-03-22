@@ -1,12 +1,12 @@
 // src/components/dashboard/evolution/EvolutionProductsModal.tsx
 import React, { useState } from 'react';
-import { FiX, FiSearch, FiTrendingUp, FiTrendingDown, FiMinus } from 'react-icons/fi';
-import { ProductEvolution } from '@/hooks/useEvolutionComparison';
+import { FiX, FiSearch, FiTrendingUp, FiTrendingDown, FiPackage } from 'react-icons/fi';
+import { EvolutionProductData } from '@/hooks/useProductEvolution';
 
 interface EvolutionProductsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  products: ProductEvolution[];
+  products: EvolutionProductData[];
   title: string;
 }
 
@@ -17,7 +17,7 @@ export function EvolutionProductsModal({
   title 
 }: EvolutionProductsModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof ProductEvolution>('evolution_percentage');
+  const [sortField, setSortField] = useState<keyof EvolutionProductData>('evolution_percentage');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   if (!isOpen) return null;
@@ -32,22 +32,30 @@ export function EvolutionProductsModal({
   
   // Fonction pour trier les produits
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const aValue = a[sortField] || 0;
-    const bValue = b[sortField] || 0;
+    let aValue = a[sortField];
+    let bValue = b[sortField];
     
+    // Conversion explicite en nombre pour les champs numériques
+    if (['current_revenue', 'previous_revenue', 'evolution_percentage', 'current_stock'].includes(sortField as string)) {
+      aValue = Number(aValue || 0);
+      bValue = Number(bValue || 0);
+    }
+    
+    // Tri pour les chaines de caractères
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortDirection === 'asc' 
         ? aValue.localeCompare(bValue) 
         : bValue.localeCompare(aValue);
     }
     
+    // Tri pour les nombres
     return sortDirection === 'asc' 
       ? Number(aValue) - Number(bValue) 
       : Number(bValue) - Number(aValue);
   });
   
   // Fonction pour changer le tri
-  const handleSort = (field: keyof ProductEvolution) => {
+  const handleSort = (field: keyof EvolutionProductData) => {
     if (field === sortField) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -64,9 +72,14 @@ export function EvolutionProductsModal({
       maximumFractionDigits: 2
     }).format(amount);
   };
+  
+  // Formatage des pourcentages
+  const formatPercent = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value}%`;
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-700 bg-opacity-30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* En-tête de la modale */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -96,7 +109,8 @@ export function EvolutionProductsModal({
         </div>
         
         {/* Contenu de la modale */}
-        <div className="overflow-auto flex-grow p-1">
+        <div className="overflow-auto flex-grow p-1 relative">
+          {/* En-tête de tableau avec position sticky et z-index élevé */}
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
               <tr>
@@ -110,7 +124,7 @@ export function EvolutionProductsModal({
                 </th>
                 <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('current_revenue')}>
                   <div className="flex items-center">
-                    CA Actuel
+                    Période actuelle
                     {sortField === 'current_revenue' && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
@@ -118,7 +132,7 @@ export function EvolutionProductsModal({
                 </th>
                 <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('previous_revenue')}>
                   <div className="flex items-center">
-                    CA Précédent
+                    Période précédente
                     {sortField === 'previous_revenue' && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
@@ -126,7 +140,7 @@ export function EvolutionProductsModal({
                 </th>
                 <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('evolution_percentage')}>
                   <div className="flex items-center">
-                    Évolution %
+                    Évolution
                     {sortField === 'evolution_percentage' && (
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
@@ -142,6 +156,8 @@ export function EvolutionProductsModal({
                 </th>
               </tr>
             </thead>
+            
+            {/* Corps du tableau avec arrière-plan cohérent */}
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {sortedProducts.length === 0 ? (
                 <tr>
@@ -151,11 +167,12 @@ export function EvolutionProductsModal({
                 </tr>
               ) : (
                 sortedProducts.map((product) => (
-                  <tr key={product.product_id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <div className="font-medium text-gray-900 dark:text-white">{product.display_name}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {product.brand_lab && `${product.brand_lab} • `}
+                        {product.category && `${product.category} • `}
                         {product.code_13_ref}
                       </div>
                     </td>
@@ -167,13 +184,11 @@ export function EvolutionProductsModal({
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <div className="flex items-center">
-                        {product.evolution_percentage < -5 ? (
+                        {product.evolution_percentage < 0 ? (
                           <FiTrendingDown className="text-red-500 dark:text-red-400 mr-1" size={14} />
-                        ) : product.evolution_percentage > 5 ? (
+                        ) : product.evolution_percentage > 0 ? (
                           <FiTrendingUp className="text-green-500 dark:text-green-400 mr-1" size={14} />
-                        ) : (
-                          <FiMinus className="text-blue-500 dark:text-blue-400 mr-1" size={14} />
-                        )}
+                        ) : null}
                         <span className={`font-medium ${
                           product.evolution_percentage < -15 ? 'text-red-600 dark:text-red-400' :
                           product.evolution_percentage < -5 ? 'text-amber-600 dark:text-amber-400' :
@@ -181,13 +196,18 @@ export function EvolutionProductsModal({
                           product.evolution_percentage <= 15 ? 'text-green-600 dark:text-green-400' :
                           'text-purple-600 dark:text-purple-400'
                         }`}>
-                          {product.evolution_percentage > 0 ? '+' : ''}
-                          {product.evolution_percentage.toFixed(2)}%
+                          {formatPercent(product.evolution_percentage)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {product.current_stock}
+                    <td className="px-3 py-2 whitespace-nowrap text-sm">
+                      <span className={`font-medium ${
+                        product.current_stock === 0 ? 'text-red-600 dark:text-red-400' :
+                        product.current_stock < 5 ? 'text-amber-600 dark:text-amber-400' :
+                        'text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {product.current_stock}
+                      </span>
                     </td>
                   </tr>
                 ))

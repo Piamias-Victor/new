@@ -1,26 +1,33 @@
 // src/components/dashboard/evolution/ProductEvolutionPanel.tsx
 import React, { useState } from 'react';
 import { FiTrendingUp } from 'react-icons/fi';
-import { useEvolutionComparison, ProductEvolution } from '@/hooks/useEvolutionComparison';
 import { EvolutionSummaryCard } from './EvolutionSummaryCard';
 import { EvolutionProductsModal } from './EvolutionProductsModal';
+import { useProductEvolution } from '@/hooks/useProductEvolution';
+import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 export function ProductEvolutionPanel() {
-  // Utiliser notre hook personnalisé
-  const { 
-    categories,
-    globalComparison,
-    isLoading, 
-    error 
-  } = useEvolutionComparison();
-  
   // État pour la modale
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<ProductEvolution[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [modalTitle, setModalTitle] = useState('');
   
+  // Vérifier si un filtre est actif
+  const { isFilterActive } = useProductFilter();
+  
+  // Récupérer les données d'évolution
+  const { 
+    strongDecrease, 
+    slightDecrease, 
+    stable, 
+    slightIncrease, 
+    strongIncrease,
+    isLoading, 
+    error 
+  } = useProductEvolution();
+  
   // Fonction pour ouvrir la modale avec une catégorie spécifique
-  const openModal = (products: ProductEvolution[], title: string) => {
+  const openModal = (products, title) => {
     setSelectedProducts(products);
     setModalTitle(title);
     setModalOpen(true);
@@ -68,54 +75,54 @@ export function ProductEvolutionPanel() {
       <div className="flex items-center mb-4">
         <FiTrendingUp className="text-gray-500 dark:text-gray-400 mr-2" size={18} />
         <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
-          Évolution des produits
+          Évolution des ventes
         </h2>
       </div>
       
       <div className="space-y-3">
         <EvolutionSummaryCard
-          title={categories.strongDecrease.name}
-          description={categories.strongDecrease.description}
-          count={categories.strongDecrease.count}
+          title="Forte baisse"
+          description="Baisse > 15%"
+          count={strongDecrease.length}
           colorScheme="red"
-          icon="strongDecrease"
-          onClick={() => openModal(categories.strongDecrease.products, `${categories.strongDecrease.name} (${categories.strongDecrease.description})`)}
+          icon="strong-decrease"
+          onClick={() => openModal(strongDecrease, "Produits en forte baisse (> 15%)")}
         />
         
         <EvolutionSummaryCard
-          title={categories.slightDecrease.name}
-          description={categories.slightDecrease.description}
-          count={categories.slightDecrease.count}
+          title="Légère baisse"
+          description="Baisse entre 5% et 15%"
+          count={slightDecrease.length}
           colorScheme="amber"
-          icon="slightDecrease"
-          onClick={() => openModal(categories.slightDecrease.products, `${categories.slightDecrease.name} (${categories.slightDecrease.description})`)}
+          icon="slight-decrease"
+          onClick={() => openModal(slightDecrease, "Produits en légère baisse (5-15%)")}
         />
         
         <EvolutionSummaryCard
-          title={categories.stable.name}
-          description={categories.stable.description}
-          count={categories.stable.count}
+          title="Stable"
+          description="Variation entre -5% et 5%"
+          count={stable.length}
           colorScheme="blue"
           icon="stable"
-          onClick={() => openModal(categories.stable.products, `${categories.stable.name} (${categories.stable.description})`)}
+          onClick={() => openModal(stable, "Produits stables (-5% à +5%)")}
         />
         
         <EvolutionSummaryCard
-          title={categories.slightIncrease.name}
-          description={categories.slightIncrease.description}
-          count={categories.slightIncrease.count}
+          title="Légère hausse"
+          description="Hausse entre 5% et 15%"
+          count={slightIncrease.length}
           colorScheme="green"
-          icon="slightIncrease"
-          onClick={() => openModal(categories.slightIncrease.products, `${categories.slightIncrease.name} (${categories.slightIncrease.description})`)}
+          icon="slight-increase"
+          onClick={() => openModal(slightIncrease, "Produits en légère hausse (5-15%)")}
         />
         
         <EvolutionSummaryCard
-          title={categories.strongIncrease.name}
-          description={categories.strongIncrease.description}
-          count={categories.strongIncrease.count}
+          title="Forte hausse"
+          description="Hausse > 15%"
+          count={strongIncrease.length}
           colorScheme="purple"
-          icon="strongIncrease"
-          onClick={() => openModal(categories.strongIncrease.products, `${categories.strongIncrease.name} (${categories.strongIncrease.description})`)}
+          icon="strong-increase"
+          onClick={() => openModal(strongIncrease, "Produits en forte hausse (> 15%)")}
         />
       </div>
       
