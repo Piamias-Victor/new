@@ -11,6 +11,7 @@ import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { KpiCards } from '@/components/dashboard/KpiCards';
 import { ProductEvolutionPanel } from '@/components/dashboard/evolution/ProductEvolutionPanel';
 import { ProductPriceComparisonPanel } from '@/components/dashboard/price/ProductPriceComparisonPanel';
+import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
 
 export default function ProductDashboard() {
   const { data: session, status } = useSession();
@@ -79,6 +80,7 @@ export default function ProductDashboard() {
               <ProductEvolutionPanel />
               <ProductPriceComparisonPanel />
             </div>
+            <SelectedProductsList/>
           </>
         )}
       </div>
