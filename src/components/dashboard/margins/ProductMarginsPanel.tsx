@@ -114,7 +114,7 @@ export function ProductMarginsPanelFiltered() {
         
         <MarginSummaryCard
           title="Marge moyenne"
-          description="Produits avec marge entre 10% et 20%"
+          description="Produits avec marge entre 25% et 30%"
           count={mediumMargin.length}
           colorScheme="blue"
           icon="medium"
@@ -123,7 +123,7 @@ export function ProductMarginsPanelFiltered() {
         
         <MarginSummaryCard
           title="Bonne marge"
-          description="Produits avec marge entre 20% et 35%"
+          description="Produits avec marge entre 30% et 35%"
           count={goodMargin.length}
           colorScheme="green"
           icon="good"

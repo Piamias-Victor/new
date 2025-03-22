@@ -30,17 +30,25 @@ export function StockProductsModal({
     product.code_13_ref?.includes(searchTerm)
   );
   
-  // Fonction pour trier les produits
+  // Fonction pour trier les produits - CORRIGÉE pour gérer correctement les valeurs numériques
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const aValue = a[sortField] || 0;
-    const bValue = b[sortField] || 0;
+    let aValue = a[sortField];
+    let bValue = b[sortField];
     
+    // Conversion explicite en nombre pour les champs numériques
+    if (['current_stock', 'avg_monthly_sales', 'stock_months'].includes(sortField as string)) {
+      aValue = Number(aValue || 0);
+      bValue = Number(bValue || 0);
+    }
+    
+    // Tri pour les chaines de caractères
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortDirection === 'asc' 
         ? aValue.localeCompare(bValue) 
         : bValue.localeCompare(aValue);
     }
     
+    // Tri pour les nombres
     return sortDirection === 'asc' 
       ? Number(aValue) - Number(bValue) 
       : Number(bValue) - Number(aValue);
@@ -62,7 +70,7 @@ export function StockProductsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-30 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-700 bg-opacity-30 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* En-tête de la modale */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -92,7 +100,7 @@ export function StockProductsModal({
         </div>
         
         {/* Contenu de la modale */}
-        <div className="overflow-auto flex-grow p-1">
+        <div className="overflow-auto flex-grow p-1 relative">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
               <tr>
