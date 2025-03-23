@@ -1,3 +1,4 @@
+// src/app/dashboard/detailed/laboratories/page.tsx - Mise à jour
 'use client';
 
 import React, { useEffect } from 'react';
@@ -7,16 +8,17 @@ import { FiFilter } from 'react-icons/fi';
 
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { KpiCards } from '@/components/dashboard/KpiCards';
-import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
-import { PharmaciesList } from '@/components/dashboard/products/PharmaciesList';
 import { ImprovedSalesEvolutionChart } from '@/components/dashboard/SalesEvolutionChart';
 import { StockEvolutionChart } from '@/components/dashboard/products/StockEvolutionChart';
 import { SalesProjection } from '@/components/dashboard/SalesProjection';
+import { LaboratoryAnalysisContainer } from '@/components/dashboard/laboratories/LaboratoryAnalysisContainer';
+import { PharmaciesList } from '@/components/dashboard/products/PharmaciesList';
+import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
 
 export default function LaboratoriesDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { isFilterActive } = useProductFilter();
+  const { isFilterActive, selectedLabs } = useProductFilter();
 
   // Redirection if not authenticated
   useEffect(() => {
@@ -39,6 +41,9 @@ export default function LaboratoriesDashboard() {
     return null;
   }
 
+  // Détermine si un laboratoire est sélectionné
+  const hasSelectedLab = selectedLabs.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -51,38 +56,32 @@ export default function LaboratoriesDashboard() {
           </p>
         </div>
 
-        {!isFilterActive ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center">
-            <div className="mb-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400 mb-4">
-                <FiFilter size={24} />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Sélectionnez des laboratoires pour commencer
-              </h2>
-              <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                Utilisez le filtre dans l'en-tête pour sélectionner des laboratoires ou marques à analyser.
-              </p>
-            </div>
-          </div>
-        ) : (
+        {/* Conteneur d'analyse de laboratoire - UTILISE LE FILTRE EXISTANT */}
+        {/* Afficher les graphiques d'évolution et de projection uniquement si un filtre est actif */}
+        {isFilterActive && (
           <>
-            <KpiCards/>
-            <div className="mt-6"/>  
+            <div className="my-8">
+              <KpiCards />
+            </div>
+
+            <LaboratoryAnalysisContainer />
+
             
             {/* Sales and Stock Evolution Charts */}
-            <ImprovedSalesEvolutionChart />
-            <StockEvolutionChart />
+            <div className="mt-6">
+              <ImprovedSalesEvolutionChart />
+            </div>
+            <div className="mt-6">
+              <StockEvolutionChart />
+            </div>
 
-             <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-                <SalesProjection />
-              </div>
-           
-            {/* Products List */}
+            {/* Sales Projection */}
+            <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <SalesProjection />
+            </div>
+
             <SelectedProductsList/>
             <div className="mt-6"/>  
-            
-            {/* Pharmacies List */}
             <PharmaciesList />
           </>
         )}
