@@ -44,7 +44,7 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
 
       try {
         // Ajouter les paramètres de date à la requête si disponibles
-        let url = `/api/products/${code13ref}`;
+        let url = `/api/products/${code13ref}/information`;
         if (startDate && endDate) {
           url += `?startDate=${startDate}&endDate=${endDate}`;
         }

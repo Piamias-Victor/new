@@ -431,7 +431,7 @@ const sortedProducts = useMemo(() => {
                         <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
                         {activeTab === 'info' && <ProductInfoTab code13ref={expandedProduct.code_13_ref} />}
                         {activeTab === 'sales' && <ProductSalesTab code13ref={expandedProduct?.code_13_ref} />}
-                          {activeTab === 'stock' && <ProductStockTab product={product} />}
+                          {activeTab === 'stock' && <ProductStockTab code13ref={expandedProduct?.code_13_ref} />}
                           {activeTab === 'evolution' && <ProductEvolutionTab product={product} />}
                         </div>
                       </div>
