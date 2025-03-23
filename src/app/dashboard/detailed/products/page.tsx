@@ -12,6 +12,7 @@ import { KpiCards } from '@/components/dashboard/KpiCards';
 import { ProductEvolutionPanel } from '@/components/dashboard/evolution/ProductEvolutionPanel';
 import { ProductPriceComparisonPanel } from '@/components/dashboard/price/ProductPriceComparisonPanel';
 import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
+import { PharmaciesList } from '@/components/dashboard/products/PharmaciesList';
 
 export default function ProductDashboard() {
   const { data: session, status } = useSession();
@@ -81,6 +82,8 @@ export default function ProductDashboard() {
               <ProductPriceComparisonPanel />
             </div>
             <SelectedProductsList/>
+            <div className="mt-6"/>  
+            <PharmaciesList />
           </>
         )}
       </div>
