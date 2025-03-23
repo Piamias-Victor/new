@@ -415,8 +415,8 @@ export function SelectedProductsList() {
                         </div>
                         
                         <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                          {activeTab === 'info' && <ProductInfoTab product={product} />}
-                          {activeTab === 'sales' && <ProductSalesTab product={product} />}
+                        {activeTab === 'info' && <ProductInfoTab code13ref={expandedProduct.code_13_ref} />}
+                        {activeTab === 'sales' && <ProductSalesTab product={product} />}
                           {activeTab === 'stock' && <ProductStockTab product={product} />}
                           {activeTab === 'evolution' && <ProductEvolutionTab product={product} />}
                         </div>
