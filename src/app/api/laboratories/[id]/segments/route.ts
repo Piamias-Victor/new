@@ -9,7 +9,7 @@ export async function POST(
   try {
     const laboratoryId = decodeURIComponent(params.id);
     const body = await request.json();
-    const { startDate, endDate, pharmacyIds = [] } = body;
+    const { startDate, endDate, pharmacyIds = [], includeAllSegmentTypes = false } = body;
 
     // Validation des entrées
     if (!laboratoryId || !startDate || !endDate) {
@@ -59,8 +59,8 @@ export async function POST(
       // Exécuter la requête pour obtenir les informations du laboratoire
       const labInfoResult = await client.query(labInfoQuery, baseParams);
       
-      // 2. Obtenir les segments du laboratoire
-      const segmentsQuery = `
+      // 2. Obtenir les segments du laboratoire (catégories)
+      const categoriesQuery = `
         WITH lab_sales AS (
           SELECT 
             gp.universe,
@@ -107,6 +107,7 @@ export async function POST(
           COALESCE(ls.category, 'Non catégorisé') as name,
           COALESCE(ls.universe, 'Non catégorisé') as universe,
           COALESCE(ls.category, 'Non catégorisé') as category,
+          'category' as segment_type,
           ls.product_count,
           ls.lab_revenue as total_revenue,
           ls.lab_margin as total_margin,
@@ -122,8 +123,81 @@ export async function POST(
           ls.lab_revenue DESC
       `;
       
-      // Exécuter la requête pour obtenir les segments
-      const segmentsResult = await client.query(segmentsQuery, baseParams);
+      // Exécuter la requête pour obtenir les segments par catégorie
+      const categoriesResult = await client.query(categoriesQuery, baseParams);
+      
+      // 3. Obtenir les segments du laboratoire par univers
+      const universesQuery = `
+        WITH lab_sales_by_universe AS (
+          SELECT 
+            gp.universe,
+            SUM(s.quantity * i.price_with_tax) as lab_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            COUNT(DISTINCT p.code_13_ref_id) as product_count
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.brand_lab = $3
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe
+        ),
+        total_sales_by_universe AS (
+          SELECT 
+            gp.universe,
+            SUM(s.quantity * i.price_with_tax) as total_revenue
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe
+        )
+        SELECT 
+          CONCAT('universe_', lsu.universe) as id,
+          COALESCE(lsu.universe, 'Non catégorisé') as name,
+          COALESCE(lsu.universe, 'Non catégorisé') as universe,
+          '' as category,
+          'universe' as segment_type,
+          lsu.product_count,
+          lsu.lab_revenue as total_revenue,
+          lsu.lab_margin as total_margin,
+          CASE 
+            WHEN tsu.total_revenue > 0 THEN ROUND((lsu.lab_revenue / tsu.total_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as market_share
+        FROM 
+          lab_sales_by_universe lsu
+        LEFT JOIN 
+          total_sales_by_universe tsu ON lsu.universe = tsu.universe
+        ORDER BY 
+          lsu.lab_revenue DESC
+      `;
+      
+      // Exécuter la requête pour obtenir les segments par univers
+      const universesResult = await client.query(universesQuery, baseParams);
+      
+      // Combiner les segments (catégories et univers)
+      let combinedSegments = [...categoriesResult.rows];
+      
+      // Ajouter les univers si demandés
+      if (includeAllSegmentTypes) {
+        combinedSegments = [...universesResult.rows, ...combinedSegments];
+      }
       
       // Retourner les données
       return NextResponse.json({
@@ -134,7 +208,7 @@ export async function POST(
           total_margin: 0,
           product_count: 0
         },
-        segments: segmentsResult.rows || []
+        segments: combinedSegments || []
       });
     } finally {
       client.release();
@@ -161,6 +235,7 @@ export async function GET(
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
+    const includeAllSegmentTypes = searchParams.get('includeAllSegmentTypes') === 'true';
     
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -173,7 +248,8 @@ export async function GET(
     const body = {
       startDate,
       endDate, 
-      pharmacyIds
+      pharmacyIds,
+      includeAllSegmentTypes
     };
     
     // Créer une fausse Request pour appeler la méthode POST

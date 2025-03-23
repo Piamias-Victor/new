@@ -42,6 +42,9 @@ export interface SegmentAnalysisData {
 }
 
 export function useSegmentAnalysis(segmentId: string, laboratoryId: string): SegmentAnalysisData {
+  console.log(`\n\n================ HOOK useSegmentAnalysis ================`);
+  console.log(`segmentId: "${segmentId}", laboratoryId: "${laboratoryId}"`);
+  
   const [data, setData] = useState<SegmentAnalysisData>({
     segmentInfo: {
       id: '',
@@ -62,23 +65,53 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
   
   useEffect(() => {
     async function fetchSegmentAnalysis() {
+      console.log(`HOOK EFFECT - startDate: ${startDate}, endDate: ${endDate}`);
       if (!segmentId || !laboratoryId || !startDate || !endDate) {
+        console.log("HOOK - Paramètres manquants, pas d'appel API");
         return;
       }
       
       setData(prev => ({ ...prev, isLoading: true, error: null }));
+      console.log("HOOK - État de chargement activé");
       
       try {
-        // Préparer le corps de la requête
+        // Déterminer le type de segment et sa valeur
+        let segmentType = 'category';
+        let segmentValue = '';
+        
+        if (segmentId.startsWith('universe_')) {
+          // C'est un segment de type univers
+          segmentType = 'universe';
+          segmentValue = segmentId.substring(9); // Enlever "universe_"
+          console.log(`HOOK - Type: univers, Valeur: "${segmentValue}"`);
+        } else {
+          // C'est un segment de type catégorie
+          const parts = segmentId.split('_');
+          if (parts.length >= 2) {
+            segmentValue = parts.slice(1).join('_'); // Le nom de la catégorie
+            console.log(`HOOK - Type: catégorie, Univers: "${parts[0]}", Valeur: "${segmentValue}"`);
+          } else {
+            // Format invalide
+            console.log("HOOK - ERREUR: Format de segmentId invalide");
+            throw new Error('Format de segmentId invalide');
+          }
+        }
+        
+        // Préparer le corps de la requête avec les nouvelles propriétés
         const requestBody = {
           startDate,
           endDate,
           laboratoryId,
           pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-          limit: 10
+          limit: 10,
+          segmentType, // Nouveau: type de segment explicite
+          segmentValue // Nouveau: valeur du segment
         };
         
+        console.log("HOOK - Corps de la requête:", JSON.stringify(requestBody));
+        
         // Effectuer la requête POST
+        console.log(`HOOK - Appel API: /api/segments/${segmentId}/analysis`);
         const response = await fetch(`/api/segments/${segmentId}/analysis`, {
           method: 'POST',
           headers: {
@@ -90,10 +123,12 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
         
         if (!response.ok) {
           const errorData = await response.json();
+          console.log(`HOOK - Erreur API: ${response.status}`, errorData);
           throw new Error(errorData.error || 'Erreur lors de la récupération des données');
         }
         
         const result = await response.json();
+        console.log("HOOK - Réponse API reçue:", JSON.stringify(result.segmentInfo));
         
         // Vérifier que les données sont conformes à nos attentes
         const segmentInfo = result.segmentInfo || {
@@ -116,22 +151,34 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
           ? result.marketShareByLab
           : [];
         
-        setData({
+        console.log('HOOK - segmentInfo reçu:', JSON.stringify(segmentInfo));
+        console.log(`HOOK - segmentInfo.universe: "${segmentInfo.universe}", segmentInfo.category: "${segmentInfo.category}"`);
+        console.log('HOOK - selectedLabProductsTop:', selectedLabProductsTop.length);
+        console.log('HOOK - otherLabsProductsTop:', otherLabsProductsTop.length);
+        console.log('HOOK - marketShareByLab:', marketShareByLab.length);
+        
+        const newData = {
           segmentInfo,
           selectedLabProductsTop,
           otherLabsProductsTop,
           marketShareByLab,
           isLoading: false,
           error: null
-        });
+        };
+        
+        console.log("HOOK - Mise à jour des données:", JSON.stringify(newData.segmentInfo));
+        setData(newData);
+        console.log("HOOK - Données mises à jour");
       } catch (error) {
-        console.error('Erreur dans useSegmentAnalysis:', error);
+        console.error('HOOK - Erreur dans useSegmentAnalysis:', error);
         setData(prev => ({
           ...prev,
           isLoading: false,
           error: error instanceof Error ? error.message : 'Erreur inconnue'
         }));
+        console.log("HOOK - État d'erreur défini");
       }
+      console.log(`================ FIN HOOK useSegmentAnalysis ================\n\n`);
     }
     
     fetchSegmentAnalysis();

@@ -8,7 +8,7 @@ export interface Segment {
   name: string;
   universe: string;
   category: string;
-  segment_type: string; // Nouveau champ pour identifier le type de segment
+  segment_type: string; // Type de segment (universe, category, etc.)
   product_count: number;
   total_revenue: number;
   total_margin: number;
@@ -59,7 +59,7 @@ export function useLaboratorySegments(laboratoryId: string): LaboratorySegmentsD
           startDate,
           endDate,
           pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-          includeAllSegmentTypes: true // Nouveau paramètre pour inclure tous les types de segments
+          includeAllSegmentTypes: true 
         };
         
         // Effectuer la requête POST
