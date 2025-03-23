@@ -7,16 +7,14 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Le paramètre ID est maintenant le nom du laboratoire (depuis ProductFilterContext)
-    const labName = params.id;
+    const laboratoryId = decodeURIComponent(params.id);
     const body = await request.json();
-    
-    // Récupérer les paramètres du corps de la requête
     const { startDate, endDate, pharmacyIds = [] } = body;
-    
-    if (!labName || !startDate || !endDate) {
+
+    // Validation des entrées
+    if (!laboratoryId || !startDate || !endDate) {
       return NextResponse.json(
-        { error: 'Nom du laboratoire, date de début et date de fin sont requis' },
+        { error: 'Paramètres laboratoryId, startDate et endDate requis' },
         { status: 400 }
       );
     }
@@ -24,13 +22,26 @@ export async function POST(
     const client = await pool.connect();
     
     try {
-      // Requête pour obtenir les informations du laboratoire
-      let labQuery = `
+      // Préparer les paramètres avec des types explicites
+      let baseParams = [startDate, endDate, laboratoryId];
+      
+      // Construire la condition pour les pharmacies
+      let pharmacyCondition = '';
+      
+      if (pharmacyIds && pharmacyIds.length > 0) {
+        const placeholders = pharmacyIds.map((_, i) => `$${i + 4}`).join(',');
+        pharmacyCondition = ` AND p.pharmacy_id IN (${placeholders})`;
+        baseParams.push(...pharmacyIds);
+      }
+
+      // 1. Obtenir les informations du laboratoire
+      const labInfoQuery = `
         SELECT 
-          brand_lab as name,
-          COUNT(DISTINCT code_13_ref) as product_count,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - i.weighted_average_price)) as total_margin
+          $3 as id,
+          $3 as name,
+          COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
+          COALESCE(SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))), 0) as total_margin,
+          COUNT(DISTINCT p.code_13_ref_id) as product_count
         FROM 
           data_sales s
         JOIN 
@@ -38,133 +49,133 @@ export async function POST(
         JOIN 
           data_internalproduct p ON i.product_id = p.id
         JOIN 
-          data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+          data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
         WHERE 
-          g.brand_lab = $1
-          AND s.date BETWEEN $2 AND $3
+          s.date BETWEEN $1 AND $2
+          AND gp.brand_lab = $3
+          ${pharmacyCondition}
       `;
       
-      // Ajout des conditions de filtrage par pharmacie
-      if (pharmacyIds.length > 0) {
-        labQuery += ` AND p.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${idx + 4}`).join(',')})`;
-      }
+      // Exécuter la requête pour obtenir les informations du laboratoire
+      const labInfoResult = await client.query(labInfoQuery, baseParams);
       
-      labQuery += ` GROUP BY g.brand_lab`;
-      
-      // Paramètres pour la requête laboratoire
-      const labParams = [labName, startDate, endDate];
-      if (pharmacyIds.length > 0) {
-        labParams.push(...pharmacyIds);
-      }
-      
-      const labResult = await client.query(labQuery, labParams);
-      
-      // Requête pour obtenir les segments du laboratoire
-      let segmentsQuery = `
+      // 2. Obtenir les segments du laboratoire
+      const segmentsQuery = `
+        WITH lab_sales AS (
+          SELECT 
+            gp.universe,
+            gp.category,
+            SUM(s.quantity * i.price_with_tax) as lab_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            COUNT(DISTINCT p.code_13_ref_id) as product_count
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.brand_lab = $3
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe, gp.category
+        ),
+        total_sales AS (
+          SELECT 
+            gp.universe,
+            gp.category,
+            SUM(s.quantity * i.price_with_tax) as total_revenue
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe, gp.category
+        )
         SELECT 
-          CONCAT(g.universe, '_', g.category) as id,
-          COALESCE(g.category, 'Non catégorisé') as name,
-          COALESCE(g.universe, 'Non catégorisé') as universe,
-          COALESCE(g.category, 'Non catégorisé') as category,
-          COUNT(DISTINCT g.code_13_ref) as product_count,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - i.weighted_average_price)) as total_margin,
-          (
-            SUM(s.quantity * i.price_with_tax) / NULLIF(
-              (
-                SELECT SUM(s2.quantity * i2.price_with_tax)
-                FROM data_sales s2
-                JOIN data_inventorysnapshot i2 ON s2.product_id = i2.id
-                JOIN data_internalproduct p2 ON i2.product_id = p2.id
-                JOIN data_globalproduct g2 ON p2.code_13_ref_id = g2.code_13_ref
-                WHERE g2.universe = g.universe AND g2.category = g.category
-                AND s2.date BETWEEN $2 AND $3
-                ${pharmacyIds.length > 0 ? ` AND p2.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${idx + 4}`).join(',')})` : ''}
-              ), 0
-            ) * 100
-          ) as market_share
+          CONCAT(ls.universe, '_', ls.category) as id,
+          COALESCE(ls.category, 'Non catégorisé') as name,
+          COALESCE(ls.universe, 'Non catégorisé') as universe,
+          COALESCE(ls.category, 'Non catégorisé') as category,
+          ls.product_count,
+          ls.lab_revenue as total_revenue,
+          ls.lab_margin as total_margin,
+          CASE 
+            WHEN ts.total_revenue > 0 THEN ROUND((ls.lab_revenue / ts.total_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as market_share
         FROM 
-          data_sales s
-        JOIN 
-          data_inventorysnapshot i ON s.product_id = i.id
-        JOIN 
-          data_internalproduct p ON i.product_id = p.id
-        JOIN 
-          data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
-        WHERE 
-          g.brand_lab = $1
-          AND s.date BETWEEN $2 AND $3
+          lab_sales ls
+        LEFT JOIN 
+          total_sales ts ON ls.universe = ts.universe AND ls.category = ts.category
+        ORDER BY 
+          ls.lab_revenue DESC
       `;
       
-      // Ajout des conditions de filtrage par pharmacie
-      if (pharmacyIds.length > 0) {
-        segmentsQuery += ` AND p.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${idx + 4}`).join(',')})`;
-      }
+      // Exécuter la requête pour obtenir les segments
+      const segmentsResult = await client.query(segmentsQuery, baseParams);
       
-      segmentsQuery += ` 
-        GROUP BY g.universe, g.category
-        ORDER BY total_revenue DESC
-      `;
-      
-      // Paramètres pour la requête segments
-      const segmentsParams = [labName, startDate, endDate];
-      if (pharmacyIds.length > 0) {
-        segmentsParams.push(...pharmacyIds);
-      }
-      
-      const segmentsResult = await client.query(segmentsQuery, segmentsParams);
-      
-      // Si aucun laboratoire trouvé
-      if (labResult.rows.length === 0) {
-        return NextResponse.json(
-          { error: 'Laboratoire non trouvé ou aucune donnée disponible' },
-          { status: 404 }
-        );
-      }
-      
-      // Construire la réponse
-      const response = {
-        laboratory: {
-          id: labName,
-          ...labResult.rows[0]
+      // Retourner les données
+      return NextResponse.json({
+        laboratory: labInfoResult.rows[0] || {
+          id: laboratoryId,
+          name: laboratoryId,
+          total_revenue: 0,
+          total_margin: 0,
+          product_count: 0
         },
-        segments: segmentsResult.rows
-      };
-      
-      return NextResponse.json(response);
+        segments: segmentsResult.rows || []
+      });
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Erreur lors de la récupération des segments du laboratoire:', error);
+    console.error('Erreur lors de l\'analyse des segments du laboratoire:', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des données', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Erreur serveur', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
 }
 
-// Conserver également la méthode GET pour la compatibilité
+// Méthode GET pour compatibilité
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const labName = params.id;
+    const laboratoryId = decodeURIComponent(params.id);
     const searchParams = request.nextUrl.searchParams;
     
-    // Récupérer les paramètres de la requête
+    // Récupérer les paramètres de recherche
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     
+    if (!startDate || !endDate) {
+      return NextResponse.json(
+        { error: 'Les dates de début et de fin sont requises' },
+        { status: 400 }
+      );
+    }
+    
     // Construire un objet pour appeler la méthode POST
     const body = {
       startDate,
-      endDate,
+      endDate, 
       pharmacyIds
     };
-
+    
     // Créer une fausse Request pour appeler la méthode POST
     const postRequest = new Request(request.url, {
       method: 'POST',
@@ -173,13 +184,13 @@ export async function GET(
       },
       body: JSON.stringify(body)
     });
-
+    
     // Appeler la méthode POST
     return POST(postRequest, { params });
   } catch (error) {
-    console.error('Erreur lors de la récupération des segments du laboratoire (GET):', error);
+    console.error('Erreur lors de l\'analyse des segments du laboratoire (GET):', error);
     return NextResponse.json(
-      { error: 'Erreur lors de la récupération des données', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Erreur serveur', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

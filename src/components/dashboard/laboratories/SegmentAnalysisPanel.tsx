@@ -5,7 +5,6 @@ import { useSegmentAnalysis } from '@/hooks/useSegmentAnalysis';
 import { SegmentMarketShare } from './SegmentMarketShare';
 import { SegmentTopProducts } from './SegmentTopProducts';
 
-
 interface SegmentAnalysisPanelProps {
   segmentId: string;
   laboratoryId: string;
@@ -29,6 +28,7 @@ export function SegmentAnalysisPanel({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 animate-pulse">
         <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+        <div className="h-36 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
           <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
@@ -81,55 +81,56 @@ export function SegmentAnalysisPanel({
         </div>
       </div>
 
-      {/* Contenu principal */}
-      <div className="p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Colonne de gauche */}
-          <div className="space-y-6">
-            {/* Part de marché des laboratoires */}
-            <div>
-              <div className="flex items-center mb-4">
-                <div className="p-2 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-2">
-                  <FiPieChart size={16} />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Parts de marché des laboratoires
-                </h3>
-              </div>
-              <SegmentMarketShare 
-                marketShareData={marketShareByLab} 
-                selectedLabId={laboratoryId}
-              />
+      {/* Contenu principal - Réorganisé */}
+      <div className="p-6 space-y-6">
+        {/* Part de marché des laboratoires - Sur toute la largeur */}
+        <div>
+          <div className="flex items-center mb-4">
+            <div className="p-2 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-2">
+              <FiPieChart size={16} />
             </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              Parts de marché des laboratoires
+            </h3>
+          </div>
+          <SegmentMarketShare 
+            marketShareData={marketShareByLab} 
+            selectedLabId={laboratoryId}
+          />
+        </div>
 
-            {/* Top produits du laboratoire */}
-            <div>
-              <div className="flex items-center mb-4">
-                <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 mr-2">
-                  <FiBox size={16} />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Top produits du laboratoire
-                </h3>
+        {/* Top produits côte à côte */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top produits du laboratoire */}
+          <div>
+            <div className="flex items-center mb-4">
+              <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 mr-2">
+                <FiBox size={16} />
               </div>
-              <SegmentTopProducts products={selectedLabProductsTop} />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Top produits du laboratoire
+              </h3>
             </div>
+            <SegmentTopProducts 
+              products={selectedLabProductsTop} 
+              title="Top produits du laboratoire"
+            />
           </div>
 
-          {/* Colonne de droite */}
-          <div className="space-y-6">
-            {/* Top produits des autres laboratoires */}
-            <div>
-              <div className="flex items-center mb-4">
-                <div className="p-2 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 mr-2">
-                  <FiPackage size={16} />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Top produits concurrents
-                </h3>
+          {/* Top produits des autres laboratoires */}
+          <div>
+            <div className="flex items-center mb-4">
+              <div className="p-2 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 mr-2">
+                <FiPackage size={16} />
               </div>
-              <SegmentTopProducts products={otherLabsProductsTop} />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Top produits concurrents
+              </h3>
             </div>
+            <SegmentTopProducts 
+              products={otherLabsProductsTop}
+              title="Top produits concurrents"
+            />
           </div>
         </div>
       </div>

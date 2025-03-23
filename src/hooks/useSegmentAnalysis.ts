@@ -21,9 +21,9 @@ export interface LaboratoryMarketShare {
   id: string;
   name: string;
   total_revenue: number;
-  market_share: number; // Pourcentage du marché
+  market_share: number;
   product_count: number;
-  rank: number; // Position dans le classement
+  rank: number;
 }
 
 export interface SegmentAnalysisData {
@@ -34,9 +34,9 @@ export interface SegmentAnalysisData {
     category: string;
     total_revenue: number;
   };
-  selectedLabProductsTop: TopProduct[]; // Top produits du laboratoire dans ce segment
-  otherLabsProductsTop: TopProduct[]; // Top produits hors laboratoire sélectionné
-  marketShareByLab: LaboratoryMarketShare[]; // Part de marché des laboratoires
+  selectedLabProductsTop: TopProduct[];
+  otherLabsProductsTop: TopProduct[];
+  marketShareByLab: LaboratoryMarketShare[];
   isLoading: boolean;
   error: string | null;
 }
@@ -75,7 +75,7 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
           endDate,
           laboratoryId,
           pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-          limit: 10 // Valeur par défaut
+          limit: 10
         };
         
         // Effectuer la requête POST
@@ -95,17 +95,32 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
         
         const result = await response.json();
         
+        // Vérifier que les données sont conformes à nos attentes
+        const segmentInfo = result.segmentInfo || {
+          id: segmentId,
+          name: '',
+          universe: '',
+          category: '',
+          total_revenue: 0
+        };
+        
+        const selectedLabProductsTop = Array.isArray(result.selectedLabProductsTop) 
+          ? result.selectedLabProductsTop 
+          : [];
+          
+        const otherLabsProductsTop = Array.isArray(result.otherLabsProductsTop)
+          ? result.otherLabsProductsTop
+          : [];
+          
+        const marketShareByLab = Array.isArray(result.marketShareByLab)
+          ? result.marketShareByLab
+          : [];
+        
         setData({
-          segmentInfo: result.segmentInfo || {
-            id: segmentId,
-            name: '',
-            universe: '',
-            category: '',
-            total_revenue: 0
-          },
-          selectedLabProductsTop: result.selectedLabProductsTop || [],
-          otherLabsProductsTop: result.otherLabsProductsTop || [],
-          marketShareByLab: result.marketShareByLab || [],
+          segmentInfo,
+          selectedLabProductsTop,
+          otherLabsProductsTop,
+          marketShareByLab,
           isLoading: false,
           error: null
         });

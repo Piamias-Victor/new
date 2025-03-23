@@ -23,7 +23,7 @@ export function SegmentMarketShare({
 
   // Fonction pour formater les pourcentages
   const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
+    return `${Number(value).toFixed(1)}%`;
   };
 
   // Fonction pour déterminer la couleur en fonction du classement
