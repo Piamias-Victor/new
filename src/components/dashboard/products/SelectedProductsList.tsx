@@ -16,11 +16,12 @@ import { ProductInfoTab } from './tabs/ProductInfoTab';
 import { ProductSalesTab } from './tabs/ProductSalesTab';
 import { ProductStockTab } from './tabs/ProductStockTab';
 import { ProductEvolutionTab } from './tabs/ProductEvolutionTab';
+import { ProductGroupingTab } from './tabs/ProductGroupingTab';
 
 type SortField = 'display_name' | 'brand_lab' | 'sell_out_price_ttc' | 'sell_in_price_ht' | 'margin_percentage' | 
                 'stock_value_ht' | 'sales_quantity' | 'sales_evolution_percentage';
 
-type TabKey = 'info' | 'sales' | 'stock' | 'evolution';
+type TabKey = 'info' | 'sales' | 'stock' | 'evolution' | 'grouping';
 
 export function SelectedProductsList() {
   const { products, isLoading, error } = useSelectedProductsData();
@@ -217,7 +218,7 @@ export function SelectedProductsList() {
       </div>
       
       <div className="overflow-x-auto">
-        <div className="max-h-[500px] overflow-y-auto">
+        <div className="max-h-[700px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
               <tr>
@@ -412,7 +413,16 @@ export function SelectedProductsList() {
                               >
                                 Stock
                               </button>
-                          
+                              <button
+                                onClick={() => setActiveTab('grouping')}
+                                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                                  activeTab === 'grouping' 
+                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                              >
+                                Groupement
+                              </button>
                             </nav>
                           </div>
                           
@@ -421,6 +431,7 @@ export function SelectedProductsList() {
                             {activeTab === 'sales' && <ProductSalesTab code13ref={expandedProduct?.code_13_ref} />}
                             {activeTab === 'stock' && <ProductStockTab code13ref={expandedProduct?.code_13_ref} />}
                             {activeTab === 'evolution' && <ProductEvolutionTab product={product} />}
+                            {activeTab === 'grouping' && <ProductGroupingTab code13ref={expandedProduct?.code_13_ref} />}
                           </div>
                         </div>
                       </td>
