@@ -1,4 +1,4 @@
-// src/components/dashboard/pharmacies/PharmaciesList.tsx
+// src/components/dashboard/products/PharmaciesList.tsx
 import React, { useState, useMemo } from 'react';
 import { usePharmaciesData } from '@/hooks/usePharmaciesData';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
@@ -12,6 +12,7 @@ import {
   FiPackage,
   FiPercent
 } from 'react-icons/fi';
+import { PharmacyDetailTabs } from './tabs/PharmacyDetailTabs';
 
 type SortField = 'name' | 'sell_out_price_ttc' | 'sell_in_price_ht' | 'margin_percentage' | 
                 'stock_value_ht' | 'sales_quantity' | 'references' | 'selection_weight';
@@ -22,7 +23,6 @@ export function PharmaciesList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [showUnitPrices, setShowUnitPrices] = useState(false);
   const [expandedPharmacyId, setExpandedPharmacyId] = useState<string | null>(null);
   
   // Fonction pour formatter les valeurs monétaires
@@ -378,21 +378,11 @@ export function PharmaciesList() {
                     </td>
                   </tr>
                   
-                  {/* Section détaillée lorsque la pharmacie est développée */}
+                  {/* Section détaillée avec les onglets lorsque la pharmacie est développée */}
                   {expandedPharmacyId === pharmacy?.id && (
                     <tr>
                       <td colSpan={9} className="px-0 py-0 bg-gray-50 dark:bg-gray-700">
-                        <div className="p-4">
-                          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                              Détails de la pharmacie {pharmacy?.name}
-                            </h3>
-                            
-                            <div className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
-                              Plus de détails seront disponibles prochainement...
-                            </div>
-                          </div>
-                        </div>
+                        <PharmacyDetailTabs pharmacyId={pharmacy?.id} />
                       </td>
                     </tr>
                   )}
