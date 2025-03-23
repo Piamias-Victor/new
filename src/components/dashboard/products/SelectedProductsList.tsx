@@ -1,4 +1,4 @@
-// src/components/products/SelectedProductsList.tsx
+// src/components/dashboard/products/SelectedProductsList.tsx
 import React, { useState, useMemo } from 'react';
 import { useSelectedProductsData } from '@/hooks/useSelectedProductsData';
 import { 
@@ -74,56 +74,52 @@ export function SelectedProductsList() {
   }, [products, searchTerm]);
   
   // Tri des produits
-  // Modifiez la fonction de tri dans votre composant SelectedProductsList
-// Remplacez la partie du tri des produits par ce code :
-
-// Tri des produits
-const sortedProducts = useMemo(() => {
-  return [...filteredProducts].sort((a, b) => {
-    let compareResult;
-    
-    switch (sortField) {
-      case 'display_name':
-        compareResult = a.display_name.localeCompare(b.display_name);
-        break;
-      case 'brand_lab':
-        compareResult = (a.brand_lab || '').localeCompare(b.brand_lab || '');
-        break;
-      case 'sell_out_price_ttc':
-        // Utiliser le prix total ou unitaire selon le mode d'affichage
-        if (showTotals) {
-          compareResult = a.total_sell_out - b.total_sell_out;
-        } else {
-          compareResult = a.sell_out_price_ttc - b.sell_out_price_ttc;
-        }
-        break;
-      case 'sell_in_price_ht':
-        // Utiliser le prix total ou unitaire selon le mode d'affichage
-        if (showTotals) {
-          compareResult = a.total_sell_in - b.total_sell_in;
-        } else {
-          compareResult = a.sell_in_price_ht - b.sell_in_price_ht;
-        }
-        break;
-      case 'margin_percentage':
-        compareResult = a.margin_percentage - b.margin_percentage;
-        break;
-      case 'stock_value_ht':
-        compareResult = a.stock_value_ht - b.stock_value_ht;
-        break;
-      case 'sales_quantity':
-        compareResult = a.sales_quantity - b.sales_quantity;
-        break;
-      case 'sales_evolution_percentage':
-        compareResult = a.sales_evolution_percentage - b.sales_evolution_percentage;
-        break;
-      default:
-        compareResult = 0;
-    }
-    
-    return sortDirection === 'asc' ? compareResult : -compareResult;
-  });
-}, [filteredProducts, sortField, sortDirection, showTotals]); // Ajout de showTotals comme dépendance
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      let compareResult;
+      
+      switch (sortField) {
+        case 'display_name':
+          compareResult = a.display_name.localeCompare(b.display_name);
+          break;
+        case 'brand_lab':
+          compareResult = (a.brand_lab || '').localeCompare(b.brand_lab || '');
+          break;
+        case 'sell_out_price_ttc':
+          // Utiliser le prix total ou unitaire selon le mode d'affichage
+          if (showTotals) {
+            compareResult = a.total_sell_out - b.total_sell_out;
+          } else {
+            compareResult = a.sell_out_price_ttc - b.sell_out_price_ttc;
+          }
+          break;
+        case 'sell_in_price_ht':
+          // Utiliser le prix total ou unitaire selon le mode d'affichage
+          if (showTotals) {
+            compareResult = a.total_sell_in - b.total_sell_in;
+          } else {
+            compareResult = a.sell_in_price_ht - b.sell_in_price_ht;
+          }
+          break;
+        case 'margin_percentage':
+          compareResult = a.margin_percentage - b.margin_percentage;
+          break;
+        case 'stock_value_ht':
+          compareResult = a.stock_value_ht - b.stock_value_ht;
+          break;
+        case 'sales_quantity':
+          compareResult = a.sales_quantity - b.sales_quantity;
+          break;
+        case 'sales_evolution_percentage':
+          compareResult = a.sales_evolution_percentage - b.sales_evolution_percentage;
+          break;
+        default:
+          compareResult = 0;
+      }
+      
+      return sortDirection === 'asc' ? compareResult : -compareResult;
+    });
+  }, [filteredProducts, sortField, sortDirection, showTotals]);
   
   // Trouver le produit actuellement développé
   const expandedProduct = useMemo(() => {
@@ -221,227 +217,220 @@ const sortedProducts = useMemo(() => {
       </div>
       
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('display_name')}
-              >
-                <div className="flex items-center">
-                  Produit
-                  {sortField === 'display_name' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('brand_lab')}
-              >
-                <div className="flex items-center">
-                  Laboratoire
-                  {sortField === 'brand_lab' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('sell_out_price_ttc')}
-              >
-                <div className="flex items-center">
-                  {showTotals ? "CA TTC sell-out" : "Prix TTC"}
-                  {sortField === 'sell_out_price_ttc' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('sell_in_price_ht')}
-              >
-                <div className="flex items-center">
-                  {showTotals ? "CA HT sell-in" : "Prix HT"}
-                  {sortField === 'sell_in_price_ht' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('margin_percentage')}
-              >
-                <div className="flex items-center">
-                  Taux de Marge
-                  {sortField === 'margin_percentage' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('stock_value_ht')}
-              >
-                <div className="flex items-center">
-                  Stock EUROS HT
-                  {sortField === 'stock_value_ht' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" 
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSort('sales_quantity')}
-              >
-                <div className="flex items-center">
-                  Quantité Vendue
-                  {sortField === 'sales_quantity' && (
-                    <span className="ml-1">
-                      {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-                    </span>
-                  )}
-                </div>
-              </th>
-              <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Détail
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedProducts.map((product) => (
-              <React.Fragment key={product.id}>
-                <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${expandedProductId === product.id ? 'bg-gray-50 dark:bg-gray-700' : ''}`}>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{product.display_name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{product.code_13_ref}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{product.brand_lab || 'N/A'}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {showTotals ? formatCurrency(product.total_sell_out) : formatCurrency(product.sell_out_price_ttc)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {showTotals ? formatCurrency(product.total_sell_in) : formatCurrency(product.sell_in_price_ht)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{formatPercentage(product.margin_percentage)}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(product.margin_amount)}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{formatCurrency(product.stock_value_ht)}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{product.stock_quantity} unités</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{product.sales_quantity}</div>
-                    <div className="flex items-center text-xs">
-                      {product.sales_evolution_percentage > 0 ? (
-                        <>
-                          <FiTrendingUp className="text-green-500 mr-1" size={12} />
-                          <span className="text-green-500">+{Number(product.sales_evolution_percentage).toFixed(1)}%</span>
-                        </>
-                      ) : product.sales_evolution_percentage < 0 ? (
-                        <>
-                          <FiTrendingDown className="text-red-500 mr-1" size={12} />
-                          <span className="text-red-500">{Number(product.sales_evolution_percentage).toFixed(1)}%</span>
-                        </>
-                      ) : (
-                        <span className="text-gray-500">0%</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <button
-                      onClick={() => toggleDetails(product.id)}
-                      className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs font-medium bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <FiInfo className="mr-1" size={14} />
-                      {expandedProductId === product.id ? 'Fermer' : 'Détail'}
-                      <FiChevronDown className={`ml-1 transition-transform ${expandedProductId === product.id ? 'rotate-180' : ''}`} size={14} />
-                    </button>
-                  </td>
-                </tr>
-                
-                {expandedProductId === product.id && (
-                  <tr>
-                    <td colSpan={8} className="px-0 py-0 bg-gray-50 dark:bg-gray-700">
-                      <div className="p-4">
-                        <div className="border-b border-gray-200 dark:border-gray-600">
-                          <nav className="flex space-x-4">
-                            <button
-                              onClick={() => setActiveTab('info')}
-                              className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
-                                activeTab === 'info' 
-                                  ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                              }`}
-                            >
-                              Informations
-                            </button>
-                            <button
-                              onClick={() => setActiveTab('sales')}
-                              className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
-                                activeTab === 'sales' 
-                                  ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                              }`}
-                            >
-                              Ventes
-                            </button>
-                            <button
-                              onClick={() => setActiveTab('stock')}
-                              className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
-                                activeTab === 'stock' 
-                                  ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                              }`}
-                            >
-                              Stock
-                            </button>
-                            <button
-                              onClick={() => setActiveTab('evolution')}
-                              className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
-                                activeTab === 'evolution' 
-                                  ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                              }`}
-                            >
-                              Évolution
-                            </button>
-                          </nav>
-                        </div>
-                        
-                        <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                        {activeTab === 'info' && <ProductInfoTab code13ref={expandedProduct.code_13_ref} />}
-                        {activeTab === 'sales' && <ProductSalesTab code13ref={expandedProduct?.code_13_ref} />}
-                          {activeTab === 'stock' && <ProductStockTab code13ref={expandedProduct?.code_13_ref} />}
-                          {activeTab === 'evolution' && <ProductEvolutionTab product={product} />}
-                        </div>
+        <div className="max-h-[500px] overflow-y-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+              <tr>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('display_name')}
+                >
+                  <div className="flex items-center">
+                    Produit
+                    {sortField === 'display_name' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('brand_lab')}
+                >
+                  <div className="flex items-center">
+                    Laboratoire
+                    {sortField === 'brand_lab' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('sell_out_price_ttc')}
+                >
+                  <div className="flex items-center">
+                    {showTotals ? "CA TTC sell-out" : "Prix TTC"}
+                    {sortField === 'sell_out_price_ttc' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('sell_in_price_ht')}
+                >
+                  <div className="flex items-center">
+                    {showTotals ? "CA HT sell-in" : "Prix HT"}
+                    {sortField === 'sell_in_price_ht' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('margin_percentage')}
+                >
+                  <div className="flex items-center">
+                    Taux de Marge
+                    {sortField === 'margin_percentage' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('stock_value_ht')}
+                >
+                  <div className="flex items-center">
+                    Stock EUROS HT
+                    {sortField === 'stock_value_ht' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('sales_quantity')}
+                >
+                  <div className="flex items-center">
+                    Quantité Vendue
+                    {sortField === 'sales_quantity' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Détail
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {sortedProducts.map((product) => (
+                <React.Fragment key={product.id}>
+                  <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${expandedProductId === product.id ? 'bg-gray-50 dark:bg-gray-700' : ''}`}>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{product.display_name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{product.code_13_ref}</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">{product.brand_lab || 'N/A'}</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {showTotals ? formatCurrency(product.total_sell_out) : formatCurrency(product.sell_out_price_ttc)}
                       </div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {showTotals ? formatCurrency(product.total_sell_in) : formatCurrency(product.sell_in_price_ht)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">{formatPercentage(product.margin_percentage)}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(product.margin_amount)}</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">{formatCurrency(product.stock_value_ht)}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{product.stock_quantity} unités</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">{product.sales_quantity}</div>
+                      <div className="flex items-center text-xs">
+                        {product.sales_evolution_percentage > 0 ? (
+                          <>
+                            <FiTrendingUp className="text-green-500 mr-1" size={12} />
+                            <span className="text-green-500">+{Number(product.sales_evolution_percentage).toFixed(1)}%</span>
+                          </>
+                        ) : product.sales_evolution_percentage < 0 ? (
+                          <>
+                            <FiTrendingDown className="text-red-500 mr-1" size={12} />
+                            <span className="text-red-500">{Number(product.sales_evolution_percentage).toFixed(1)}%</span>
+                          </>
+                        ) : (
+                          <span className="text-gray-500">0%</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() => toggleDetails(product.id)}
+                        className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs font-medium bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <FiInfo className="mr-1" size={14} />
+                        {expandedProductId === product.id ? 'Fermer' : 'Détail'}
+                        <FiChevronDown className={`ml-1 transition-transform ${expandedProductId === product.id ? 'rotate-180' : ''}`} size={14} />
+                      </button>
+                    </td>
                   </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                  
+                  {expandedProductId === product.id && (
+                    <tr>
+                      <td colSpan={8} className="px-0 py-0 bg-gray-50 dark:bg-gray-700">
+                        <div className="p-4">
+                          <div className="border-b border-gray-200 dark:border-gray-600">
+                            <nav className="flex space-x-4">
+                              <button
+                                onClick={() => setActiveTab('info')}
+                                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                                  activeTab === 'info' 
+                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                              >
+                                Informations
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('sales')}
+                                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                                  activeTab === 'sales' 
+                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                              >
+                                Ventes
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('stock')}
+                                className={`px-3 py-2 text-sm font-medium rounded-t-lg ${
+                                  activeTab === 'stock' 
+                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                              >
+                                Stock
+                              </button>
+                          
+                            </nav>
+                          </div>
+                          
+                          <div className="mt-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                            {activeTab === 'info' && <ProductInfoTab code13ref={expandedProduct.code_13_ref} />}
+                            {activeTab === 'sales' && <ProductSalesTab code13ref={expandedProduct?.code_13_ref} />}
+                            {activeTab === 'stock' && <ProductStockTab code13ref={expandedProduct?.code_13_ref} />}
+                            {activeTab === 'evolution' && <ProductEvolutionTab product={product} />}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
