@@ -1,4 +1,3 @@
-// src/components/product/tabs/ProductSalesTab.tsx
 import React, { useState } from 'react';
 import {
   AreaChart,
@@ -88,7 +87,28 @@ export function ProductSalesTab({ code13ref }: ProductSalesTabProps) {
     };
   };
   
+  // Calculer les valeurs min et max pour l'axe Y
+  const calculateYAxisDomain = () => {
+    if (!salesData || salesData.length === 0) return [0, 0];
+    
+    // Trouver les valeurs max pour revenue et margin
+    let maxRevenue = 0;
+    let maxMargin = 0;
+    
+    salesData.forEach(item => {
+      maxRevenue = Math.max(maxRevenue, item.revenue || 0);
+      maxMargin = Math.max(maxMargin, item.margin || 0);
+    });
+    
+    // Utiliser la valeur max (entre revenue et margin) et ajouter 10% pour l'espace
+    const absoluteMax = Math.max(maxRevenue, maxMargin);
+    const ceiling = absoluteMax * 1.1;
+    
+    return [0, ceiling];
+  };
+  
   const trend = calculateTrend();
+  const yAxisDomain = calculateYAxisDomain();
 
   // Composant de chargement
   if (isLoading) {
@@ -222,7 +242,7 @@ export function ProductSalesTab({ code13ref }: ProductSalesTabProps) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={salesData}
-              margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+              margin={{ top: 20, right: 30, left: 30, bottom: 20 }}
             >
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -244,12 +264,15 @@ export function ProductSalesTab({ code13ref }: ProductSalesTabProps) {
                 axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
               />
               <YAxis 
+                domain={yAxisDomain}
                 tickFormatter={formatYAxis} 
                 tick={{ fontSize: 12 }}
                 stroke="#9CA3AF"
-                width={60}
+                width={65}
                 axisLine={false}
                 tickLine={false}
+                padding={{ top: 20 }} 
+                allowDataOverflow={false}
               />
               <Tooltip 
                 formatter={(value: number) => [formatTooltipValue(value)]}
