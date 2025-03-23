@@ -190,13 +190,90 @@ export async function POST(
       
       // Exécuter la requête pour obtenir les segments par univers
       const universesResult = await client.query(universesQuery, baseParams);
+
+      // 4. Obtenir les segments du laboratoire par famille
+      const familiesQuery = `
+        WITH lab_sales_by_family AS (
+          SELECT 
+            gp.universe,
+            gp.category,
+            gp.family,
+            SUM(s.quantity * i.price_with_tax) as lab_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            COUNT(DISTINCT p.code_13_ref_id) as product_count
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.brand_lab = $3
+            AND gp.family IS NOT NULL 
+            AND gp.family != ''
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe, gp.category, gp.family
+        ),
+        total_sales_by_family AS (
+          SELECT 
+            gp.universe,
+            gp.category,
+            gp.family,
+            SUM(s.quantity * i.price_with_tax) as total_revenue
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.family IS NOT NULL 
+            AND gp.family != ''
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.universe, gp.category, gp.family
+        )
+        SELECT 
+          CONCAT(lsf.universe, '_', lsf.category, '_', lsf.family) as id,
+          COALESCE(lsf.family, 'Non catégorisé') as name,
+          COALESCE(lsf.universe, 'Non catégorisé') as universe,
+          COALESCE(lsf.category, 'Non catégorisé') as category,
+          'family' as segment_type,
+          lsf.product_count,
+          lsf.lab_revenue as total_revenue,
+          lsf.lab_margin as total_margin,
+          CASE 
+            WHEN tsf.total_revenue > 0 THEN ROUND((lsf.lab_revenue / tsf.total_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as market_share
+        FROM 
+          lab_sales_by_family lsf
+        LEFT JOIN 
+          total_sales_by_family tsf ON lsf.universe = tsf.universe AND lsf.category = tsf.category AND lsf.family = tsf.family
+        ORDER BY 
+          lsf.lab_revenue DESC
+      `;
       
-      // Combiner les segments (catégories et univers)
+      // Exécuter la requête pour obtenir les segments par famille
+      const familiesResult = await client.query(familiesQuery, baseParams);
+      
+      // Combiner les segments (catégories, univers et familles)
       let combinedSegments = [...categoriesResult.rows];
       
-      // Ajouter les univers si demandés
+      // Ajouter les univers et les familles si demandés
       if (includeAllSegmentTypes) {
-        combinedSegments = [...universesResult.rows, ...combinedSegments];
+        combinedSegments = [
+          ...universesResult.rows, 
+          ...combinedSegments, 
+          ...familiesResult.rows
+        ];
       }
       
       // Retourner les données

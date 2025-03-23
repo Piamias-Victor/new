@@ -1,15 +1,18 @@
-// src/app/api/segments/[id]/analysis/route.ts
+// src/app/api/family/[universe]/[category]/[family]/analysis/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { universe: string; category: string; family: string } }
 ) {
   try {
-    const segmentId = decodeURIComponent(params.id);
-    console.log("\n\n================ DÉBUT ANALYSE SEGMENT ================");
-    console.log(`ID du segment: "${segmentId}"`);
+    const universe = decodeURIComponent(params.universe);
+    const category = decodeURIComponent(params.category);
+    const family = decodeURIComponent(params.family);
+    
+    console.log("\n\n================ DÉBUT ANALYSE FAMILLE ================");
+    console.log(`Univers: "${universe}", Catégorie: "${category}", Famille: "${family}"`);
     
     // Récupérer et logger le corps de la requête
     const body = await request.json();
@@ -20,19 +23,14 @@ export async function POST(
       endDate, 
       laboratoryId, 
       pharmacyIds = [], 
-      limit = 10,
-      segmentType = 'category', 
-      segmentValue = '' 
+      limit = 10
     } = body;
 
-    console.log(`Type de segment: "${segmentType}"`);
-    console.log(`Valeur du segment: "${segmentValue}"`);
-
     // Validation des entrées
-    if (!segmentId || !startDate || !endDate || !laboratoryId || !segmentValue) {
+    if (!universe || !category || !family || !startDate || !endDate || !laboratoryId) {
       console.log("ERREUR: Paramètres manquants");
       return NextResponse.json(
-        { error: 'Paramètres requis manquants' },
+        { error: 'Paramètres univers, catégorie, famille, startDate, endDate et laboratoryId requis' },
         { status: 400 }
       );
     }
@@ -40,54 +38,18 @@ export async function POST(
     const client = await pool.connect();
     
     try {
-      // Préparer les paramètres de base
-      let baseParams = [startDate, endDate];
-      let filterCondition = '';
-      
-      // Construire la condition SQL selon le type de segment
-      if (segmentType === 'universe') {
-        // Pour un univers, filtrer directement sur la colonne universe avec segmentValue
-        filterCondition = `AND gp.universe = $3`;
-        baseParams.push(segmentValue);
-        console.log(`SQL pour univers: "${filterCondition}", Paramètres: ${JSON.stringify(baseParams)}`);
-      } else {
-        // Pour une catégorie ou autre
-        const parts = segmentId.split('_');
-        if (parts.length >= 2) {
-          // L'univers est la première partie du segmentId
-          const universe = parts[0];
-          filterCondition = `AND gp.universe = $3 AND gp.category = $4`;
-          baseParams.push(universe, segmentValue);
-          console.log(`SQL pour catégorie: "${filterCondition}", Univers: "${universe}", Catégorie: "${segmentValue}"`);
-        } else {
-          console.log("ERREUR: Format de segmentId invalide pour une catégorie");
-          return NextResponse.json(
-            { error: 'Format de segmentId invalide pour une catégorie' },
-            { status: 400 }
-          );
-        }
-      }
-      
-      // Index du prochain paramètre
-      let paramIndex = baseParams.length + 1;
-      
-      // Ajouter laboratoryId aux paramètres
-      const labParamIndex = paramIndex;
-      baseParams.push(laboratoryId);
-      paramIndex++;
-      console.log(`Ajout laboratoryId: "${laboratoryId}" à l'index ${labParamIndex}`);
+      // Construction des paramètres pour la requête principale
+      const baseParams = [startDate, endDate, universe, category, family];
       
       // Construire la condition pour les pharmacies
       let pharmacyCondition = '';
       
       if (pharmacyIds && pharmacyIds.length > 0) {
-        const placeholders = pharmacyIds.map((_, i) => `$${paramIndex + i}`).join(',');
+        const placeholders = pharmacyIds.map((_, i) => `$${i + 6}`).join(',');
         pharmacyCondition = ` AND p.pharmacy_id IN (${placeholders})`;
-        baseParams.push(...pharmacyIds);
-        console.log(`Condition pharmacies: "${pharmacyCondition}"`);
       }
 
-      // Requête pour obtenir le chiffre d'affaires total du segment
+      // Requête pour obtenir le chiffre d'affaires total de la famille
       const revenueQuery = `
         SELECT COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue
         FROM 
@@ -100,47 +62,58 @@ export async function POST(
           data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
         WHERE 
           s.date BETWEEN $1 AND $2
-          ${filterCondition}
+          AND gp.universe = $3
+          AND gp.category = $4
+          AND gp.family = $5
           ${pharmacyCondition}
       `;
       
-      console.log(`Exécution requête chiffre d'affaires: ${revenueQuery.replace(/\\s+/g, ' ')}`);
-      const revenueResult = await client.query(revenueQuery, baseParams);
-      const totalRevenue = parseFloat(revenueResult.rows[0]?.total_revenue || '0');
-      
-      console.log(`Chiffre d'affaires total: ${totalRevenue}`);
-      
-      // Création de l'objet d'information du segment
-      let segmentInfo;
-      if (segmentType === 'universe') {
-        segmentInfo = {
-          id: segmentId,
-          name: segmentValue,
-          universe: segmentValue,  // Utiliser segmentValue comme universe
-          category: '',           
-          total_revenue: totalRevenue
-        };
-        console.log("CRÉATION SEGMENTINFO POUR UNIVERS:", JSON.stringify(segmentInfo));
-      } else {
-        const parts = segmentId.split('_');
-        segmentInfo = {
-          id: segmentId,
-          name: segmentValue,
-          universe: parts[0],     
-          category: segmentValue,  
-          total_revenue: totalRevenue
-        };
-        console.log("CRÉATION SEGMENTINFO POUR CATÉGORIE:", JSON.stringify(segmentInfo));
+      // Paramètres complets pour la requête revenue (avec les pharmacy IDs)
+      const revenueParams = [...baseParams];
+      if (pharmacyIds.length > 0) {
+        revenueParams.push(...pharmacyIds);
       }
       
-      // VÉRIFICATION DES VALEURS
-      console.log("VÉRIFICATION type:", typeof segmentInfo);
-      console.log("VÉRIFICATION univers:", segmentInfo.universe);
-      console.log("VÉRIFICATION catégorie:", segmentInfo.category);
+      console.log(`Exécution requête chiffre d'affaires famille: ${revenueQuery.replace(/\s+/g, ' ')}`);
+      console.log("Paramètres revenue:", JSON.stringify(revenueParams));
       
-      // Obtenir les parts de marché des laboratoires pour ce segment
+      const revenueResult = await client.query(revenueQuery, revenueParams);
+      const totalRevenue = parseFloat(revenueResult.rows[0]?.total_revenue || '0');
+      
+      console.log(`Chiffre d'affaires total de la famille: ${totalRevenue}`);
+      
+      // Création de l'objet d'information du segment de famille
+      const segmentInfo = {
+        id: `${universe}_${category}_${family}`,
+        name: family,
+        universe: universe,
+        category: category,
+        family: family,
+        total_revenue: totalRevenue
+      };
+      
+      console.log("CRÉATION SEGMENTINFO POUR FAMILLE:", JSON.stringify(segmentInfo));
+      
+      // Paramètres pour les requêtes suivantes qui incluent le laboratoryId
+      const labParams = [...baseParams, laboratoryId];
+      
+      // Condition pharmacies pour les requêtes suivantes
+      let pharmacyConditionNextQueries = '';
+      
+      if (pharmacyIds && pharmacyIds.length > 0) {
+        const placeholders = pharmacyIds.map((_, i) => `$${i + 7}`).join(',');
+        pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
+      }
+      
+      // Paramètres complets pour les requêtes suivantes
+      const nextQueriesParams = [...labParams];
+      if (pharmacyIds.length > 0) {
+        nextQueriesParams.push(...pharmacyIds);
+      }
+      
+      // Obtenir les parts de marché des laboratoires pour cette famille
       const marketShareQuery = `
-        WITH segment_lab_sales AS (
+        WITH family_lab_sales AS (
           SELECT 
             gp.brand_lab,
             SUM(s.quantity * i.price_with_tax) as total_revenue,
@@ -155,16 +128,18 @@ export async function POST(
             data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
           WHERE 
             s.date BETWEEN $1 AND $2
-            ${filterCondition}
+            AND gp.universe = $3
+            AND gp.category = $4
+            AND gp.family = $5
             ${pharmacyCondition}
           GROUP BY 
             gp.brand_lab
         ),
-        segment_total_sales AS (
+        family_total_sales AS (
           SELECT 
-            SUM(total_revenue) as total_segment_revenue
+            SUM(total_revenue) as total_family_revenue
           FROM 
-            segment_lab_sales
+            family_lab_sales
         ),
         lab_ranking AS (
           SELECT 
@@ -173,7 +148,7 @@ export async function POST(
             product_count,
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
           FROM 
-            segment_lab_sales
+            family_lab_sales
         )
         SELECT 
           lr.brand_lab as id,
@@ -182,25 +157,25 @@ export async function POST(
           lr.product_count,
           lr.lab_rank as rank,
           CASE 
-            WHEN sts.total_segment_revenue > 0 
-            THEN ROUND((lr.total_revenue / sts.total_segment_revenue * 100)::numeric, 2)
+            WHEN fts.total_family_revenue > 0 
+            THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
             ELSE 0
           END as market_share
         FROM 
           lab_ranking lr
         CROSS JOIN 
-          segment_total_sales sts
+          family_total_sales fts
         ORDER BY 
           lr.lab_rank ASC
       `;
       
-      console.log("Exécution requête parts de marché");
-      const marketShareResult = await client.query(marketShareQuery, baseParams);
+      console.log("Exécution requête parts de marché famille avec paramètres:", JSON.stringify(revenueParams));
+      const marketShareResult = await client.query(marketShareQuery, revenueParams);
       const marketShareData = marketShareResult.rows || [];
       
-      console.log(`Parts de marché trouvées: ${marketShareData.length}`);
+      console.log(`Parts de marché trouvées pour la famille: ${marketShareData.length}`);
       
-      // Obtenir les top produits du laboratoire sélectionné
+      // Obtenir les top produits du laboratoire sélectionné pour cette famille
       const labProductsQuery = `
         SELECT 
           p.id,
@@ -229,9 +204,11 @@ export async function POST(
           data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
         WHERE 
           s.date BETWEEN $1 AND $2
-          ${filterCondition}
-          AND gp.brand_lab = $${labParamIndex}
-          ${pharmacyCondition}
+          AND gp.universe = $3
+          AND gp.category = $4
+          AND gp.family = $5
+          AND gp.brand_lab = $6
+          ${pharmacyConditionNextQueries}
         GROUP BY 
           p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
         ORDER BY 
@@ -239,13 +216,14 @@ export async function POST(
         LIMIT ${limit}
       `;
       
-      console.log("Exécution requête produits du laboratoire");
-      const labProductsResult = await client.query(labProductsQuery, baseParams);
+      console.log("Exécution requête produits du laboratoire pour la famille");
+      console.log("Paramètres produits lab:", JSON.stringify(nextQueriesParams));
+      const labProductsResult = await client.query(labProductsQuery, nextQueriesParams);
       const selectedLabProducts = labProductsResult.rows || [];
       
-      console.log(`Produits du laboratoire trouvés: ${selectedLabProducts.length}`);
+      console.log(`Produits du laboratoire trouvés pour la famille: ${selectedLabProducts.length}`);
       
-      // Obtenir les top produits des autres laboratoires
+      // Obtenir les top produits des autres laboratoires pour cette famille
       const otherLabsProductsQuery = `
         SELECT 
           p.id,
@@ -274,9 +252,11 @@ export async function POST(
           data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
         WHERE 
           s.date BETWEEN $1 AND $2
-          ${filterCondition}
-          AND gp.brand_lab != $${labParamIndex}
-          ${pharmacyCondition}
+          AND gp.universe = $3
+          AND gp.category = $4
+          AND gp.family = $5
+          AND gp.brand_lab != $6
+          ${pharmacyConditionNextQueries}
         GROUP BY 
           p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
         ORDER BY 
@@ -284,11 +264,11 @@ export async function POST(
         LIMIT ${limit}
       `;
       
-      console.log("Exécution requête produits des autres laboratoires");
-      const otherLabsProductsResult = await client.query(otherLabsProductsQuery, baseParams);
+      console.log("Exécution requête produits des autres laboratoires pour la famille");
+      const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
       const otherLabProducts = otherLabsProductsResult.rows || [];
       
-      console.log(`Produits des autres laboratoires trouvés: ${otherLabProducts.length}`);
+      console.log(`Produits des autres laboratoires trouvés pour la famille: ${otherLabProducts.length}`);
       
       // Retourner les données
       const finalResponse = {
@@ -298,16 +278,15 @@ export async function POST(
         otherLabsProductsTop: otherLabProducts
       };
       
-      console.log("RÉPONSE FINALE - segmentInfo:", JSON.stringify(finalResponse.segmentInfo));
-      console.log(`VÉRIFICATION FINALE - universe: "${finalResponse.segmentInfo.universe}", category: "${finalResponse.segmentInfo.category}"`);
-      console.log("================ FIN ANALYSE SEGMENT ================\n\n");
+      console.log("RÉPONSE FINALE - segmentInfo famille:", JSON.stringify(finalResponse.segmentInfo));
+      console.log("================ FIN ANALYSE FAMILLE ================\n\n");
       
       return NextResponse.json(finalResponse);
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Erreur lors de l\'analyse du segment:', error);
+    console.error('Erreur lors de l\'analyse de la famille:', error);
     return NextResponse.json(
       { error: 'Erreur serveur', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -318,10 +297,12 @@ export async function POST(
 // Méthode GET pour compatibilité
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { universe: string; category: string; family: string } }
 ) {
   try {
-    const segmentId = decodeURIComponent(params.id);
+    const universe = decodeURIComponent(params.universe);
+    const category = decodeURIComponent(params.category);
+    const family = decodeURIComponent(params.family);
     const searchParams = request.nextUrl.searchParams;
     
     // Récupérer les paramètres de recherche
@@ -330,10 +311,8 @@ export async function GET(
     const laboratoryId = searchParams.get('laboratoryId');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const limit = searchParams.get('limit') || '10';
-    const segmentType = searchParams.get('segmentType') || 'category';
-    const segmentValue = searchParams.get('segmentValue') || '';
     
-    if (!startDate || !endDate || !laboratoryId || !segmentValue) {
+    if (!startDate || !endDate || !laboratoryId) {
       return NextResponse.json(
         { error: 'Paramètres requis manquants' },
         { status: 400 }
@@ -346,9 +325,7 @@ export async function GET(
       endDate,
       laboratoryId,
       pharmacyIds,
-      limit: parseInt(limit),
-      segmentType,
-      segmentValue
+      limit: parseInt(limit)
     };
     
     // Créer une fausse Request pour appeler la méthode POST
@@ -363,7 +340,7 @@ export async function GET(
     // Appeler la méthode POST
     return POST(postRequest, { params });
   } catch (error) {
-    console.error('Erreur lors de l\'analyse du segment (GET):', error);
+    console.error('Erreur lors de l\'analyse de la famille (GET):', error);
     return NextResponse.json(
       { error: 'Erreur serveur', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

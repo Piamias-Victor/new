@@ -22,10 +22,7 @@ export function LaboratorySegmentsTable({
     { id: 'all', label: 'Tous' },
     { id: 'universe', label: 'Univers' },
     { id: 'category', label: 'Catégorie' },
-    { id: 'sub_category', label: 'Sous-Catégorie' },
     { id: 'family', label: 'Famille' },
-    { id: 'sub_family', label: 'Sous-Famille' },
-    { id: 'specificity', label: 'Spécificité' }
   ];
 
   // Fonction pour formater les montants en euros

@@ -31,7 +31,8 @@ export interface SegmentAnalysisData {
     id: string;
     name: string;
     universe: string;
-    category: string;
+    category?: string;
+    family?: string;
     total_revenue: number;
   };
   selectedLabProductsTop: TopProduct[];
@@ -42,9 +43,10 @@ export interface SegmentAnalysisData {
 }
 
 export function useSegmentAnalysis(segmentId: string, laboratoryId: string): SegmentAnalysisData {
-  console.log(`\n\n================ HOOK useSegmentAnalysis ================`);
+  console.log(`\n\n========== HOOK useSegmentAnalysis (MISE À JOUR) ==========`);
   console.log(`segmentId: "${segmentId}", laboratoryId: "${laboratoryId}"`);
   
+  // État local pour les données
   const [data, setData] = useState<SegmentAnalysisData>({
     segmentInfo: {
       id: '',
@@ -60,12 +62,13 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
     error: null
   });
   
+  // Hooks pour les dates et pharmacies
   const { startDate, endDate } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   
   useEffect(() => {
-    async function fetchSegmentAnalysis() {
-      console.log(`HOOK EFFECT - startDate: ${startDate}, endDate: ${endDate}`);
+    async function fetchData() {
+      // Vérification des paramètres requis
       if (!segmentId || !laboratoryId || !startDate || !endDate) {
         console.log("HOOK - Paramètres manquants, pas d'appel API");
         return;
@@ -75,69 +78,116 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
       console.log("HOOK - État de chargement activé");
       
       try {
-        // Déterminer le type de segment et sa valeur
-        let segmentType = 'category';
-        let segmentValue = '';
+        // Déterminer le type de segment (univers, catégorie ou famille)
+        let segmentType: 'universe' | 'category' | 'family' = 'category';
         
+        // Analyse de segmentId
         if (segmentId.startsWith('universe_')) {
-          // C'est un segment de type univers
           segmentType = 'universe';
-          segmentValue = segmentId.substring(9); // Enlever "universe_"
-          console.log(`HOOK - Type: univers, Valeur: "${segmentValue}"`);
         } else {
-          // C'est un segment de type catégorie
+          // Compter le nombre de segments "_" pour déterminer s'il s'agit d'une catégorie ou d'une famille
           const parts = segmentId.split('_');
-          if (parts.length >= 2) {
-            segmentValue = parts.slice(1).join('_'); // Le nom de la catégorie
-            console.log(`HOOK - Type: catégorie, Univers: "${parts[0]}", Valeur: "${segmentValue}"`);
-          } else {
-            // Format invalide
-            console.log("HOOK - ERREUR: Format de segmentId invalide");
-            throw new Error('Format de segmentId invalide');
+          if (parts.length === 2) {
+            segmentType = 'category';
+          } else if (parts.length >= 3) {
+            segmentType = 'family';
           }
         }
         
-        // Préparer le corps de la requête avec les nouvelles propriétés
-        const requestBody = {
+        console.log(`HOOK - Type de segment identifié: ${segmentType}`);
+        
+        // Préparation des paramètres de requête communs
+        const commonParams = {
           startDate,
           endDate,
           laboratoryId,
           pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-          limit: 10,
-          segmentType, // Nouveau: type de segment explicite
-          segmentValue // Nouveau: valeur du segment
+          limit: 10
         };
         
-        console.log("HOOK - Corps de la requête:", JSON.stringify(requestBody));
+        let response;
         
-        // Effectuer la requête POST
-        console.log(`HOOK - Appel API: /api/segments/${segmentId}/analysis`);
-        const response = await fetch(`/api/segments/${segmentId}/analysis`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          cache: 'no-store'
-        });
+        if (segmentType === 'universe') {
+          // APPEL API UNIVERS
+          // Extraction de l'univers: "universe_DERMOCOSMETIQUE" -> "DERMOCOSMETIQUE"
+          const universeValue = segmentId.substring(9);
+          console.log(`HOOK - Valeur de l'univers: "${universeValue}"`);
+          
+          console.log(`HOOK - Appel API univers: /api/universe/${encodeURIComponent(universeValue)}/analysis`);
+          response = await fetch(`/api/universe/${encodeURIComponent(universeValue)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commonParams),
+            cache: 'no-store'
+          });
+        } else if (segmentType === 'category') {
+          // APPEL API CATÉGORIE
+          // Extraction de l'univers et de la catégorie: "MEDICAMENT_DOULEUR" -> ["MEDICAMENT", "DOULEUR"]
+          const parts = segmentId.split('_');
+          if (parts.length < 2) {
+            throw new Error('Format de segmentId invalide pour une catégorie');
+          }
+          
+          const universe = parts[0];
+          const category = parts[1];
+          
+          console.log(`HOOK - Univers: "${universe}", Catégorie: "${category}"`);
+          console.log(`HOOK - Appel API catégorie: /api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`);
+          
+          response = await fetch(`/api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commonParams),
+            cache: 'no-store'
+          });
+        } else {
+          // APPEL API FAMILLE
+          // Extraction de l'univers, de la catégorie et de la famille: "MEDICAMENT_DOULEUR_TETE" -> ["MEDICAMENT", "DOULEUR", "TETE"]
+          const parts = segmentId.split('_');
+          if (parts.length < 3) {
+            throw new Error('Format de segmentId invalide pour une famille');
+          }
+          
+          const universe = parts[0];
+          const category = parts[1];
+          const family = parts.slice(2).join('_'); // Au cas où le nom de famille contiendrait des underscores
+          
+          console.log(`HOOK - Univers: "${universe}", Catégorie: "${category}", Famille: "${family}"`);
+          console.log(`HOOK - Appel API famille: /api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`);
+          
+          response = await fetch(`/api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(commonParams),
+            cache: 'no-store'
+          });
+        }
         
+        // Vérification de la réponse
         if (!response.ok) {
           const errorData = await response.json();
           console.log(`HOOK - Erreur API: ${response.status}`, errorData);
           throw new Error(errorData.error || 'Erreur lors de la récupération des données');
         }
         
+        // Traitement de la réponse
         const result = await response.json();
         console.log("HOOK - Réponse API reçue:", JSON.stringify(result.segmentInfo));
         
-        // Vérifier que les données sont conformes à nos attentes
+        // Extraction des données
         const segmentInfo = result.segmentInfo || {
           id: segmentId,
           name: '',
           universe: '',
           category: '',
+          family: '',
           total_revenue: 0
         };
+        
+        // Conversion du revenu en nombre si c'est une chaîne
+        if (typeof segmentInfo.total_revenue === 'string') {
+          segmentInfo.total_revenue = parseFloat(segmentInfo.total_revenue);
+        }
         
         const selectedLabProductsTop = Array.isArray(result.selectedLabProductsTop) 
           ? result.selectedLabProductsTop 
@@ -151,12 +201,7 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
           ? result.marketShareByLab
           : [];
         
-        console.log('HOOK - segmentInfo reçu:', JSON.stringify(segmentInfo));
-        console.log(`HOOK - segmentInfo.universe: "${segmentInfo.universe}", segmentInfo.category: "${segmentInfo.category}"`);
-        console.log('HOOK - selectedLabProductsTop:', selectedLabProductsTop.length);
-        console.log('HOOK - otherLabsProductsTop:', otherLabsProductsTop.length);
-        console.log('HOOK - marketShareByLab:', marketShareByLab.length);
-        
+        // Mise à jour de l'état avec les données traitées
         const newData = {
           segmentInfo,
           selectedLabProductsTop,
@@ -178,10 +223,11 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
         }));
         console.log("HOOK - État d'erreur défini");
       }
-      console.log(`================ FIN HOOK useSegmentAnalysis ================\n\n`);
+      
+      console.log(`========== FIN HOOK useSegmentAnalysis (MISE À JOUR) ==========\n\n`);
     }
     
-    fetchSegmentAnalysis();
+    fetchData();
   }, [segmentId, laboratoryId, startDate, endDate, selectedPharmacyIds]);
   
   return data;

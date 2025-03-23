@@ -76,11 +76,11 @@ export function SegmentMarketShare({
         </div>
       )}
 
-      {/* Tableau des parts de marché */}
+      {/* Tableau des parts de marché avec hauteur fixe et défilement */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="max-h-[500px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
               <tr>
                 <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
                   #
