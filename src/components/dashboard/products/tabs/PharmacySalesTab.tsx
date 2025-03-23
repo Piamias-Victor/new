@@ -1,5 +1,5 @@
 // src/components/dashboard/pharmacies/tabs/PharmacySalesTab.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -26,6 +26,21 @@ export function PharmacySalesTab({ pharmacyId }: PharmacySalesTabProps) {
   
   // Utiliser un hook personnalisé pour récupérer les données d'évolution des ventes
   const { data: salesData, isLoading, error } = usePharmacySalesEvolution(pharmacyId, interval);
+  
+  // Calculer le domaine de l'axe Y en fonction des données
+  const calculateYDomain = useMemo(() => {
+    if (!salesData || salesData.length === 0) return [0, 100];
+    
+    // Trouver les valeurs maximales
+    const maxRevenue = Math.max(...salesData.map(item => Number(item.revenue) || 0));
+    const maxMargin = showMargin ? Math.max(...salesData.map(item => Number(item.margin) || 0)) : 0;
+    
+    // Prendre la valeur maximale entre revenue et margin
+    const maxValue = Math.max(maxRevenue, maxMargin);
+    
+    // Ajouter 20% d'espace supplémentaire
+    return [0, maxValue * 1.2];
+  }, [salesData, showMargin]);
   
   // Formatter les dates selon l'intervalle choisi
   const formatXAxis = (tickItem: string) => {
@@ -241,6 +256,7 @@ export function PharmacySalesTab({ pharmacyId }: PharmacySalesTabProps) {
                 axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
               />
               <YAxis 
+                domain={calculateYDomain}
                 tickFormatter={formatYAxis} 
                 tick={{ fontSize: 12 }}
                 stroke="#9CA3AF"

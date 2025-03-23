@@ -1,4 +1,4 @@
-// src/hooks/usePharmacyStockEvolution.ts (mise à jour)
+// src/hooks/usePharmacyStockEvolution.ts
 import { useState, useEffect } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
@@ -8,6 +8,8 @@ export interface StockDataItem {
   stockQuantity: number;
   stockValue: number;
   productsCount: number;
+  ruptureQuantity: number;  // Quantité de produits en rupture
+  isRupture: boolean;       // Indicateur de rupture pour cette période
 }
 
 interface PharmacyStockEvolutionState {
@@ -18,7 +20,7 @@ interface PharmacyStockEvolutionState {
 
 /**
  * Hook personnalisé pour récupérer l'évolution du stock d'une pharmacie spécifique
- * Prend en compte la sélection de produits active
+ * Prend en compte la sélection de produits active et les ruptures de stock
  */
 export function usePharmacyStockEvolution(
   pharmacyId: string,

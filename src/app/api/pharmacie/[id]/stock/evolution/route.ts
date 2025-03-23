@@ -1,4 +1,4 @@
-// src/app/api/pharmacies/[id]/stock/evolution/route.ts
+// src/app/api/pharmacie/[id]/stock/evolution/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
@@ -108,6 +108,7 @@ async function processPharmacyStockEvolution(
     // 1. Générer une série temporelle complète pour l'intervalle
     // 2. S'assurer que chaque date a des données 
     // 3. Utiliser COALESCE pour éviter les valeurs NULL
+    // 4. Ajouter les informations de rupture
     const query = `
       WITH date_series AS (
         SELECT generate_series(
@@ -135,22 +136,49 @@ async function processPharmacyStockEvolution(
         GROUP BY 
           period
       ),
+      rupture_by_period AS (
+        SELECT 
+          date_trunc('${timeInterval}', o.sent_date) AS period,
+          SUM(
+            CASE WHEN po.qte_r > 0 THEN GREATEST(0, po.qte - po.qte_r) ELSE 0 END
+          ) AS rupture_quantity
+        FROM 
+          data_order o
+        JOIN 
+          data_productorder po ON o.id = po.order_id
+        JOIN 
+          data_internalproduct p ON po.product_id = p.id
+        LEFT JOIN
+          data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+        WHERE 
+          p.pharmacy_id = $1
+          AND o.sent_date BETWEEN $2 AND $3
+          ${filterConditions}
+        GROUP BY 
+          period
+      ),
       results_with_dates AS (
         SELECT
           ds.period_date,
           COALESCE(sbp.stock_quantity, 0) AS stock_quantity,
           COALESCE(sbp.stock_value, 0) AS stock_value,
-          COALESCE(sbp.products_count, 0) AS products_count
+          COALESCE(sbp.products_count, 0) AS products_count,
+          COALESCE(r.rupture_quantity, 0) AS rupture_quantity,
+          CASE WHEN COALESCE(r.rupture_quantity, 0) > 0 THEN true ELSE false END AS is_rupture
         FROM
           date_series ds
         LEFT JOIN
           stock_by_period sbp ON ds.period_date = sbp.period::date
+        LEFT JOIN
+          rupture_by_period r ON ds.period_date = r.period::date
       )
       SELECT
         TO_CHAR(period_date, '${dateFormat}') AS period,
         stock_quantity AS "stockQuantity",
         stock_value AS "stockValue",
-        products_count AS "productsCount"
+        products_count AS "productsCount",
+        rupture_quantity AS "ruptureQuantity",
+        is_rupture AS "isRupture"
       FROM
         results_with_dates
       ORDER BY
@@ -192,11 +220,14 @@ async function processPharmacyStockEvolution(
       // Générer une série de dates
       while (currentDate <= endDateObj) {
         const periodStr = currentDate.toISOString().split('T')[0];
+        const hasRupture = Math.random() > 0.8; // 20% de chance d'avoir une rupture
         fakeData.push({
           period: periodStr,
           stockQuantity: Math.floor(Math.random() * 1000) + 500,
           stockValue: Math.floor(Math.random() * 100000) + 10000,
-          productsCount: Math.floor(Math.random() * 50) + 20
+          productsCount: Math.floor(Math.random() * 50) + 20,
+          ruptureQuantity: hasRupture ? Math.floor(Math.random() * 50) + 1 : 0,
+          isRupture: hasRupture
         });
         
         // Incrémenter la date

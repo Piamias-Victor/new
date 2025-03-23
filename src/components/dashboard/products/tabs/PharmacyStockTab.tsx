@@ -8,7 +8,8 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Scatter
 } from 'recharts';
 import { FiBox } from 'react-icons/fi';
 import { usePharmacyStockEvolution } from '@/hooks/usePharmacyStockEvolution';
@@ -22,6 +23,7 @@ interface PharmacyStockTabProps {
 export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
   const [interval, setInterval] = useState<IntervalType>('day');
   const [showValue, setShowValue] = useState(true);
+  const [showRuptures, setShowRuptures] = useState(true);
   
   // Utiliser un hook personnalisé pour récupérer les données d'évolution des stocks
   const { data: stockData, isLoading, error } = usePharmacyStockEvolution(pharmacyId, interval);
@@ -69,6 +71,30 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
       return `${(value / 1000).toFixed(0)}k`;
     }
     return value;
+  };
+
+  // Calculer le domaine de l'axe Y en fonction des données
+  const calculateYDomain = () => {
+    if (!stockData || stockData.length === 0) return [0, 1000];
+    
+    // Trouver la valeur maximale pour les données affichées
+    let maxStock = Math.max(...stockData.map(item => item.stockQuantity || 0));
+    let maxRupture = showRuptures ? Math.max(...stockData.map(item => item.ruptureQuantity || 0)) : 0;
+    
+    // Prendre la valeur max et ajouter 50% pour s'assurer qu'il y a assez d'espace
+    const maxY = Math.max(maxStock, maxRupture);
+    return [0, maxY * 1.5];
+  };
+
+  // Calculer le domaine de l'axe Y pour la valeur du stock
+  const calculateValueDomain = () => {
+    if (!stockData || stockData.length === 0 || !showValue) return [0, 1000];
+    
+    // Trouver la valeur maximale pour les données de valeur
+    let maxValue = Math.max(...stockData.map(item => item.stockValue || 0));
+    
+    // Ajouter 50% pour s'assurer qu'il y a assez d'espace
+    return [0, maxValue * 1.5];
   };
 
   // Composant de chargement
@@ -131,6 +157,19 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
               <span className="w-3 h-3 rounded-full bg-amber-500 dark:bg-amber-400 mr-1"></span>
               Valeur Stock
             </button>
+            
+            {/* Bouton pour les ruptures */}
+            <button
+              onClick={() => setShowRuptures(!showRuptures)}
+              className={`flex items-center px-3 py-1.5 text-xs rounded ${
+                showRuptures 
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' 
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              <span className="w-3 h-3 rounded-full bg-red-500 dark:bg-red-400 mr-1"></span>
+              Ruptures
+            </button>
           </div>
           
           {/* Sélection de l'intervalle */}
@@ -181,6 +220,12 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
             <span className="text-gray-600 dark:text-gray-300">Valeur du stock</span>
           </div>
         )}
+        {showRuptures && (
+          <div className="flex items-center">
+            <span className="w-3 h-3 rounded-full bg-red-500 dark:bg-red-400 mr-1"></span>
+            <span className="text-gray-600 dark:text-gray-300">Ruptures</span>
+          </div>
+        )}
       </div>
 
       {/* Conteneur du graphique avec une hauteur fixe */}
@@ -196,6 +241,7 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
             <AreaChart
               data={stockData}
               margin={{ top: 20, right: 30, left: 30, bottom: 20 }}
+              isAnimationActive={false}
             >
               <defs>
                 <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
@@ -205,6 +251,10 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
                 <linearGradient id="colorStockValue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorRupture" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.1} />
@@ -224,6 +274,8 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
                 width={65}
                 axisLine={false}
                 tickLine={false}
+                domain={calculateYDomain()}
+                allowDataOverflow={false}
                 label={{ value: 'Unités', angle: -90, position: 'insideLeft', offset: -5, style: { textAnchor: 'middle', fill: '#9CA3AF', fontSize: 12 } }}
               />
               {showValue && (
@@ -236,6 +288,8 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
                   width={65}
                   axisLine={false}
                   tickLine={false}
+                  domain={calculateValueDomain()}
+                  allowDataOverflow={false}
                   label={{ value: 'Valeur', angle: 90, position: 'insideRight', offset: 5, style: { textAnchor: 'middle', fill: '#9CA3AF', fontSize: 12 } }}
                 />
               )}
@@ -274,6 +328,39 @@ export function PharmacyStockTab({ pharmacyId }: PharmacyStockTabProps) {
                   yAxisId="right"
                   dot={{ stroke: '#f59e0b', fill: '#ffffff', strokeWidth: 2, r: 4 }}
                   activeDot={{ stroke: '#f59e0b', fill: '#ffffff', strokeWidth: 2, r: 6 }}
+                />
+              )}
+              {showRuptures && (
+                <Area 
+                  type="monotone" 
+                  dataKey="ruptureQuantity" 
+                  name="Quantité en rupture" 
+                  stroke="#ef4444" 
+                  fillOpacity={1}
+                  fill="url(#colorRupture)" 
+                  strokeWidth={2}
+                  yAxisId="left"
+                  dot={{ stroke: '#ef4444', fill: '#ffffff', strokeWidth: 2, r: 4 }}
+                  activeDot={{ stroke: '#ef4444', fill: '#ffffff', strokeWidth: 2, r: 6 }}
+                />
+              )}
+              
+              {/* Points pour marquer les ruptures */}
+              {showRuptures && (
+                <Scatter
+                  data={stockData.filter(item => item.isRupture)}
+                  dataKey="ruptureQuantity"
+                  fill="#ef4444"
+                  yAxisId="left"
+                  shape={(props) => {
+                    const { cx, cy } = props;
+                    return (
+                      <svg x={cx - 8} y={cy - 8} width={16} height={16} fill="red" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                      </svg>
+                    );
+                  }}
+                  name="Alerte rupture"
                 />
               )}
             </AreaChart>
