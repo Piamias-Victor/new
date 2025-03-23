@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiPackage, FiGrid, FiLayers, FiFolder, FiDatabase, FiCalendar, FiRotateCw } from 'react-icons/fi';
+import { FiPackage, FiGrid, FiLayers, FiFolder, FiDatabase, FiCalendar, FiRotateCw, FiCode } from 'react-icons/fi';
+import { useDateRange } from '@/contexts/DateRangeContext'; // Ajout de l'import
 
 // Interface pour les données du produit
 interface ProductData {
@@ -25,6 +26,9 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
   const [product, setProduct] = useState<ProductData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Récupération des dates sélectionnées à partir du contexte
+  const { startDate, endDate } = useDateRange();
 
   // Appel à l'API pour charger les données du produit
   useEffect(() => {
@@ -39,7 +43,13 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/products/${code13ref}`);
+        // Ajouter les paramètres de date à la requête si disponibles
+        let url = `/api/products/${code13ref}`;
+        if (startDate && endDate) {
+          url += `?startDate=${startDate}&endDate=${endDate}`;
+        }
+        
+        const response = await fetch(url);
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -57,7 +67,7 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
     }
 
     fetchProductData();
-  }, [code13ref]);
+  }, [code13ref, startDate, endDate]); // Ajout des dépendances startDate et endDate
 
   // Formater la date en format français (DD/MM/YYYY)
   const formatDate = (dateString?: string) => {
@@ -120,7 +130,7 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
       title: "Identification",
       items: [
         { icon: <FiPackage className="text-sky-500" />, label: 'Nom', value: product.name },
-        { icon: <FiPackage className="text-sky-500" />, label: 'Code EAN', value: product.code_13_ref }
+        { icon: <FiCode className="text-sky-500" />, label: 'Code EAN', value: product.code_13_ref }
       ]
     },
     {
@@ -129,6 +139,7 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
         { icon: <FiGrid className="text-emerald-500" />, label: 'Univers', value: product.universe || 'Non catégorisé' },
         { icon: <FiLayers className="text-emerald-500" />, label: 'Catégorie', value: product.category || 'Non catégorisé' },
         { icon: <FiFolder className="text-emerald-500" />, label: 'Famille', value: product.family || 'Non catégorisé' },
+        { icon: <FiFolder className="text-emerald-500" />, label: 'Sous-famille', value: product.sub_family || 'Non catégorisé' }
       ]
     },
     {
@@ -138,23 +149,6 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
         { icon: <FiDatabase className="text-amber-500" />, label: 'Gamme', value: product.range_name || 'Non spécifié' }
       ]
     },
-    {
-      title: "Performance",
-      items: [
-        { 
-          icon: <FiCalendar className="text-purple-500" />, 
-          label: 'Première trace', 
-          value: formatDate(product.first_seen_date) 
-        },
-        { 
-          icon: <FiRotateCw className="text-purple-500" />, 
-          label: 'Rotation mensuelle', 
-          value: product.avg_monthly_rotation 
-            ? `${product.avg_monthly_rotation.toFixed(1)} unités/mois` 
-            : 'Non disponible' 
-        }
-      ]
-    }
   ];
 
   return (

@@ -74,42 +74,56 @@ export function SelectedProductsList() {
   }, [products, searchTerm]);
   
   // Tri des produits
-  const sortedProducts = useMemo(() => {
-    return [...filteredProducts].sort((a, b) => {
-      let compareResult;
-      
-      switch (sortField) {
-        case 'display_name':
-          compareResult = a.display_name.localeCompare(b.display_name);
-          break;
-        case 'brand_lab':
-          compareResult = (a.brand_lab || '').localeCompare(b.brand_lab || '');
-          break;
-        case 'sell_out_price_ttc':
+  // Modifiez la fonction de tri dans votre composant SelectedProductsList
+// Remplacez la partie du tri des produits par ce code :
+
+// Tri des produits
+const sortedProducts = useMemo(() => {
+  return [...filteredProducts].sort((a, b) => {
+    let compareResult;
+    
+    switch (sortField) {
+      case 'display_name':
+        compareResult = a.display_name.localeCompare(b.display_name);
+        break;
+      case 'brand_lab':
+        compareResult = (a.brand_lab || '').localeCompare(b.brand_lab || '');
+        break;
+      case 'sell_out_price_ttc':
+        // Utiliser le prix total ou unitaire selon le mode d'affichage
+        if (showTotals) {
+          compareResult = a.total_sell_out - b.total_sell_out;
+        } else {
           compareResult = a.sell_out_price_ttc - b.sell_out_price_ttc;
-          break;
-        case 'sell_in_price_ht':
+        }
+        break;
+      case 'sell_in_price_ht':
+        // Utiliser le prix total ou unitaire selon le mode d'affichage
+        if (showTotals) {
+          compareResult = a.total_sell_in - b.total_sell_in;
+        } else {
           compareResult = a.sell_in_price_ht - b.sell_in_price_ht;
-          break;
-        case 'margin_percentage':
-          compareResult = a.margin_percentage - b.margin_percentage;
-          break;
-        case 'stock_value_ht':
-          compareResult = a.stock_value_ht - b.stock_value_ht;
-          break;
-        case 'sales_quantity':
-          compareResult = a.sales_quantity - b.sales_quantity;
-          break;
-        case 'sales_evolution_percentage':
-          compareResult = a.sales_evolution_percentage - b.sales_evolution_percentage;
-          break;
-        default:
-          compareResult = 0;
-      }
-      
-      return sortDirection === 'asc' ? compareResult : -compareResult;
-    });
-  }, [filteredProducts, sortField, sortDirection]);
+        }
+        break;
+      case 'margin_percentage':
+        compareResult = a.margin_percentage - b.margin_percentage;
+        break;
+      case 'stock_value_ht':
+        compareResult = a.stock_value_ht - b.stock_value_ht;
+        break;
+      case 'sales_quantity':
+        compareResult = a.sales_quantity - b.sales_quantity;
+        break;
+      case 'sales_evolution_percentage':
+        compareResult = a.sales_evolution_percentage - b.sales_evolution_percentage;
+        break;
+      default:
+        compareResult = 0;
+    }
+    
+    return sortDirection === 'asc' ? compareResult : -compareResult;
+  });
+}, [filteredProducts, sortField, sortDirection, showTotals]); // Ajout de showTotals comme dépendance
   
   // Trouver le produit actuellement développé
   const expandedProduct = useMemo(() => {
