@@ -87,8 +87,8 @@ async function fetchProductEvolution(
   const client = await pool.connect();
   
   try {
-    // Exécuter une requête simple pour obtenir tous les produits et leurs évolutions
-    const firstQuery = `
+    // Requête modifiée pour grouper par code_13_ref
+    const query = `
       WITH 
       filtered_products AS (
         SELECT 
@@ -99,43 +99,43 @@ async function fetchProductEvolution(
         FROM data_internalproduct p
         WHERE 1=1
         ${pharmacyIds.length > 0 ? 'AND p.pharmacy_id = ANY($5::uuid[])' : ''}
+        ${code13refs.length > 0 ? 'AND p.code_13_ref_id = ANY($' + (pharmacyIds.length > 0 ? '6' : '5') + '::text[])' : ''}
       ),
       current_sales AS (
         SELECT 
-          i.product_id,
+          g.code_13_ref,
           SUM(s.quantity * i.price_with_tax) AS revenue
         FROM data_sales s
         JOIN data_inventorysnapshot i ON s.product_id = i.id
         JOIN filtered_products fp ON i.product_id = fp.id
+        JOIN data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
         WHERE s.date BETWEEN $1 AND $2
-        GROUP BY i.product_id
+        GROUP BY g.code_13_ref
       ),
       comparison_sales AS (
         SELECT
-          i.product_id,
+          g.code_13_ref,
           SUM(s.quantity * i.price_with_tax) AS revenue
         FROM data_sales s
         JOIN data_inventorysnapshot i ON s.product_id = i.id
         JOIN filtered_products fp ON i.product_id = fp.id
+        JOIN data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
         WHERE s.date BETWEEN $3 AND $4
-        GROUP BY i.product_id
+        GROUP BY g.code_13_ref
       ),
       product_data AS (
         SELECT
-          fp.id AS product_id,
-          fp.name AS internal_name,
-          g.name AS global_name,
-          COALESCE(g.name, fp.name) AS display_name,
           g.code_13_ref,
+          g.name AS global_name,
           g.category,
           g.brand_lab,
-          COALESCE((
+          SUM(COALESCE((
             SELECT stock 
             FROM data_inventorysnapshot 
             WHERE product_id = fp.id 
             ORDER BY date DESC 
             LIMIT 1
-          ), 0) AS current_stock,
+          ), 0)) AS current_stock,
           COALESCE(cs.revenue, 0) AS current_revenue,
           COALESCE(ps.revenue, 0) AS previous_revenue,
           CASE 
@@ -144,17 +144,15 @@ async function fetchProductEvolution(
             ELSE 0
           END AS evolution_percentage
         FROM filtered_products fp
-        LEFT JOIN data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
-        LEFT JOIN current_sales cs ON fp.id = cs.product_id
-        LEFT JOIN comparison_sales ps ON fp.id = ps.product_id
-        WHERE 
-          (COALESCE(cs.revenue, 0) > 0 OR COALESCE(ps.revenue, 0) > 0)
-          ${code13refs.length > 0 ? 'AND g.code_13_ref = ANY($6::text[])' : ''}
+        JOIN data_globalproduct g ON fp.code_13_ref_id = g.code_13_ref
+        LEFT JOIN current_sales cs ON g.code_13_ref = cs.code_13_ref
+        LEFT JOIN comparison_sales ps ON g.code_13_ref = ps.code_13_ref
+        WHERE (COALESCE(cs.revenue, 0) > 0 OR COALESCE(ps.revenue, 0) > 0)
+        GROUP BY g.code_13_ref, g.name, g.category, g.brand_lab, cs.revenue, ps.revenue
       )
       SELECT
-        product_id,
-        display_name,
         code_13_ref,
+        global_name AS display_name,
         category,
         brand_lab,
         current_stock,
@@ -193,7 +191,7 @@ async function fetchProductEvolution(
     }
     
     // Exécuter la requête
-    const { rows } = await client.query(firstQuery, params);
+    const { rows } = await client.query(query, params);
     
     // Regrouper les produits par catégorie d'évolution
     const strongDecrease: any[] = [];
@@ -205,9 +203,8 @@ async function fetchProductEvolution(
     // Transformer les données pour le format de réponse
     rows.forEach(row => {
       const product = {
-        id: row.product_id,
-        display_name: row.display_name,
         code_13_ref: row.code_13_ref,
+        display_name: row.display_name,
         category: row.category,
         brand_lab: row.brand_lab,
         current_stock: row.current_stock,

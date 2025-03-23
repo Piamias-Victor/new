@@ -53,6 +53,7 @@ export function useSelectedProductsData() {
           body: JSON.stringify({
             code13refs: selectedCodes,
             pharmacyIds: selectedPharmacyIds,
+            allPharmacies: selectedPharmacyIds.length === 0, // Flag pour indiquer toutes les pharmacies
             startDate,
             endDate,
             comparisonStartDate,

@@ -66,7 +66,7 @@ export function StockProductsModal({
   
   // Fonction pour formater le nombre de mois en texte
   const formatMonths = (months: number) => {
-    return `${months} mois`;
+    return `${Number(months).toFixed(1)} mois`;
   };
 
   return (

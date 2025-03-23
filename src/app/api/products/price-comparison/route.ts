@@ -1,5 +1,5 @@
 // src/app/api/products/price-comparison/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function POST(request: Request) {
@@ -56,25 +56,62 @@ export async function POST(request: Request) {
             )
           GROUP BY 
             gp.code_13_ref
+        ),
+        product_data AS (
+          SELECT 
+            pp.id,
+            pp.display_name,
+            pp.code_13_ref,
+            pp.brand_lab,
+            pp.category,
+            pp.price,
+            ap.avg_price,
+            ap.min_price,
+            ap.max_price,
+            CASE 
+              WHEN ap.avg_price = 0 THEN 0
+              ELSE ((pp.price - ap.avg_price) / ap.avg_price) * 100 
+            END AS price_difference_percentage
+          FROM 
+            pharmacy_products pp
+          JOIN 
+            average_prices ap ON pp.code_13_ref = ap.code_13_ref
+        ),
+        -- Agrégation par code EAN13 pour éviter les doublons
+        aggregated_ean AS (
+          SELECT
+            code_13_ref,
+            MAX(display_name) AS display_name,
+            MAX(brand_lab) AS brand_lab,
+            MAX(category) AS category,
+            -- Utiliser la moyenne des prix pour les produits ayant le même code EAN13
+            AVG(price) AS price,
+            AVG(avg_price) AS avg_price,
+            MIN(min_price) AS min_price,
+            MAX(max_price) AS max_price,
+            -- Recalculer l'écart de prix en pourcentage
+            CASE 
+              WHEN AVG(avg_price) = 0 THEN 0
+              ELSE ((AVG(price) - AVG(avg_price)) / AVG(avg_price)) * 100 
+            END AS price_difference_percentage
+          FROM
+            product_data
+          GROUP BY
+            code_13_ref
         )
-        SELECT 
-          pp.id,
-          pp.display_name,
-          pp.code_13_ref,
-          pp.brand_lab,
-          pp.category,
-          pp.price,
-          ap.avg_price,
-          ap.min_price,
-          ap.max_price,
-          CASE 
-            WHEN ap.avg_price = 0 THEN 0
-            ELSE ((pp.price - ap.avg_price) / ap.avg_price) * 100 
-          END AS price_difference_percentage
-        FROM 
-          pharmacy_products pp
-        JOIN 
-          average_prices ap ON pp.code_13_ref = ap.code_13_ref
+        SELECT
+          code_13_ref AS id,
+          display_name,
+          code_13_ref,
+          brand_lab,
+          category,
+          price,
+          avg_price,
+          min_price,
+          max_price,
+          price_difference_percentage
+        FROM
+          aggregated_ean
       `;
       
       const result = await client.query(query, [

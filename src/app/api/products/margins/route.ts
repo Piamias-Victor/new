@@ -92,41 +92,100 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
         ${whereClause}
         GROUP BY 
           i.product_id
+      ),
+      product_data AS (
+        SELECT
+          p.id,
+          p.name as product_name,
+          g.name as global_name,
+          CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END as display_name,
+          g.category,
+          g.brand_lab,
+          g.code_13_ref,
+          ls.current_stock,
+          ls.price_with_tax,
+          ls.weighted_average_price,
+          p."TVA" as tva_rate,
+          CASE 
+            WHEN ls.weighted_average_price > 0 THEN
+              -- Calcul standard de la marge brute: (Prix vente HT - Prix achat HT) / Prix achat HT * 100
+              ROUND(((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price) / (ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) * 100, 2)
+            ELSE 0
+          END as margin_percentage,
+          CASE 
+            WHEN ls.weighted_average_price > 0 THEN
+              -- Calcul de la marge en valeur absolue (Prix de vente HT - Prix d'achat HT)
+              ROUND((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price, 2)
+            ELSE 0
+          END as margin_amount,
+          COALESCE(ps.total_sales, 0) as total_sales
+        FROM
+          data_internalproduct p
+        JOIN
+          latest_snapshot ls ON p.id = ls.product_id
+        LEFT JOIN
+          product_sales ps ON p.id = ps.product_id
+        LEFT JOIN
+          data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
+        ${whereClause.length > 0 ? whereClause : 'WHERE ls.current_stock > 0'}
+      ),
+      -- Agrégation par code EAN13 pour éviter les doublons
+      aggregated_ean AS (
+        SELECT
+          code_13_ref,
+          MAX(display_name) AS display_name,
+          MAX(category) AS category,
+          MAX(brand_lab) AS brand_lab,
+          SUM(current_stock) AS current_stock,
+          -- Prix moyen pondéré par le stock
+          SUM(price_with_tax * current_stock) / NULLIF(SUM(current_stock), 0) AS price_with_tax,
+          -- Prix d'achat moyen pondéré par le stock
+          SUM(weighted_average_price * current_stock) / NULLIF(SUM(current_stock), 0) AS weighted_average_price,
+          -- TVA moyenne (pourrait être la même pour tous les produits avec le même EAN)
+          AVG(tva_rate) AS tva_rate,
+          -- Ventes totales
+          SUM(total_sales) AS total_sales,
+          -- Marge moyenne pondérée par les ventes
+          SUM(margin_percentage * total_sales) / NULLIF(SUM(total_sales), 0) AS margin_percentage,
+          -- Marge unitaire moyenne pondérée par le stock
+          SUM(margin_amount * current_stock) / NULLIF(SUM(current_stock), 0) AS margin_amount
+        FROM
+          product_data
+        WHERE
+          code_13_ref IS NOT NULL
+        GROUP BY
+          code_13_ref
       )
+      -- Sélection des données agrégées avec recalcul des marges si nécessaire
       SELECT
-        p.id,
-        p.name as product_name,
-        g.name as global_name,
-        CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END as display_name,
-        g.category,
-        g.brand_lab,
-        p.code_13_ref_id as code_13_ref,
-        ls.current_stock,
-        ls.price_with_tax,
-        ls.weighted_average_price,
-        p."TVA" as tva_rate,
-        CASE 
-          WHEN ls.weighted_average_price > 0 THEN
-            -- Calcul standard de la marge brute: (Prix vente HT - Prix achat HT) / Prix achat HT * 100
-            ROUND(((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price) / (ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) * 100, 2)
-          ELSE 0
-        END as margin_percentage,
-        CASE 
-          WHEN ls.weighted_average_price > 0 THEN
-            -- Calcul de la marge en valeur absolue (Prix de vente HT - Prix d'achat HT)
-            ROUND(((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price) / (ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) * 100, 2)
-          ELSE 0
-        END as margin_amount,
-        COALESCE(ps.total_sales, 0) as total_sales
+        code_13_ref AS id,
+        display_name AS product_name,
+        display_name AS global_name,
+        display_name,
+        category,
+        brand_lab,
+        code_13_ref,
+        current_stock,
+        price_with_tax,
+        weighted_average_price,
+        tva_rate,
+        -- Recalculer la marge si nécessaire (si les valeurs agrégées sont significativement différentes)
+        CASE
+          WHEN weighted_average_price > 0 THEN
+            ROUND(((price_with_tax / (1 + tva_rate/100)) - weighted_average_price) / (price_with_tax / (1 + tva_rate/100)) * 100, 2)
+          ELSE
+            margin_percentage
+        END AS margin_percentage,
+        -- Recalculer le montant de la marge si nécessaire
+        CASE
+          WHEN weighted_average_price > 0 THEN
+            ROUND((price_with_tax / (1 + tva_rate/100)) - weighted_average_price, 2)
+          ELSE
+            margin_amount
+        END AS margin_amount,
+        total_sales
       FROM
-        data_internalproduct p
-      JOIN
-        latest_snapshot ls ON p.id = ls.product_id
-      LEFT JOIN
-        product_sales ps ON p.id = ps.product_id
-      LEFT JOIN
-        data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
-      ${whereClause.length > 0 ? whereClause : 'WHERE ls.current_stock > 0'}
+        aggregated_ean
       ORDER BY 
         margin_percentage ASC
     `;
