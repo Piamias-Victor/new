@@ -36,15 +36,28 @@ export async function GET(request: NextRequest) {
       
       // Requête SQL pour obtenir les données de comparaison
       const query = `
-        WITH product_data AS (
+        WITH current_pharmacy AS (
+          -- Identifier la pharmacie actuelle
+          SELECT DISTINCT ip.pharmacy_id
+          FROM data_internalproduct ip
+          JOIN data_globalproduct g ON ip.code_13_ref_id = g.code_13_ref
+          WHERE g.code_13_ref = $1
+          ${pharmacyCondition}
+          LIMIT 1
+        ),
+        product_data AS (
           -- Obtenir les données du produit spécifique dans la pharmacie sélectionnée
           SELECT 
             g.code_13_ref,
-            MAX(i.price_with_tax) as price,
-            MAX((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) as margin,
-            MAX(CASE WHEN s.quantity > 0 THEN i.stock / s.quantity ELSE 0 END) as rotation,
-            MAX(i.stock) as stock,
-            SUM(s.quantity) as sales
+            MAX(CASE WHEN i.price_with_tax > 0 AND i.price_with_tax < 1000 THEN i.price_with_tax ELSE NULL END) as price,
+            MAX(CASE WHEN 
+                ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
+                AND ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) < 1000
+                THEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) 
+                ELSE NULL END) as margin,
+            AVG(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) BETWEEN 0 AND 100 THEN i.stock / s.quantity ELSE NULL END) as rotation,
+            MAX(CASE WHEN i.stock >= 0 AND i.stock < 10000 THEN i.stock ELSE NULL END) as stock,
+            SUM(CASE WHEN s.quantity >= 0 AND s.quantity < 1000 THEN s.quantity ELSE NULL END) as sales
           FROM 
             data_internalproduct ip
           JOIN 
@@ -55,36 +68,48 @@ export async function GET(request: NextRequest) {
             data_sales s ON s.product_id = i.id
           JOIN 
             data_pharmacy p ON ip.pharmacy_id = p.id
+          JOIN
+            current_pharmacy cp ON ip.pharmacy_id = cp.pharmacy_id
           WHERE 
             g.code_13_ref = $1
             AND s.date BETWEEN $2 AND $3
-            ${pharmacyCondition}
           GROUP BY 
             g.code_13_ref
         ),
         grouping_data AS (
-          -- Obtenir les données agrégées pour le groupement
+          -- Obtenir les données agrégées pour le même produit dans les autres pharmacies
           SELECT 
-            AVG(i.price_with_tax) as avg_price,
+            AVG(CASE WHEN i.price_with_tax > 0 AND i.price_with_tax < 1000 THEN i.price_with_tax ELSE NULL END) as avg_price,
             MAX(CASE WHEN i.price_with_tax > 0 AND i.price_with_tax < 1000 THEN i.price_with_tax ELSE NULL END) as max_price,
-            MIN(CASE WHEN i.price_with_tax > 0 THEN i.price_with_tax ELSE NULL END) as min_price,
-            AVG((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) as avg_margin,
-            MAX(CASE WHEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
-                 AND ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) < 1000
-                 THEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) 
-                 ELSE NULL END) as max_margin,
-            MIN(CASE WHEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
+            MIN(CASE WHEN i.price_with_tax > 0 AND i.price_with_tax < 1000 THEN i.price_with_tax ELSE NULL END) as min_price,
+            
+            AVG(CASE WHEN 
+                ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
+                AND ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) < 1000
+                THEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) 
+                ELSE NULL END) as avg_margin,
+            MAX(CASE WHEN 
+                ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
+                AND ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) < 1000
+                THEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) 
+                ELSE NULL END) as max_margin,
+            MIN(CASE WHEN 
+                ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) > 0 
+                AND ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) < 1000
                 THEN ((i.price_with_tax / (1 + COALESCE(ip."TVA", 0)/100)) - i.weighted_average_price) 
                 ELSE NULL END) as min_margin,
-            AVG(CASE WHEN s.quantity > 0 THEN i.stock / s.quantity ELSE 0 END) as avg_rotation,
-            MAX(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) < 100 THEN i.stock / s.quantity ELSE NULL END) as max_rotation,
-            MIN(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) > 0 THEN i.stock / s.quantity ELSE NULL END) as min_rotation,
-            AVG(i.stock) as avg_stock,
-            MAX(CASE WHEN i.stock > 0 AND i.stock < 1000 THEN i.stock ELSE NULL END) as max_stock,
-            MIN(CASE WHEN i.stock > 0 THEN i.stock ELSE NULL END) as min_stock,
-            AVG(s.quantity) as avg_sales,
-            MAX(CASE WHEN s.quantity > 0 AND s.quantity < 1000 THEN s.quantity ELSE NULL END) as max_sales,
-            MIN(CASE WHEN s.quantity > 0 THEN s.quantity ELSE NULL END) as min_sales
+            
+            AVG(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) BETWEEN 0 AND 100 THEN i.stock / s.quantity ELSE NULL END) as avg_rotation,
+            MAX(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) BETWEEN 0 AND 100 THEN i.stock / s.quantity ELSE NULL END) as max_rotation,
+            MIN(CASE WHEN s.quantity > 0 AND (i.stock / s.quantity) BETWEEN 0 AND 100 THEN i.stock / s.quantity ELSE NULL END) as min_rotation,
+            
+            AVG(CASE WHEN i.stock >= 0 AND i.stock < 10000 THEN i.stock ELSE NULL END) as avg_stock,
+            MAX(CASE WHEN i.stock >= 0 AND i.stock < 10000 THEN i.stock ELSE NULL END) as max_stock,
+            MIN(CASE WHEN i.stock >= 0 AND i.stock < 10000 THEN i.stock ELSE NULL END) as min_stock,
+            
+            AVG(CASE WHEN s.quantity >= 0 AND s.quantity < 1000 THEN s.quantity ELSE NULL END) as avg_sales,
+            MAX(CASE WHEN s.quantity >= 0 AND s.quantity < 1000 THEN s.quantity ELSE NULL END) as max_sales,
+            MIN(CASE WHEN s.quantity >= 0 AND s.quantity < 1000 THEN s.quantity ELSE NULL END) as min_sales
           FROM 
             data_internalproduct ip
           JOIN 
@@ -93,40 +118,58 @@ export async function GET(request: NextRequest) {
             data_inventorysnapshot i ON i.product_id = ip.id
           LEFT JOIN 
             data_sales s ON s.product_id = i.id
+          LEFT JOIN
+            current_pharmacy cp ON true
           WHERE 
-            g.category = (SELECT category FROM data_globalproduct WHERE code_13_ref = $1)
+            g.code_13_ref = $1  -- Filtrer sur le même produit uniquement
             AND s.date BETWEEN $2 AND $3
+            AND ip.pharmacy_id != cp.pharmacy_id  -- Exclure la pharmacie actuelle
         )
         SELECT 
-          pd.price as your_price,
-          gd.avg_price,
-          gd.max_price,
-          gd.min_price,
-          ROUND(((pd.price - gd.avg_price) / gd.avg_price) * 100, 1) as price_percentage,
+          COALESCE(pd.price, 0) as your_price,
+          COALESCE(gd.avg_price, 0) as avg_price,
+          COALESCE(gd.max_price, 0) as max_price,
+          COALESCE(gd.min_price, 0) as min_price,
+          CASE 
+            WHEN gd.avg_price > 0 THEN LEAST(200, GREATEST(-200, ROUND(((COALESCE(pd.price, 0) - COALESCE(gd.avg_price, 0)) / NULLIF(gd.avg_price, 0)) * 100, 1)))
+            ELSE 0
+          END as price_percentage,
           
-          pd.margin as your_margin,
-          gd.avg_margin,
-          gd.max_margin,
-          gd.min_margin,
-          ROUND(((pd.margin - gd.avg_margin) / gd.avg_margin) * 100, 1) as margin_percentage,
+          COALESCE(pd.margin, 0) as your_margin,
+          COALESCE(gd.avg_margin, 0) as avg_margin,
+          COALESCE(gd.max_margin, 0) as max_margin,
+          COALESCE(gd.min_margin, 0) as min_margin,
+          CASE 
+            WHEN gd.avg_margin > 0 THEN LEAST(200, GREATEST(-200, ROUND(((COALESCE(pd.margin, 0) - COALESCE(gd.avg_margin, 0)) / NULLIF(gd.avg_margin, 0)) * 100, 1)))
+            ELSE 0
+          END as margin_percentage,
           
-          pd.rotation as your_rotation,
-          gd.avg_rotation,
-          gd.max_rotation,
-          gd.min_rotation,
-          ROUND(((pd.rotation - gd.avg_rotation) / gd.avg_rotation) * 100, 1) as rotation_percentage,
+          COALESCE(pd.rotation, 0) as your_rotation,
+          COALESCE(gd.avg_rotation, 0) as avg_rotation,
+          COALESCE(gd.max_rotation, 0) as max_rotation,
+          COALESCE(gd.min_rotation, 0) as min_rotation,
+          CASE 
+            WHEN gd.avg_rotation > 0 THEN LEAST(200, GREATEST(-200, ROUND(((COALESCE(pd.rotation, 0) - COALESCE(gd.avg_rotation, 0)) / NULLIF(gd.avg_rotation, 0)) * 100, 1)))
+            ELSE 0
+          END as rotation_percentage,
           
-          pd.stock as your_stock,
-          gd.avg_stock,
-          gd.max_stock,
-          gd.min_stock,
-          ROUND(((pd.stock - gd.avg_stock) / gd.avg_stock) * 100, 1) as stock_percentage,
+          COALESCE(pd.stock, 0) as your_stock,
+          COALESCE(gd.avg_stock, 0) as avg_stock,
+          COALESCE(gd.max_stock, 0) as max_stock,
+          COALESCE(gd.min_stock, 0) as min_stock,
+          CASE 
+            WHEN gd.avg_stock > 0 THEN LEAST(200, GREATEST(-200, ROUND(((COALESCE(pd.stock, 0) - COALESCE(gd.avg_stock, 0)) / NULLIF(gd.avg_stock, 0)) * 100, 1)))
+            ELSE 0
+          END as stock_percentage,
           
-          pd.sales as your_sales,
-          gd.avg_sales,
-          gd.max_sales,
-          gd.min_sales,
-          ROUND(((pd.sales - gd.avg_sales) / gd.avg_sales) * 100, 1) as sales_percentage
+          COALESCE(pd.sales, 0) as your_sales,
+          COALESCE(gd.avg_sales, 0) as avg_sales,
+          COALESCE(gd.max_sales, 0) as max_sales,
+          COALESCE(gd.min_sales, 0) as min_sales,
+          CASE 
+            WHEN gd.avg_sales > 0 THEN LEAST(200, GREATEST(-200, ROUND(((COALESCE(pd.sales, 0) - COALESCE(gd.avg_sales, 0)) / NULLIF(gd.avg_sales, 0)) * 100, 1)))
+            ELSE 0
+          END as sales_percentage
         FROM 
           product_data pd, 
           grouping_data gd
@@ -134,12 +177,17 @@ export async function GET(request: NextRequest) {
       
       const result = await client.query(query, params);
       
-      // Si aucun résultat, retourner une erreur
+      // Si aucun résultat, retourner des données par défaut
       if (result.rows.length === 0) {
-        return NextResponse.json(
-          { error: 'Aucune donnée trouvée pour ce produit et cette période' },
-          { status: 404 }
-        );
+        const defaultResponse = {
+          price: { yourValue: 0, average: 0, maximum: 0, minimum: 0, percentage: 0 },
+          margin: { yourValue: 0, average: 0, maximum: 0, minimum: 0, percentage: 0 },
+          rotation: { yourValue: 0, average: 0, maximum: 0, minimum: 0, percentage: 0 },
+          stock: { yourValue: 0, average: 0, maximum: 0, minimum: 0, percentage: 0 },
+          sales: { yourValue: 0, average: 0, maximum: 0, minimum: 0, percentage: 0 }
+        };
+        
+        return NextResponse.json(defaultResponse);
       }
       
       // Formater les données pour la réponse

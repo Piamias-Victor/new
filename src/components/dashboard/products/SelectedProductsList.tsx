@@ -182,8 +182,9 @@ export function SelectedProductsList() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+<div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden h-full flex flex-col">
+  <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center">
             <FiPackage className="text-gray-500 dark:text-gray-400 mr-2" size={20} />
@@ -217,8 +218,8 @@ export function SelectedProductsList() {
         </div>
       </div>
       
-      <div className="overflow-x-auto">
-        <div className="max-h-[700px] overflow-y-auto">
+      <div className="overflow-x-auto flex-grow">
+        <div className="max-h-[500px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
               <tr>
