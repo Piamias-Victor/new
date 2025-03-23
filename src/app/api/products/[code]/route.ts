@@ -6,7 +6,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { code: string } }
 ) {
-  const code13ref = params.code;
+  // Pour Next.js 14+, nous devons attendre les paramètres
+  const { code } = params;
+  const code13ref = code;
   
   // Récupération des dates de début et fin depuis les paramètres de requête
   const searchParams = request.nextUrl.searchParams;
@@ -29,11 +31,12 @@ export async function GET(
       
       // Si les dates sont spécifiées, nous les utilisons pour le calcul de la rotation
       if (startDate && endDate) {
+        // Version corrigée du calcul des jours sans utiliser l'addition avec INTERVAL
         periodQuery = `
           WITH period_sales AS (
             SELECT 
               SUM(s.quantity) AS total_quantity,
-              (EXTRACT(EPOCH FROM ($3::date - $2::date)) / 86400) + 1 AS days_count
+              (EXTRACT(EPOCH FROM ($3::timestamp)) - EXTRACT(EPOCH FROM ($2::timestamp))) / 86400 + 1 AS days_count
             FROM 
               data_inventorysnapshot i
             JOIN 
@@ -45,12 +48,12 @@ export async function GET(
               AND s.date BETWEEN $2 AND $3
           )
           SELECT 
-            ps.total_quantity,
-            ps.days_count,
+            COALESCE(ps.total_quantity, 0) AS total_quantity,
+            COALESCE(ps.days_count, 0) AS days_count,
             CASE 
-              WHEN ps.days_count > 0 THEN 
+              WHEN COALESCE(ps.days_count, 0) > 0 THEN 
                 -- Extrapolation sur une année (365 jours)
-                (ps.total_quantity / ps.days_count) * 365 / 12
+                (COALESCE(ps.total_quantity, 0) / ps.days_count) * 365 / 12
               ELSE 0
             END AS extrapolated_monthly_rotation
           FROM 
@@ -75,12 +78,12 @@ export async function GET(
               AND s.date >= CURRENT_DATE - INTERVAL '90 days'
           )
           SELECT 
-            ps.total_quantity,
-            ps.days_count,
+            COALESCE(ps.total_quantity, 0) AS total_quantity,
+            COALESCE(ps.days_count, 0) AS days_count,
             CASE 
-              WHEN ps.days_count > 0 THEN 
+              WHEN COALESCE(ps.days_count, 0) > 0 THEN 
                 -- Extrapolation sur une année (365 jours)
-                (ps.total_quantity / ps.days_count) * 365 / 12
+                (COALESCE(ps.total_quantity, 0) / ps.days_count) * 365 / 12
               ELSE 0
             END AS extrapolated_monthly_rotation
           FROM 
