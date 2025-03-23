@@ -1,29 +1,44 @@
-// src/app/api/products/[id]/stock-analysis/route.ts
+// src/app/api/products/[code]/stock-analysis/route.ts
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { code: string } }
 ) {
   try {
-    const productId = params.id;
+    // Attendre la valeur du paramètre code
+    const code13ref = await params.code;
     
-    if (!productId) {
+    if (!code13ref) {
       return NextResponse.json(
-        { error: 'ID produit requis' },
+        { error: 'Code produit requis' },
         { status: 400 }
       );
     }
+
+    // Récupération des paramètres de la requête
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     const client = await pool.connect();
     
     try {
       // Requête pour récupérer les données de stock actuelles
       const stockQuery = `
-        WITH latest_snapshot AS (
+        WITH 
+        -- Trouver l'ID interne du produit par code EAN
+        product_id AS (
+          SELECT id 
+          FROM data_internalproduct 
+          WHERE code_13_ref_id = $1
+          LIMIT 1
+        ),
+        
+        latest_snapshot AS (
           SELECT * FROM data_inventorysnapshot
-          WHERE product_id = $1
+          WHERE product_id IN (SELECT id FROM product_id)
           ORDER BY date DESC
           LIMIT 1
         ),
@@ -35,7 +50,7 @@ export async function GET(
             COUNT(DISTINCT s.date) as days_count
           FROM data_sales s
           JOIN data_inventorysnapshot i ON s.product_id = i.id
-          WHERE i.product_id = $1
+          WHERE i.product_id IN (SELECT id FROM product_id)
           AND s.date >= CURRENT_DATE - INTERVAL '90 days'
         ),
         
@@ -54,13 +69,13 @@ export async function GET(
             END as status
           FROM data_productorder po
           JOIN data_order o ON po.order_id = o.id
-          WHERE po.product_id = $1
+          WHERE po.product_id IN (SELECT id FROM product_id)
           ORDER BY o.sent_date DESC
           LIMIT 5
         )
         
         SELECT 
-          ls.product_id as "productId",
+          $1 as "code13ref",
           ls.stock as "currentStock",
           ls.stock * ls.weighted_average_price as "stockValue",
           ls.weighted_average_price as "avgCostPrice",
@@ -140,7 +155,7 @@ export async function GET(
         CROSS JOIN recent_sales rs
       `;
       
-      const result = await client.query(stockQuery, [productId]);
+      const result = await client.query(stockQuery, [code13ref]);
       
       if (result.rows.length === 0) {
         return NextResponse.json(

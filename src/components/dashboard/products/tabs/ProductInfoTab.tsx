@@ -148,6 +148,16 @@ export function ProductInfoTab({ code13ref }: ProductInfoTabProps) {
         { icon: <FiDatabase className="text-amber-500" />, label: 'Laboratoire', value: product.brand_lab || 'Non spécifié' },
         { icon: <FiDatabase className="text-amber-500" />, label: 'Gamme', value: product.range_name || 'Non spécifié' }
       ]
+    },
+    {
+      title: "Performance",
+      items: [
+        { 
+          icon: <FiCalendar className="text-purple-500" />, 
+          label: 'Première trace', 
+          value: formatDate(product.first_seen_date) 
+        }
+      ]
     }
   ];
 

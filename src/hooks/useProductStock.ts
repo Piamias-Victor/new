@@ -22,10 +22,10 @@ export interface ProductStockData {
   
   // Données d'approvisionnement
   lastOrders: {
-    orderId: string;
+    order_id: string;
     date: string;
     quantity: number;
-    receivedQuantity: number;
+    received_quantity: number;
     status: string;
   }[];
   
@@ -66,10 +66,17 @@ export function useProductStock(code13ref: string): ProductStockData {
       setData(prev => ({ ...prev, isLoading: true, error: null }));
       
       try {
-        const response = await fetch(`/api/products/${code13ref}/stock-analysis`);
+        // Ajouter les paramètres de date à la requête
+        const queryParams = new URLSearchParams();
+        if (startDate) queryParams.append('startDate', startDate);
+        if (endDate) queryParams.append('endDate', endDate);
+        
+        const url = `/api/products/${code13ref}/stock-analysis${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des données de stock');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erreur lors de la récupération des données de stock');
         }
         
         const result = await response.json();

@@ -82,7 +82,7 @@ export function StockOverviewCard({
               Couverture de stock
             </div>
             <div className={`text-xl font-bold ${getStockStatusColor(daysOfStock)}`}>
-              {monthsOfStock.toFixed(1)} mois
+              {Number(monthsOfStock).toFixed(1)} mois
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {daysOfStock} jours de stock
@@ -99,7 +99,7 @@ export function StockOverviewCard({
               Rotation du stock
             </div>
             <div className="text-xl font-bold text-gray-900 dark:text-white">
-              {rotationRate.toFixed(2)}
+              {Number(rotationRate).toFixed(2)}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
               sur 90 jours
