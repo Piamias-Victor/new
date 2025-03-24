@@ -14,6 +14,7 @@ import { EnhancedSegmentDistribution, SegmentDistribution } from '@/components/d
 import { ProjectionDashboard } from '@/components/dashboard/ProjectionDashboard';
 import { SalesProjection } from '@/components/dashboard/SalesProjection';
 import { GroupingComparison } from '@/components/dashboard/GroupingComparison';
+import { SidebarLayout } from '@/components/layout/SidebarLayout';
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -41,7 +42,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <SidebarLayout>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Ajouter l'indicateur de chargement global */}      
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
@@ -94,5 +96,7 @@ export default function Dashboard() {
 
       </div>
     </div>
+    </SidebarLayout>
+    
   );
 }

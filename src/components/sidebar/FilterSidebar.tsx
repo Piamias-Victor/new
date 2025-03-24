@@ -1,8 +1,8 @@
 // src/components/sidebar/FilterSidebar.tsx
 import React from 'react';
+import { DateFilterSummary } from './DateFilterSummary';
 import { PharmacyFilterSummary } from './PharmacyFilterSummary';
 import { ProductFilterSummary } from './ProductFilterSummary';
-import { DateFilterSummary } from './DateFilterSummary';
 
 export function FilterSidebar() {
   return (
