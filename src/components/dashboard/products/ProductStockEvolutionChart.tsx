@@ -11,8 +11,9 @@ import {
   ReferenceLine,
   Scatter
 } from 'recharts';
-import { FiBox, FiDollarSign, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import { FiBox, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
 import { useProductStockEvolution } from '@/hooks/useProductStockEvolution';
+import { MdEuro } from "react-icons/md";
 
 type IntervalType = 'day' | 'week' | 'month';
 

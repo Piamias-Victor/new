@@ -1,7 +1,6 @@
 // src/components/dashboard/prices/PriceSummaryCard.tsx
 import React from 'react';
 import { 
-  FiDollarSign, 
   FiArrowDown, 
   FiArrowUp, 
   FiMinus, 
@@ -9,6 +8,7 @@ import {
   FiTrendingUp,
   FiExternalLink 
 } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 
 type ColorScheme = 'red' | 'amber' | 'blue' | 'green' | 'purple';
 
@@ -66,7 +66,7 @@ export function PriceSummaryCard({
       case 'very-high':
         return <FiTrendingUp size={20} />;
       default:
-        return <FiDollarSign size={20} />;
+        return <MdEuro size={20} />;
     }
   };
 

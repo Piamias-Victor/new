@@ -1,8 +1,9 @@
 // src/components/dashboard/KpiCards.tsx
 import React, { useState } from 'react';
-import { FiTrendingUp, FiPackage, FiActivity, FiPercent, FiDollarSign, FiInfo, 
+import { FiTrendingUp, FiPackage, FiActivity, FiPercent, FiInfo, 
          FiBox, FiShoppingCart, FiShoppingBag, FiAlertTriangle, FiHash, FiRepeat, 
          FiFilter} from "react-icons/fi";
+import { MdEuro } from "react-icons/md";
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { FilterBadge } from '@/components/filters/FilterBadge';
 import { useRevenueWithFilter } from '@/hooks/useRevenue';
@@ -153,7 +154,7 @@ function KpiCard({
               }`}
               title={title.includes("Stock") ? "Afficher en montant" : "Afficher en pourcentage"}
             >
-              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <FiDollarSign size={14} /> : <FiPercent size={14} />}
+              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <MdEuro size={14} /> : <FiPercent size={14} />}
             </button>
             
             <button
@@ -165,7 +166,7 @@ function KpiCard({
               }`}
               title={title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? "Afficher en unités" : "Afficher en montant"}
             >
-              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <FiBox size={14} /> : <FiDollarSign size={14} />}
+              {title.includes("Stock") || title.includes("CA") || title === "Ruptures" ? <FiBox size={14} /> : <MdEuro size={14} />}
             </button>
           </div>
           

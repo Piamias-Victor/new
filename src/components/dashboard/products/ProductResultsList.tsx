@@ -1,9 +1,11 @@
 // src/components/dashboard/products/ProductResultsList.tsx
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FiPackage, FiTrendingUp, FiBox, FiDollarSign, FiEye, FiFilter, FiAlertCircle, FiCheck, FiSearch, FiChevronDown, FiChevronUp, FiHome, FiShoppingCart } from 'react-icons/fi';
+import { FiPackage, FiTrendingUp, FiBox, FiEye, FiFilter, FiAlertCircle, FiCheck, FiSearch, FiChevronDown, FiChevronUp, FiHome, FiShoppingCart } from 'react-icons/fi';
 import { Product } from '@/services/productService';
 import { formatNumber } from '@/app/dashboard/detailed/page';
+import { MdEuro } from "react-icons/md";
+
 
 interface ProductResultsListProps {
   products: Product[];
@@ -281,7 +283,7 @@ export function ProductResultsList({ products, isLoading, error }: ProductResult
                     <div className="ml-12 mt-3 text-sm text-gray-600 dark:text-gray-400">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="flex items-center">
-                          <FiDollarSign className="mr-1 text-gray-400" size={14} />
+                          <MdEuro className="mr-1 text-gray-400" size={14} />
                           <span>TVA: {product.tva_rate ? `${product.tva_rate}%` : 'N/A'}</span>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 // src/components/dashboard/comparison/GlobalComparisonCard.tsx
 import React from 'react';
-import { FiTrendingUp, FiArrowUp, FiArrowDown, FiDollarSign, FiCalendar } from 'react-icons/fi';
+import { FiTrendingUp, FiArrowUp, FiArrowDown, FiCalendar } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 import { useDateRange } from '@/contexts/DateRangeContext';
 
 interface GlobalComparisonProps {
@@ -176,7 +177,7 @@ export function GlobalComparisonCard({
                 ? <FiArrowUp size={24} />
                 : marginEvolutionPercentage < 0 
                   ? <FiArrowDown size={24} />
-                  : <FiDollarSign size={24} />}
+                  : <MdEuro size={24} />}
             </div>
             
             <div>

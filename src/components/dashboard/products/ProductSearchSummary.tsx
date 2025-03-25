@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FiBox, FiPackage, FiShoppingCart, FiDollarSign, FiTrendingUp, FiShoppingBag, FiTruck, FiInfo, FiActivity, FiBarChart2 } from 'react-icons/fi';
+import { FiBox, FiPackage, FiShoppingCart, FiTrendingUp, FiShoppingBag, FiTruck, FiInfo, FiActivity, FiBarChart2 } from 'react-icons/fi';
 import { Product } from '@/services/productService';
+import { MdEuro } from "react-icons/md";
 
 // Fonction pour formater les grands nombres de manière lisible
 function formatLargeNumber(num: number): string {
@@ -282,7 +283,7 @@ export function ProductEnhancedSummary({ products, labData, purchaseData }: Prod
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
-                <FiDollarSign size={24} />
+                <MdEuro size={24} />
               </div>
               <div>
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Prix d'achat</h3>

@@ -1,6 +1,7 @@
 // src/components/dashboard/pharmacies/tabs/PharmacyInfoTab.tsx
 import React, { useState, useEffect } from 'react';
-import { FiHome, FiUsers, FiMapPin, FiDollarSign, FiBox } from 'react-icons/fi';
+import { FiHome, FiUsers, FiMapPin, FiBox } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 
 // Interface pour les données de la pharmacie
 interface PharmacyData {
@@ -116,7 +117,7 @@ export function PharmacyInfoTab({ pharmacyId }: PharmacyInfoTabProps) {
   // Structuration des informations avec icônes appropriées
   const infoItems = [
     { icon: <FiHome className="text-sky-500" />, label: 'Nom', value: pharmacy.name },
-    { icon: <FiDollarSign className="text-emerald-500" />, label: 'Chiffre d\'affaires', value: formatCurrency(pharmacy.ca) },
+    { icon: <MdEuro className="text-emerald-500" />, label: 'Chiffre d\'affaires', value: formatCurrency(pharmacy.ca) },
     { icon: <FiBox className="text-purple-500" />, label: 'Zone', value: pharmacy.area || 'Non spécifié' },
     { icon: <FiUsers className="text-amber-500" />, label: 'Nombre d\'employés', value: pharmacy.employees_count ? `${pharmacy.employees_count} employés` : 'Non spécifié' },
     { icon: <FiMapPin className="text-red-500" />, label: 'Adresse', value: pharmacy.address || 'Non spécifiée' },

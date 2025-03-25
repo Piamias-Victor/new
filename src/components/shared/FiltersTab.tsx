@@ -1,7 +1,8 @@
 // src/components/shared/FiltersTab.tsx
 import React, { useEffect, useState } from 'react';
-import { FiInfo, FiMap, FiDollarSign, FiCheckCircle, FiX } from 'react-icons/fi';
+import { FiInfo, FiMap, FiCheckCircle, FiX } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { MdEuro } from "react-icons/md";
 
 interface FiltersTabProps {
   onClose: () => void;
@@ -249,7 +250,7 @@ export function FiltersTab({ onClose }: FiltersTabProps) {
       {revenueBrackets.length > 0 && (
         <div className="mb-4">
           <h4 className="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            <FiDollarSign className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />
+            <MdEuro className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />
             Chiffre d'affaires
           </h4>
           <div className="space-y-2">

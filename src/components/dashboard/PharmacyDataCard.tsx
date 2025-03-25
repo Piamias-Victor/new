@@ -2,7 +2,8 @@
 'use client';
 
 import React from 'react';
-import { FiDollarSign, FiCalendar } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
+import { FiCalendar } from 'react-icons/fi';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { useRevenue } from '@/hooks/useRevenueold';
@@ -35,7 +36,7 @@ export function PharmacyDataCard() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center mb-4 text-red-500 dark:text-red-400">
           <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300 mr-3">
-            <FiDollarSign size={20} />
+            <MdEuro size={20} />
           </div>
           <h3 className="text-lg font-medium">Erreur de chargement des données</h3>
         </div>
@@ -48,7 +49,7 @@ export function PharmacyDataCard() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
       <div className="flex items-center mb-2">
-        <FiDollarSign className="text-emerald-500 mr-2" size={16} />
+        <MdEuro className="text-emerald-500 mr-2" size={16} />
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Chiffre d'Affaires ({displayLabel}) - {selectedPharmacyIds.length} pharmacie(s)
         </span>

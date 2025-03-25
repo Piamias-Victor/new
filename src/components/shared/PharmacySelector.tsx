@@ -3,8 +3,9 @@
 
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import React, { useState, useRef, useEffect } from 'react';
-import { FiHome, FiChevronDown, FiChevronUp, FiMap, FiDollarSign, FiMaximize } from 'react-icons/fi';
+import { FiHome, FiChevronDown, FiChevronUp, FiMap, FiMaximize } from 'react-icons/fi';
 import { PharmacyDropdownMenu } from './PharmacyDropdownMenu';
+import { MdEuro } from "react-icons/md";
 
 export function PharmacySelector() {
   const [isOpen, setIsOpen] = useState(false);
@@ -72,7 +73,7 @@ export function PharmacySelector() {
   const getFilterIcon = () => {
     switch (lastFilterType) {
       case 'region': return <FiMap className="mr-2 text-teal-600" size={16} />;
-      case 'revenue': return <FiDollarSign className="mr-2 text-teal-600" size={16} />;
+      case 'revenue': return <MdEuro className="mr-2 text-teal-600" size={16} />;
       case 'size': return <FiMaximize className="mr-2 text-teal-600" size={16} />;
       default: return <FiHome className="mr-2 text-teal-600" size={16} />;
     }

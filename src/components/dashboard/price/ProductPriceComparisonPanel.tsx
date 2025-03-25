@@ -1,6 +1,6 @@
 // src/components/dashboard/prices/ProductPriceComparisonPanel.tsx
 import React, { useState } from 'react';
-import { FiDollarSign } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 import { PriceSummaryCard } from './PriceSummaryCard';
 import { PriceComparisonModal } from './PriceComparisonModal';
 import { usePriceComparison } from '@/hooks/usePriceComparison';
@@ -68,7 +68,7 @@ export function ProductPriceComparisonPanel() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
         <div className="text-center p-6">
-          <FiDollarSign className="mx-auto text-gray-400 mb-3" size={24} />
+          <MdEuro className="mx-auto text-gray-400 mb-3" size={24} />
           <p className="text-gray-500 dark:text-gray-400">
             Sélectionnez des produits via le filtre pour voir leur analyse de prix
           </p>
@@ -80,7 +80,7 @@ export function ProductPriceComparisonPanel() {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
       <div className="flex items-center mb-4">
-        <FiDollarSign className="text-gray-500 dark:text-gray-400 mr-2" size={18} />
+        <MdEuro className="text-gray-500 dark:text-gray-400 mr-2" size={18} />
         <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
           Analyse comparative des prix
         </h2>

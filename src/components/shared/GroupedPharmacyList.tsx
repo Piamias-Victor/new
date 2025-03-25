@@ -1,7 +1,8 @@
 // src/components/shared/pharmacy-selector/GroupedPharmacyList.tsx
 import React from 'react';
-import { FiMap, FiDollarSign, FiMaximize, FiCheck } from 'react-icons/fi';
+import { FiMap, FiMaximize, FiCheck } from 'react-icons/fi';
 import { usePharmacySelection, Pharmacy } from '@/providers/PharmacyProvider';
+import { MdEuro } from "react-icons/md";
 
 interface GroupedPharmacyListProps {
   pharmacies: Pharmacy[];
@@ -50,7 +51,7 @@ export function GroupedPharmacyList({ pharmacies, groupBy }: GroupedPharmacyList
   const getGroupIcon = (value: string) => {
     switch (groupBy) {
       case 'region': return <FiMap className="mr-2 text-teal-500 dark:text-teal-400" size={16} />;
-      case 'revenue': return <FiDollarSign className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />;
+      case 'revenue': return <MdEuro className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />;
       case 'size': return <FiMaximize className="mr-2 text-amber-500 dark:text-amber-400" size={16} />;
       default: return null;
     }

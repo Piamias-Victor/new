@@ -1,7 +1,9 @@
 // src/components/shared/PharmacyList.tsx
 import React from 'react';
-import { FiCheck, FiMapPin, FiDollarSign } from 'react-icons/fi';
+import { FiCheck, FiMapPin } from 'react-icons/fi';
 import { usePharmacySelection, Pharmacy } from '@/providers/PharmacyProvider';
+import { MdEuro } from "react-icons/md";
+
 
 interface PharmacyListProps {
   pharmacies: Pharmacy[];
@@ -75,7 +77,7 @@ export function PharmacyList({ pharmacies }: PharmacyListProps) {
                 
                 {pharmacy.ca && (
                   <div className="inline-flex items-center text-gray-600 dark:text-gray-300">
-                    <FiDollarSign size={12} className="mr-1 text-emerald-500 dark:text-emerald-400" />
+                    <MdEuro size={12} className="mr-1 text-emerald-500 dark:text-emerald-400" />
                     {formatCurrency(pharmacy.ca)}
                   </div>
                 )}

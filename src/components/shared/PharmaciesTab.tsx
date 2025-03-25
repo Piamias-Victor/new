@@ -1,8 +1,9 @@
 // src/components/shared/PharmaciesTab.tsx
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import React, { useState, useEffect, useMemo } from 'react';
-import { FiSearch, FiX, FiMap, FiDollarSign, FiCheck } from 'react-icons/fi';
+import { FiSearch, FiX, FiMap, FiCheck } from 'react-icons/fi';
 import { PharmacyList } from './PharmacyList';
+import { MdEuro } from "react-icons/md";
 
 // Type pour les options de regroupement
 type GroupingType = 'none' | 'region' | 'ca';
@@ -107,7 +108,7 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
             {groupBy === 'region' ? (
               <FiMap className="mr-2 text-teal-500" size={14} />
             ) : (
-              <FiDollarSign className="mr-2 text-emerald-500" size={14} />
+              <MdEuro className="mr-2 text-emerald-500" size={14} />
             )}
             {groupKey} ({pharmaciesInGroup.length})
           </div>
@@ -213,7 +214,7 @@ export function PharmaciesTab({ onClose }: PharmaciesTabProps) {
                   : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
               }`}
             >
-              <FiDollarSign className="mr-1" size={12} /> CA
+              <MdEuro className="mr-1" size={12} /> CA
             </button>
           </div>
         </div>

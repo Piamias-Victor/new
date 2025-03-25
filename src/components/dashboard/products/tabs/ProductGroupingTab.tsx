@@ -1,7 +1,8 @@
 // src/components/dashboard/products/tabs/ProductGroupingTab.tsx
 import React from 'react';
 import { useProductGroupingComparison } from '@/hooks/useProductGroupingComparison';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiPackage, FiRotateCw, FiShoppingCart, FiAlertCircle } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiPackage, FiRotateCw, FiShoppingCart, FiAlertCircle } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 
 interface ProductGroupingTabProps {
   code13ref: string;
@@ -80,9 +81,9 @@ export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
   const getMetricIcon = (category: 'price' | 'margin' | 'rotation' | 'stock' | 'sales') => {
     switch(category) {
       case 'price':
-        return <FiDollarSign size={16} />;
+        return <MdEuro size={16} />;
       case 'margin':
-        return <FiDollarSign size={16} />;
+        return <MdEuro size={16} />;
       case 'rotation':
         return <FiRotateCw size={16} />;
       case 'stock':

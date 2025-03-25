@@ -4,10 +4,10 @@ import {
   FiPercent, 
   FiAlertTriangle, 
   FiAlertCircle, 
-  FiDollarSign, 
   FiAward,
   FiExternalLink 
 } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 
 // Types de schémas de couleur disponibles
 type ColorScheme = 'red' | 'amber' | 'blue' | 'green' | 'purple';
@@ -66,7 +66,7 @@ export function MarginSummaryCard({
       case 'medium':
         return <FiPercent size={20} />;
       case 'good':
-        return <FiDollarSign size={20} />;
+        return <MdEuro size={20} />;
       case 'excellent':
         return <FiAward size={20} />;
       default:

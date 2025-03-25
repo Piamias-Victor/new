@@ -12,7 +12,8 @@ import {
   ReferenceLine,
   Scatter
 } from 'recharts';
-import { FiBox, FiArrowUpRight, FiArrowDownRight, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
+import { FiBox, FiArrowUpRight, FiArrowDownRight, FiAlertTriangle } from 'react-icons/fi';
+import { MdEuro } from "react-icons/md";
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { FilterBadge } from '@/components/filters/FilterBadge';
 import { useStockEvolutionWithFilter } from '@/hooks/useStockEvolutionWithFilter';
@@ -237,7 +238,7 @@ export function StockEvolutionChart() {
         </div>
         {showValue && (
           <div className="flex items-center">
-            <FiDollarSign className="mr-1 text-amber-500" /> 
+            <MdEuro className="mr-1 text-amber-500" /> 
             <span className="text-gray-600 dark:text-gray-300">Valeur du stock</span>
           </div>
         )}
