@@ -260,20 +260,20 @@ export function EnhancedSegmentDistribution() {
                 </th>
                 <th 
                   className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('sellout')}
-                >
-                  <span className="flex items-center justify-end">
-                    <FiShoppingBag className="mr-1" /> CA Sell-out
-                    {getSortIndicator('sellout')}
-                  </span>
-                </th>
-                <th 
-                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
                   onClick={() => handleSort('sellin')}
                 >
                   <span className="flex items-center justify-end">
                     <FiShoppingCart className="mr-1" /> CA Sell-in
                     {getSortIndicator('sellin')}
+                  </span>
+                </th>
+                <th 
+                  className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('sellout')}
+                >
+                  <span className="flex items-center justify-end">
+                    <FiShoppingBag className="mr-1" /> CA Sell-out
+                    {getSortIndicator('sellout')}
                   </span>
                 </th>
                 <th 
@@ -324,15 +324,15 @@ export function EnhancedSegmentDistribution() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-white font-medium">
+                    {formatCurrency(item.sellin)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-white font-medium">
                     {formatCurrency(item.sellout)}
                     {item.previousRevenue > 0 && (
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {formatCurrency(item.previousRevenue)}
                       </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-white font-medium">
-                    {formatCurrency(item.sellin)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-white font-medium">
                     {formatCurrency(item.stock)}

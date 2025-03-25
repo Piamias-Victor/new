@@ -203,11 +203,11 @@ export function PharmaciesList() {
                 
                 <th scope="col" 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('sell_out_price_ttc')}
+                  onClick={() => handleSort('sell_in_price_ht')}
                 >
                   <div className="flex items-center">
-                    CA TTC sell-out
-                    {sortField === 'sell_out_price_ttc' && (
+                    CA sell-in
+                    {sortField === 'sell_in_price_ht' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
                       </span>
@@ -216,11 +216,11 @@ export function PharmaciesList() {
                 </th>
                 <th scope="col" 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('sell_in_price_ht')}
+                  onClick={() => handleSort('sell_out_price_ttc')}
                 >
                   <div className="flex items-center">
-                    CA HT sell-in
-                    {sortField === 'sell_in_price_ht' && (
+                    CA sell-out
+                    {sortField === 'sell_out_price_ttc' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
                       </span>
@@ -309,17 +309,18 @@ export function PharmaciesList() {
                       <div className="text-sm font-medium text-gray-900 dark:text-white">{pharmacy?.name || 'N/A'}</div>
                     </td>
                     
-                    {/* CA Sell-out */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {formatCurrency(pharmacy?.sell_out_price_ttc || 0)}
-                      </div>
-                    </td>
                     
                     {/* CA Sell-in */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
                         {formatCurrency(pharmacy?.sell_in_price_ht || 0)}
+                      </div>
+                    </td>
+                    
+                    {/* CA Sell-out */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {formatCurrency(pharmacy?.sell_out_price_ttc || 0)}
                       </div>
                     </td>
                     

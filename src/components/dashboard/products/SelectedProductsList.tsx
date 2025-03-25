@@ -251,11 +251,11 @@ export function SelectedProductsList() {
                 </th>
                 <th scope="col" 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('sell_out_price_ttc')}
+                  onClick={() => handleSort('sell_in_price_ht')}
                 >
                   <div className="flex items-center">
-                    {showTotals ? "CA TTC sell-out" : "Prix TTC"}
-                    {sortField === 'sell_out_price_ttc' && (
+                    {showTotals ? "CA sell-in" : "Prix HT"}
+                    {sortField === 'sell_in_price_ht' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
                       </span>
@@ -264,11 +264,11 @@ export function SelectedProductsList() {
                 </th>
                 <th scope="col" 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('sell_in_price_ht')}
+                  onClick={() => handleSort('sell_out_price_ttc')}
                 >
                   <div className="flex items-center">
-                    {showTotals ? "CA HT sell-in" : "Prix HT"}
-                    {sortField === 'sell_in_price_ht' && (
+                    {showTotals ? "CA sell-out" : "Prix TTC"}
+                    {sortField === 'sell_out_price_ttc' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
                       </span>
@@ -332,12 +332,12 @@ export function SelectedProductsList() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {showTotals ? formatCurrency(product.total_sell_out) : formatCurrency(product.sell_out_price_ttc)}
+                        {showTotals ? formatCurrency(product.total_sell_in) : formatCurrency(product.sell_in_price_ht)}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {showTotals ? formatCurrency(product.total_sell_in) : formatCurrency(product.sell_in_price_ht)}
+                        {showTotals ? formatCurrency(product.total_sell_out) : formatCurrency(product.sell_out_price_ttc)}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

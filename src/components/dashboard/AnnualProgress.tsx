@@ -78,6 +78,40 @@ export function AnnualProgress({ sellOutGoal, sellInGoal }: AnnualProgressProps)
             <span>Déc</span>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <FiShoppingCart className="text-amber-500 dark:text-amber-400 mr-2" size={16} />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Progression Sell-In
+              </span>
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {formatCurrency(annualData.sellInRevenue)} / {formatCurrency(sellInGoal)}
+            </span>
+          </div>
+          <ProgressBar 
+            value={annualData.sellInRevenue} 
+            maxValue={sellInGoal} 
+            colorClass="bg-amber-500" 
+            showPercentage={true}
+          />
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Évolution vs N-1</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {((annualData.sellInRevenue / annualData.previousYearSellIn - 1) * 100).toFixed(1)}%
+              </p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Reste à réaliser</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {formatCurrency(sellInGoal - annualData.sellInRevenue)}
+              </p>
+            </div>
+          </div>
+        </div>
         
         {/* Progression Sell-Out */}
         <div className="space-y-2">
@@ -114,40 +148,6 @@ export function AnnualProgress({ sellOutGoal, sellInGoal }: AnnualProgressProps)
           </div>
         </div>
         
-        {/* Progression Sell-In */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <FiShoppingCart className="text-amber-500 dark:text-amber-400 mr-2" size={16} />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Progression Sell-In
-              </span>
-            </div>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {formatCurrency(annualData.sellInRevenue)} / {formatCurrency(sellInGoal)}
-            </span>
-          </div>
-          <ProgressBar 
-            value={annualData.sellInRevenue} 
-            maxValue={sellInGoal} 
-            colorClass="bg-amber-500" 
-            showPercentage={true}
-          />
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Évolution vs N-1</p>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {((annualData.sellInRevenue / annualData.previousYearSellIn - 1) * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded p-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">Reste à réaliser</p>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                {formatCurrency(sellInGoal - annualData.sellInRevenue)}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

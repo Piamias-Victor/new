@@ -13,6 +13,7 @@ import { ProductEvolutionPanel } from '@/components/dashboard/evolution/ProductE
 import { ProductPriceComparisonPanel } from '@/components/dashboard/price/ProductPriceComparisonPanel';
 import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
 import { PharmaciesList } from '@/components/dashboard/products/PharmaciesList';
+import { SidebarLayout } from '@/components/layout/SidebarLayout';
 
 export default function ProductDashboard() {
   const { data: session, status } = useSession();
@@ -41,7 +42,8 @@ export default function ProductDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <SidebarLayout>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -88,5 +90,7 @@ export default function ProductDashboard() {
         )}
       </div>
     </div>
+    </SidebarLayout>
+
   );
 }

@@ -419,16 +419,6 @@ export function KpiCards() {
     <>
       {isFilterActive && <FilterNotification count={selectedCodes.length} />}
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* CA Sell-out */}
-      <KpiCard
-        icon={<FiShoppingBag size={24} />}
-        title="CA Sell-out"
-        value={formatCurrency(totalRevenue)}
-        change={revenueChange}
-        alternateView={quantitySellOutView}
-        isLoading={revenueLoading}
-        infoTooltip={tooltips.sellOut}
-      />
       
       {/* CA Sell-in */}
       <KpiCard
@@ -439,6 +429,17 @@ export function KpiCards() {
         alternateView={quantitySellInView}
         isLoading={sellInLoading}
         infoTooltip={tooltips.sellIn}
+      />
+
+      {/* CA Sell-out */}
+      <KpiCard
+        icon={<FiShoppingBag size={24} />}
+        title="CA Sell-out"
+        value={formatCurrency(totalRevenue)}
+        change={revenueChange}
+        alternateView={quantitySellOutView}
+        isLoading={revenueLoading}
+        infoTooltip={tooltips.sellOut}
       />
       
       {/* Ruptures */}

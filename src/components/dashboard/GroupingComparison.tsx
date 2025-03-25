@@ -198,18 +198,6 @@ export function GroupingComparison() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-      {/* CA Sell-out */}
-      <ComparisonIndicator
-        title="CA Sell-out"
-        icon={<FiShoppingBag className="text-sky-600" size={16} />}
-        pharmacyValue={pharmacy.total_sellout}
-        groupValue={group.avg_sellout}
-        formatValue={formatCurrency}
-        totalPharmacyValue={pharmacy.total_pharmacy_sellout}
-        totalGroupValue={group.total_group_sellout}
-        pharmacyPercentage={pharmacy.sellout_percentage}
-        groupPercentage={group.sellout_percentage}
-      />
       
       {/* CA Sell-in */}
       <ComparisonIndicator
@@ -222,6 +210,19 @@ export function GroupingComparison() {
         totalGroupValue={group.total_group_sellin}
         pharmacyPercentage={pharmacy.sellin_percentage}
         groupPercentage={group.sellin_percentage}
+      />
+
+      {/* CA Sell-out */}
+      <ComparisonIndicator
+        title="CA Sell-out"
+        icon={<FiShoppingBag className="text-sky-600" size={16} />}
+        pharmacyValue={pharmacy.total_sellout}
+        groupValue={group.avg_sellout}
+        formatValue={formatCurrency}
+        totalPharmacyValue={pharmacy.total_pharmacy_sellout}
+        totalGroupValue={group.total_group_sellout}
+        pharmacyPercentage={pharmacy.sellout_percentage}
+        groupPercentage={group.sellout_percentage}
       />
       
       {/* Marge */}

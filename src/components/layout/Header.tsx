@@ -145,7 +145,7 @@ const handleConfirmSelection = () => {
               {/* Sélecteurs visibles uniquement sur le dashboard */}
               {isDashboard && (
                 <div className="hidden md:flex items-center space-x-4">
-                  <AnalysisNavMenu />
+                  {/* <AnalysisNavMenu /> */}
                   <ModernDateSelector />
                   <PharmacySelector />
                   <ProductSelectionButton openDrawer={openDrawer} />

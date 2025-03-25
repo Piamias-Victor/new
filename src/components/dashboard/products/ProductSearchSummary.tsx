@@ -219,6 +219,25 @@ export function ProductEnhancedSummary({ products, labData, purchaseData }: Prod
           </div>
         </div>
         
+        {/* Montant Achats (Sell-In) */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
+              <FiShoppingBag size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Achats</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Montant total (Sell-In)</p>
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">
+            {formatCurrency(summary.totalPurchaseAmount)}
+          </div>
+          <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Quantité: {formatLargeNumber(summary.totalPurchaseQuantity)} unités
+          </div>
+        </div>
+
         {/* CA Total (Sell-Out) */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center mb-4">
@@ -257,24 +276,6 @@ export function ProductEnhancedSummary({ products, labData, purchaseData }: Prod
           </div>
         </div>
         
-        {/* Montant Achats (Sell-In) */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <div className="flex items-center mb-4">
-            <div className="p-3 rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300 mr-3">
-              <FiShoppingBag size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Achats</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Montant total (Sell-In)</p>
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-gray-900 dark:text-white">
-            {formatCurrency(summary.totalPurchaseAmount)}
-          </div>
-          <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Quantité: {formatLargeNumber(summary.totalPurchaseQuantity)} unités
-          </div>
-        </div>
         
         {/* Prix Achat Moyen */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
