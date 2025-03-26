@@ -148,7 +148,9 @@ const handleConfirmSelection = () => {
                 <div className="hidden md:flex items-center space-x-4">
                   {/* <AnalysisNavMenu /> */}
                   <ModernDateSelector />
-                  <PharmacySelector />
+                    {session?.user?.role === 'admin' && (
+                    <PharmacySelector />
+                  )}
                   <ProductSelectionButton openDrawer={openDrawer} />
                 </div>
               )}
@@ -191,7 +193,9 @@ const handleConfirmSelection = () => {
             {isDashboard && (
               <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
                 <ModernDateSelector />
-                <PharmacySelector />
+                {session?.user?.role === 'admin' && (
+                  <PharmacySelector />
+                )}
                 
                 {/* Bouton de sélection de produits pour mobile */}
                 {status === 'authenticated' && (

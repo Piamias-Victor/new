@@ -1,6 +1,7 @@
 // src/providers/PharmacyProvider.tsx
 'use client';
 
+import { useSession } from 'next-auth/react';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Types pour les données de pharmacie
@@ -83,6 +84,7 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
   const [selectedPharmacyIds, setSelectedPharmacyIds] = useState<string[]>([]);
   const [lastFilterType, setLastFilterType] = useState<FilterType>('none');
   const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const { data: session } = useSession();
   
   // Nouveaux états pour les valeurs temporaires
   const [tempSelectedPharmacyIds, setTempSelectedPharmacyIds] = useState<string[]>([]);
@@ -95,6 +97,22 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
     setLastFilterType(tempLastFilterType);
     setSelectedFilter(tempSelectedFilter);
   };
+
+  useEffect(() => {
+    refreshPharmacies();
+  }, []);
+
+  // Surveiller les changements de session pour mettre à jour la sélection si nécessaire
+  useEffect(() => {
+    // Si la session est chargée et que l'utilisateur est de type pharmacy_user
+    if (session?.user?.role === 'pharmacy_user' && session?.user?.pharmacyId) {
+      // Si la sélection actuelle ne correspond pas à sa pharmacie, mettre à jour
+      if (selectedPharmacyIds.length !== 1 || selectedPharmacyIds[0] !== session.user.pharmacyId) {
+        setSelectedPharmacyIds([session.user.pharmacyId]);
+        setTempSelectedPharmacyIds([session.user.pharmacyId]);
+      }
+    }
+  }, [session, selectedPharmacyIds]);
 
   const refreshPharmacies = async () => {
     setIsLoading(true);
@@ -110,18 +128,19 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
       const loadedPharmacies = data.pharmacies || [];
       setPharmacies(loadedPharmacies);
       
-      // Toujours initialiser avec toutes les pharmacies si des données sont chargées
-      if (loadedPharmacies.length > 0) {
-        // Utiliser les IDs des pharmacies chargées
+      // Vérifier la session actuelle (au moment de l'exécution)
+      const currentSession = session;
+      const isPharmacyUser = currentSession?.user?.role === 'pharmacy_user' && currentSession?.user?.pharmacyId;
+      
+      if (isPharmacyUser) {
+        // Si c'est un utilisateur de pharmacie, sélectionner sa pharmacie
+        setSelectedPharmacyIds([currentSession.user.pharmacyId as string]);
+        setTempSelectedPharmacyIds([currentSession.user.pharmacyId as string]);
+      } else {
+        // Pour les admins ou si pas de session, sélectionner toutes les pharmacies
         const allPharmacyIds = loadedPharmacies.map(p => p.id);
-        
-        // Ne mettre à jour que si la sélection est vide ou différente
-        if (selectedPharmacyIds.length === 0 || 
-            selectedPharmacyIds.length !== allPharmacyIds.length ||
-            !allPharmacyIds.every(id => selectedPharmacyIds.includes(id))) {
-          setSelectedPharmacyIds(allPharmacyIds);
-          setTempSelectedPharmacyIds(allPharmacyIds);
-        }
+        setSelectedPharmacyIds(allPharmacyIds);
+        setTempSelectedPharmacyIds(allPharmacyIds);
       }
     } catch (err) {
       console.error('Erreur lors du chargement des pharmacies:', err);
@@ -131,11 +150,6 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
     }
   };
 
-  // Charger les pharmacies au montage du composant
-  useEffect(() => {
-    refreshPharmacies();
-  }, []);
-  
   // Initialiser les valeurs temporaires lorsque les valeurs réelles changent
   useEffect(() => {
     setTempSelectedPharmacyIds(selectedPharmacyIds);
