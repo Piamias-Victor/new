@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { FiBarChart2, FiLogOut, FiUser } from 'react-icons/fi';
+import { UserProfileDropdown } from './UserProfileDropdown';
 
 interface DesktopNavProps {
   isDashboard: boolean;
@@ -34,12 +35,12 @@ export function DesktopNav({ isDashboard, status, sessionData, handleSignOut }: 
               Dashboard
             </Link>
           )}
-          <button 
-            onClick={handleSignOut} 
-            className="flex items-center px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 text-sm font-medium"
-          >
-            <FiLogOut />
-          </button>
+          {status === 'authenticated' && (
+                <UserProfileDropdown 
+                  user={sessionData.user} 
+                  handleSignOut={handleSignOut}
+                />
+              )}
         </div>
       ) : (
         <div className="flex items-center space-x-2">

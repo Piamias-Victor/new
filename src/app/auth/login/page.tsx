@@ -32,7 +32,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Identifiants incorrects. Veuillez réessayer.');
       } else {
-        router.push('/dashboard');
+        router.push('/');
       }
     } catch (error) {
       setError('Une erreur est survenue. Veuillez réessayer plus tard.');
@@ -89,9 +89,12 @@ export default function LoginPage() {
           </div>
 
           <div className="text-sm">
-            <a href="#" className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">
+            <Link 
+              href="/auth/forgot-password" 
+              className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400"
+            >
               Mot de passe oublié ?
-            </a>
+            </Link>
           </div>
         </div>
 

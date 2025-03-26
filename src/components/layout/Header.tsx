@@ -16,6 +16,7 @@ import { ProductSelectionButton } from './header/ProductSelectionButton';
 import { Product } from '../drawer/search/ProductSearchResults';
 import { Laboratory } from '../drawer/search/LabSearchResults';
 import { Segment } from '../drawer/search/SegmentSearchResults';
+import { UserProfileDropdown } from './header/UserProfileDropdown';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
