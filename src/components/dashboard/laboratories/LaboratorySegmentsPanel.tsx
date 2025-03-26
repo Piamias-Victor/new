@@ -56,9 +56,14 @@ export function LaboratorySegmentsPanel({ laboratoryId }: LaboratorySegmentsPane
           <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 mr-3">
             <FiGrid size={20} />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Segments du laboratoire
-          </h3>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Segments du laboratoire
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Analyse par univers, catégorie et famille avec parts de marché en valeur et volume
+            </p>
+          </div>
         </div>
         
         <LaboratorySegmentsTable 

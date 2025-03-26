@@ -1,6 +1,6 @@
 // src/components/dashboard/laboratories/LaboratorySegmentsTable.tsx
-import React, { useState } from 'react';
-import { FiChevronRight, FiPieChart, FiFilter } from 'react-icons/fi';
+import React from 'react';
+import { FiArrowRight } from 'react-icons/fi';
 import { Segment } from '@/hooks/useLaboratorySegments';
 
 interface LaboratorySegmentsTableProps {
@@ -11,75 +11,34 @@ interface LaboratorySegmentsTableProps {
 
 export function LaboratorySegmentsTable({ 
   segments, 
-  onSegmentSelect,
+  onSegmentSelect, 
   selectedSegmentId 
 }: LaboratorySegmentsTableProps) {
-  // État pour le filtrage par type de segment
-  const [segmentType, setSegmentType] = useState<string>('all');
-  
-  // Types de segments disponibles
-  const segmentTypes = [
-    { id: 'all', label: 'Tous' },
-    { id: 'universe', label: 'Univers' },
-    { id: 'category', label: 'Catégorie' },
-    { id: 'family', label: 'Famille' },
-  ];
-
-  // Fonction pour formater les montants en euros
-  const formatCurrency = (amount: number) => {
+  // Fonction pour formatter les montants
+  const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('fr-FR', { 
       style: 'currency', 
       currency: 'EUR',
       maximumFractionDigits: 0
     }).format(amount);
   };
-
-  // Fonction pour formater les pourcentages
-  const formatPercentage = (value: number) => {
-    return `${Number(value).toFixed(2)}%`;
+  
+  // Fonction pour formatter les quantités
+  const formatQuantity = (quantity: number): string => {
+    return new Intl.NumberFormat('fr-FR').format(quantity);
   };
 
-  // Filtrer les segments par type
-  const filteredSegments = segmentType === 'all' 
-    ? segments 
-    : segments.filter(segment => segment.segment_type === segmentType);
-
-  // Si pas de segments disponibles
-  if (!segments || segments.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-        <p>Aucun segment trouvé pour ce laboratoire</p>
-      </div>
-    );
-  }
+  // Trier les segments par CA
+  const sortedSegments = [...segments].sort((a, b) => b.total_revenue - a.total_revenue);
 
   return (
-    <div>
-      {/* Filtre par type de segment */}
-      <div className="mb-4">
-        <div className="flex items-center mb-2">
-          <FiFilter className="mr-2 text-gray-500 dark:text-gray-400" size={14} />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filtrer par type de segment:
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {segmentTypes.map(type => (
-            <button
-              key={type.id}
-              onClick={() => setSegmentType(type.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full ${
-                segmentType === type.id
-                  ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {type.label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {segments.length} segments trouvés
+        </h4>
       </div>
-
+      
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-800">
@@ -88,82 +47,69 @@ export function LaboratorySegmentsTable({
                 Segment
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Type
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Univers
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Produits
+                CA Sell Out
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                CA
+                PDM (CA)
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Marge
+                Volume Sell Out
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                PDM
+                PDM (Vol.)
               </th>
-              <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Action
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Ref Vendues
+              </th>
+              <th scope="col" className="relative px-6 py-3">
+                <span className="sr-only">Analyser</span>
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredSegments.map((segment) => (
+            {sortedSegments.map((segment) => (
               <tr 
                 key={segment.id} 
-                className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
-                  selectedSegmentId === segment.id ? 'bg-sky-50 dark:bg-sky-900/20' : ''
-                }`}
+                className={`
+                  hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer
+                  ${selectedSegmentId === segment.id ? 'bg-sky-50 dark:bg-sky-900/20' : ''}
+                `}
                 onClick={() => onSegmentSelect(segment.id)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {segment.name}
-                  </div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">{segment.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{segment.category}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {segmentTypes.find(t => t.id === segment.segment_type)?.label || 'Inconnu'}
-                  </div>
+                  <div className="text-sm text-gray-900 dark:text-white">{segment.universe}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {segment.universe}
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="text-sm text-gray-900 dark:text-white">{formatCurrency(segment.total_revenue)}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                    {Number(segment.market_share).toFixed(1)}%
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {segment.product_count}
+                  <div className="text-sm text-gray-900 dark:text-white">{formatQuantity(segment.total_quantity)}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <div className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                    {Number(segment.volume_share).toFixed(1)}%
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {formatCurrency(segment.total_revenue)}
-                  </div>
+                  <div className="text-sm text-gray-900 dark:text-white">{segment.product_count}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="text-sm text-gray-900 dark:text-white">
-                    {formatCurrency(segment.total_margin)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                    <FiPieChart className="mr-1" size={12} />
-                    {formatPercentage(segment.market_share)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-center">
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
-                    className="text-sky-600 hover:text-sky-900 dark:text-sky-400 dark:hover:text-sky-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSegmentSelect(segment.id);
-                    }}
+                    className={`text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 ${selectedSegmentId === segment.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                   >
-                    <FiChevronRight size={20} />
+                    <FiArrowRight size={16} />
                   </button>
                 </td>
               </tr>

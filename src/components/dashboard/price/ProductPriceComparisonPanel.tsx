@@ -82,7 +82,7 @@ export function ProductPriceComparisonPanel() {
       <div className="flex items-center mb-4">
         <MdEuro className="text-gray-500 dark:text-gray-400 mr-2" size={18} />
         <h2 className="text-base font-medium text-gray-700 dark:text-gray-300">
-          Analyse comparative des prix
+          Analyse comparative des prix Apothical
         </h2>
       </div>
       

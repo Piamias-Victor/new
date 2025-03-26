@@ -299,7 +299,7 @@ export function EnhancedSegmentDistribution() {
                   onClick={() => handleSort('quantity')}
                 >
                   <span className="flex items-center justify-end">
-                    Quantité
+                    Quantité Sell Out
                     {getSortIndicator('quantity')}
                   </span>
                 </th>

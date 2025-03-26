@@ -50,7 +50,11 @@ export async function POST(request: NextRequest) {
             p.id,
             p.name AS product_name,
             g.name AS global_name,
-            CASE WHEN g.name IS NULL OR g.name = '' THEN p.name ELSE g.name END AS display_name,
+            CASE 
+              WHEN g.name IS NULL OR g.name = '' THEN p.name 
+              WHEN g.name = 'Default Name' THEN p.name
+              ELSE g.name 
+            END AS display_name,
             g.brand_lab,
             g.code_13_ref,
             SUM(s.quantity) AS sales_quantity,
@@ -105,7 +109,11 @@ export async function POST(request: NextRequest) {
         product_aggregated AS (
           SELECT
             g.code_13_ref,
-            CASE WHEN g.name IS NULL OR g.name = '' THEN MAX(p.name) ELSE MAX(g.name) END AS display_name,
+            CASE 
+              WHEN g.name IS NULL OR g.name = '' THEN MAX(p.name) 
+              WHEN g.name = 'Default Name' THEN MAX(p.name)
+              ELSE MAX(g.name) 
+            END AS display_name,
             MAX(g.brand_lab) AS brand_lab,
             SUM(cp.sales_quantity) AS sales_quantity,
             -- Prix moyen pondéré

@@ -145,7 +145,10 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
 
     // Mettre à jour automatiquement la plage de comparaison si elle est activée
     if (isComparisonEnabled && comparisonRange) {
-      updateComparisonDateRange(comparisonRange);
+      // Si c'est une plage personnalisée de comparaison, ne pas la mettre à jour automatiquement
+      if (comparisonRange !== 'custom') {
+        updateComparisonDateRange(comparisonRange);
+      }
     }
   };
 
@@ -238,6 +241,20 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
       const { start, end } = calculateDateRange(newRange);
       setTempStartDate(start);
       setTempEndDate(end);
+    }
+    
+    // Mettre à jour la comparaison temporaire si ce n'est pas une plage personnalisée
+    if (tempComparisonRange && tempComparisonRange !== 'custom') {
+      const newTempData = calculateDateRange(newRange);
+      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, { 
+        start: newTempData.start, 
+        end: newTempData.end 
+      });
+      
+      if (comparisonResult) {
+        setTempComparisonStartDate(comparisonResult.start);
+        setTempComparisonEndDate(comparisonResult.end);
+      }
     }
   };
   

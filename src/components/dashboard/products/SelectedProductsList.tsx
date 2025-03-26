@@ -19,7 +19,7 @@ import { ProductEvolutionTab } from './tabs/ProductEvolutionTab';
 import { ProductGroupingTab } from './tabs/ProductGroupingTab';
 
 type SortField = 'display_name' | 'brand_lab' | 'sell_out_price_ttc' | 'sell_in_price_ht' | 'margin_percentage' | 
-                'stock_value_ht' | 'sales_quantity' | 'sales_evolution_percentage';
+                'stock_value_ht' | 'stock_quantity' | 'sales_quantity' | 'sales_evolution_percentage';
 
 type TabKey = 'info' | 'sales' | 'stock' | 'evolution' | 'grouping';
 
@@ -105,8 +105,8 @@ export function SelectedProductsList() {
         case 'margin_percentage':
           compareResult = a.margin_percentage - b.margin_percentage;
           break;
-        case 'stock_value_ht':
-          compareResult = a.stock_value_ht - b.stock_value_ht;
+        case 'stock_quantity':
+          compareResult = a.stock_quantity - b.stock_quantity;
           break;
         case 'sales_quantity':
           compareResult = a.sales_quantity - b.sales_quantity;
@@ -121,6 +121,11 @@ export function SelectedProductsList() {
       return sortDirection === 'asc' ? compareResult : -compareResult;
     });
   }, [filteredProducts, sortField, sortDirection, showTotals]);
+
+  const truncateText = (text: string, maxLength: number = 20) => {
+    if (!text) return '';
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  };
   
   // Trouver le produit actuellement développé
   const expandedProduct = useMemo(() => {
@@ -290,11 +295,11 @@ export function SelectedProductsList() {
                 </th>
                 <th scope="col" 
                   className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('stock_value_ht')}
+                  onClick={() => handleSort('stock_quantity')}
                 >
                   <div className="flex items-center">
-                    Stock EUROS HT
-                    {sortField === 'stock_value_ht' && (
+                    Stock
+                    {sortField === 'stock_quantity' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
                       </span>
@@ -324,7 +329,7 @@ export function SelectedProductsList() {
                 <React.Fragment key={product.id}>
                   <tr className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${expandedProductId === product.id ? 'bg-gray-50 dark:bg-gray-700' : ''}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{product.display_name}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">{truncateText(product.display_name)}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{product.code_13_ref}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -345,8 +350,8 @@ export function SelectedProductsList() {
                       <div className="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(product.margin_amount)}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">{formatCurrency(product.stock_value_ht)}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{product.stock_quantity} unités</div>
+                      <div className="text-sm text-gray-900 dark:text-white">{product.stock_quantity} unités</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(product.stock_value_ht)}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">{product.sales_quantity}</div>

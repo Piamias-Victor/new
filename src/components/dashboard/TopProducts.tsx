@@ -148,7 +148,7 @@ const ProductRow: React.FC<ProductRowProps> = ({ product, index, sortBy }) => {
 // Composant principal
 export function TopProducts() {
   const [sortBy, setSortBy] = useState<SortByType>('revenue');
-  const { byRevenue, byQuantity, byMargin, isLoading, error } = useTopProducts(10);
+  const { byRevenue, byQuantity, byMargin, isLoading, error } = useTopProducts(100);
   const { isFilterActive, selectedCodes } = useProductFilter(); // Accès au contexte de filtrage
   
   // Obtenir les produits en fonction du tri sélectionné

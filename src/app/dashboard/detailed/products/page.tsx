@@ -53,26 +53,6 @@ export default function ProductDashboard() {
             Explorez les performances de stock et de marge pour vos produits
           </p>
         </div>
-
-        {/* Filtre actif */}
-
-        {!isFilterActive ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center">
-            <div className="mb-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400 mb-4">
-                <FiFilter size={24} />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Sélectionnez des produits pour commencer
-              </h2>
-              <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-                Utilisez le filtre dans l'en-tête pour sélectionner des produits, laboratoires ou segments à analyser.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-
             <KpiCards/>
             {/* Panneaux d'analyse côte à côte (Stock et Marges) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
@@ -86,8 +66,6 @@ export default function ProductDashboard() {
             <SelectedProductsList/>
             <div className="mt-6"/>  
             <PharmaciesList />
-          </>
-        )}
       </div>
     </div>
     </SidebarLayout>

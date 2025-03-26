@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const code13refs = searchParams.getAll('code13refs');
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const limit = parseInt(searchParams.get('limit') || '100', 100);
     
     // Validation des paramètres
     if (!startDate || !endDate) {
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const { 
       startDate, 
       endDate, 
-      limit = 10, 
+      limit = 100, 
       pharmacyIds = [], 
       code13refs = [] 
     } = body;

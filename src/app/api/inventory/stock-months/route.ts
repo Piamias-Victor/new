@@ -79,7 +79,11 @@ async function processStockMonths(pharmacyIds: string[], code13refs: string[]) {
           p.id AS internal_product_id,
           p.name AS product_name,
           g.name AS global_name,
-          CASE WHEN g.name IS NULL OR g.name = '' THEN p.name ELSE g.name END AS display_name,
+          CASE 
+            WHEN g.name IS NULL OR g.name = '' THEN p.name 
+            WHEN g.name = 'Default Name' THEN p.name
+            ELSE g.name 
+          END AS display_name,
           g.category,
           g.brand_lab,
           g.code_13_ref,

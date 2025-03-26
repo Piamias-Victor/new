@@ -39,7 +39,12 @@ export async function GET(request: Request) {
             ip.id AS product_id,
             ip.name AS display_name,
             gp.name AS global_name,
-            CASE WHEN gp.name IS NULL OR gp.name = 'Default Name' THEN ip.name ELSE gp.name END AS product_label,
+            CASE 
+              WHEN gp.name IS NULL OR gp.name = '' THEN ip.name 
+              WHEN gp.name = 'Default Name' THEN ip.name
+              ELSE gp.name 
+            END AS product_label,
+            gp.code_13_ref AS product_code,
             gp.category,
             gp.brand_lab,
             COALESCE((
@@ -63,7 +68,7 @@ export async function GET(request: Request) {
             is.id IS NOT NULL
             ${pharmacyCondition}
           GROUP BY 
-            ip.id, ip.name, gp.name, gp.category, gp.brand_lab
+            ip.id, ip.name, gp.name, gp.code_13_ref, gp.category, gp.brand_lab
         ),
         comparison_period AS (
           SELECT 
@@ -87,6 +92,7 @@ export async function GET(request: Request) {
             cp.product_id,
             cp.display_name,
             cp.product_label,
+            cp.product_code,
             cp.category,
             cp.brand_lab,
             cp.current_stock,
@@ -162,7 +168,7 @@ export async function GET(request: Request) {
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
                   'display_name', product_label,
-                  'code_13_ref', product_id,
+                  'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
                   'current_stock', current_stock,
@@ -178,7 +184,7 @@ export async function GET(request: Request) {
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
                   'display_name', product_label,
-                  'code_13_ref', product_id,
+                  'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
                   'current_stock', current_stock,
@@ -194,7 +200,7 @@ export async function GET(request: Request) {
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
                   'display_name', product_label,
-                  'code_13_ref', product_id,
+                  'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
                   'current_stock', current_stock,
@@ -210,7 +216,7 @@ export async function GET(request: Request) {
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
                   'display_name', product_label,
-                  'code_13_ref', product_id,
+                  'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
                   'current_stock', current_stock,
@@ -226,7 +232,7 @@ export async function GET(request: Request) {
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
                   'display_name', product_label,
-                  'code_13_ref', product_id,
+                  'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
                   'current_stock', current_stock,

@@ -60,7 +60,6 @@ export default function LaboratoriesDashboard() {
 
         {/* Conteneur d'analyse de laboratoire - UTILISE LE FILTRE EXISTANT */}
         {/* Afficher les graphiques d'évolution et de projection uniquement si un filtre est actif */}
-        {isFilterActive && (
           <>
             <div className="my-8">
               <KpiCards />
@@ -86,7 +85,6 @@ export default function LaboratoriesDashboard() {
             <div className="mt-6"/>  
             <PharmaciesList />
           </>
-        )}
       </div>
     </div>
     </SidebarLayout>

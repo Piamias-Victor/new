@@ -12,7 +12,9 @@ export interface Segment {
   product_count: number;
   total_revenue: number;
   total_margin: number;
+  total_quantity: number;
   market_share: number;
+  volume_share: number;
 }
 
 export interface LaboratorySegmentsData {
@@ -21,6 +23,7 @@ export interface LaboratorySegmentsData {
     name: string;
     total_revenue: number;
     total_margin: number;
+    total_quantity: number;
     product_count: number;
   };
   segments: Segment[];
@@ -35,6 +38,7 @@ export function useLaboratorySegments(laboratoryId: string): LaboratorySegmentsD
       name: '',
       total_revenue: 0,
       total_margin: 0,
+      total_quantity: 0,
       product_count: 0
     },
     segments: [],
@@ -85,6 +89,7 @@ export function useLaboratorySegments(laboratoryId: string): LaboratorySegmentsD
             name: '',
             total_revenue: 0,
             total_margin: 0,
+            total_quantity: 0,
             product_count: 0
           },
           segments: result.segments || [],
@@ -99,6 +104,7 @@ export function useLaboratorySegments(laboratoryId: string): LaboratorySegmentsD
             name: '',
             total_revenue: 0,
             total_margin: 0,
+            total_quantity: 0,
             product_count: 0
           },
           segments: [],

@@ -41,6 +41,7 @@ export async function POST(
           $3 as name,
           COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue,
           COALESCE(SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))), 0) as total_margin,
+          COALESCE(SUM(s.quantity), 0) as total_quantity,
           COUNT(DISTINCT p.code_13_ref_id) as product_count
         FROM 
           data_sales s
@@ -67,6 +68,7 @@ export async function POST(
             gp.category,
             SUM(s.quantity * i.price_with_tax) as lab_revenue,
             SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            SUM(s.quantity) as lab_quantity,
             COUNT(DISTINCT p.code_13_ref_id) as product_count
           FROM 
             data_sales s
@@ -87,7 +89,8 @@ export async function POST(
           SELECT 
             gp.universe,
             gp.category,
-            SUM(s.quantity * i.price_with_tax) as total_revenue
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity) as total_quantity
           FROM 
             data_sales s
           JOIN 
@@ -111,10 +114,15 @@ export async function POST(
           ls.product_count,
           ls.lab_revenue as total_revenue,
           ls.lab_margin as total_margin,
+          ls.lab_quantity as total_quantity,
           CASE 
             WHEN ts.total_revenue > 0 THEN ROUND((ls.lab_revenue / ts.total_revenue * 100)::numeric, 2)
             ELSE 0
-          END as market_share
+          END as market_share,
+          CASE 
+            WHEN ts.total_quantity > 0 THEN ROUND((ls.lab_quantity / ts.total_quantity * 100)::numeric, 2)
+            ELSE 0
+          END as volume_share
         FROM 
           lab_sales ls
         LEFT JOIN 
@@ -133,6 +141,7 @@ export async function POST(
             gp.universe,
             SUM(s.quantity * i.price_with_tax) as lab_revenue,
             SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            SUM(s.quantity) as lab_quantity,
             COUNT(DISTINCT p.code_13_ref_id) as product_count
           FROM 
             data_sales s
@@ -152,7 +161,8 @@ export async function POST(
         total_sales_by_universe AS (
           SELECT 
             gp.universe,
-            SUM(s.quantity * i.price_with_tax) as total_revenue
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity) as total_quantity
           FROM 
             data_sales s
           JOIN 
@@ -176,10 +186,15 @@ export async function POST(
           lsu.product_count,
           lsu.lab_revenue as total_revenue,
           lsu.lab_margin as total_margin,
+          lsu.lab_quantity as total_quantity,
           CASE 
             WHEN tsu.total_revenue > 0 THEN ROUND((lsu.lab_revenue / tsu.total_revenue * 100)::numeric, 2)
             ELSE 0
-          END as market_share
+          END as market_share,
+          CASE 
+            WHEN tsu.total_quantity > 0 THEN ROUND((lsu.lab_quantity / tsu.total_quantity * 100)::numeric, 2)
+            ELSE 0
+          END as volume_share
         FROM 
           lab_sales_by_universe lsu
         LEFT JOIN 
@@ -200,6 +215,7 @@ export async function POST(
             gp.family,
             SUM(s.quantity * i.price_with_tax) as lab_revenue,
             SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as lab_margin,
+            SUM(s.quantity) as lab_quantity,
             COUNT(DISTINCT p.code_13_ref_id) as product_count
           FROM 
             data_sales s
@@ -223,7 +239,8 @@ export async function POST(
             gp.universe,
             gp.category,
             gp.family,
-            SUM(s.quantity * i.price_with_tax) as total_revenue
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity) as total_quantity
           FROM 
             data_sales s
           JOIN 
@@ -249,10 +266,15 @@ export async function POST(
           lsf.product_count,
           lsf.lab_revenue as total_revenue,
           lsf.lab_margin as total_margin,
+          lsf.lab_quantity as total_quantity,
           CASE 
             WHEN tsf.total_revenue > 0 THEN ROUND((lsf.lab_revenue / tsf.total_revenue * 100)::numeric, 2)
             ELSE 0
-          END as market_share
+          END as market_share,
+          CASE 
+            WHEN tsf.total_quantity > 0 THEN ROUND((lsf.lab_quantity / tsf.total_quantity * 100)::numeric, 2)
+            ELSE 0
+          END as volume_share
         FROM 
           lab_sales_by_family lsf
         LEFT JOIN 
@@ -283,6 +305,7 @@ export async function POST(
           name: laboratoryId,
           total_revenue: 0,
           total_margin: 0,
+          total_quantity: 0,
           product_count: 0
         },
         segments: combinedSegments || []

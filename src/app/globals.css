@@ -161,3 +161,7 @@ html {
 .animate-slideInRight {
   animation: slideInRight 0.3s ease-out forwards;
 }
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

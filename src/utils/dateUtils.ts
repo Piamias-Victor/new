@@ -39,6 +39,15 @@ export function getCurrentDate(): string {
 }
 
 /**
+ * Obtient la date d'hier au format ISO (YYYY-MM-DD)
+ */
+export function getYesterdayDate(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
+/**
  * Calcule le premier jour du mois courant
  */
 export function getFirstDayOfMonth(date: Date = new Date()): string {
@@ -85,8 +94,6 @@ export function addYears(date: string | Date, years: number): string {
  * Types de plages de dates supportés
  */
 export type DateRangeType = 
-  | 'today' 
-  | 'thisWeek' 
   | 'thisMonth' 
   | 'lastMonth'
   | 'last3Months' 
@@ -100,8 +107,6 @@ export type DateRangeType =
 export type ComparisonRangeType = 
   | 'previousYear' 
   | 'previousPeriod' 
-  | 'sameLastYear' 
-  | 'sameLastTwoYears'
   | 'custom'
   | null;
 
@@ -119,25 +124,12 @@ export function calculateDateRange(rangeType: DateRangeType): {
   let label: string;
 
   switch (rangeType) {
-    case 'today':
-      start = new Date(now);
-      end = new Date(now);
-      label = "Aujourd'hui";
-      break;
-      
-    case 'thisWeek':
-      // Trouver le lundi de la semaine courante
-      start = new Date(now);
-      start.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
-      // Dimanche de la semaine courante
-      end = new Date(start);
-      end.setDate(start.getDate() + 6);
-      label = "Cette semaine";
-      break;
-      
     case 'thisMonth':
+      // Du 1er du mois jusqu'à hier (pas aujourd'hui)
       start = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Hier comme fin
       end = new Date(now);
+      end.setDate(now.getDate() - 1);
       label = "Ce mois-ci";
       break;
       
@@ -148,22 +140,26 @@ export function calculateDateRange(rangeType: DateRangeType): {
       break;
       
     case 'last3Months':
-      end = new Date(now);
-      start = new Date(now);
-      start.setMonth(start.getMonth() - 2, 1);
+      // Pour les 3 derniers mois, on exclut le mois courant
+      // On prend les 3 mois complets précédents
+      start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
       label = "Les 3 derniers mois";
       break;
       
     case 'last6Months':
-      end = new Date(now);
-      start = new Date(now);
-      start.setMonth(start.getMonth() - 5, 1);
+      // Pour les 6 derniers mois, on exclut le mois courant
+      // On prend les 6 mois complets précédents
+      start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
       label = "Les 6 derniers mois";
       break;
       
     case 'thisYear':
+      // Pour cette année, on exclut le mois courant
+      // Du 1er janvier au dernier jour du mois précédent
       start = new Date(now.getFullYear(), 0, 1);
-      end = new Date(now.getFullYear(), 11, 31);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
       label = "Cette année";
       break;
       
@@ -224,22 +220,6 @@ export function calculateComparisonDateRange(
       start = new Date(end);
       start.setDate(start.getDate() - durationInDays);
       label = "Période précédente";
-      break;
-      
-    case 'sameLastYear':
-      start = new Date(primaryStart);
-      start.setFullYear(start.getFullYear() - 1);
-      end = new Date(primaryEnd);
-      end.setFullYear(end.getFullYear() - 1);
-      label = "Même période N-1";
-      break;
-      
-    case 'sameLastTwoYears':
-      start = new Date(primaryStart);
-      start.setFullYear(start.getFullYear() - 2);
-      end = new Date(primaryEnd);
-      end.setFullYear(end.getFullYear() - 2);
-      label = "Même période N-2";
       break;
       
     case 'custom':

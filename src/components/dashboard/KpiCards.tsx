@@ -35,6 +35,22 @@ interface KpiCardProps {
   infoTooltip?: string;
 }
 
+export function formatCurrency(amount: number): string {
+  // Utiliser le format français avec espace insécable
+  const formatted = new Intl.NumberFormat('fr-FR', { 
+    style: 'currency', 
+    currency: 'EUR',
+    maximumFractionDigits: 0
+  }).format(amount);
+  
+  // Remplacer l'espace standard par un espace plus large
+  // Options:
+  // \u2002 (EN SPACE) - espace de largeur "N"
+  // \u2003 (EM SPACE) - espace encore plus large
+  // \u2009 (THIN SPACE) - espace fin
+  return formatted.replace(' ', '\u2002');
+}
+
 // Composant pour une carte KPI individuelle
 function KpiCard({ 
   icon, 
@@ -50,7 +66,7 @@ function KpiCard({
   const [showTooltip, setShowTooltip] = useState(false);
   const { isFilterActive, selectedCodes } = useProductFilter(); // Ajoutez cette ligne
 
-  console.log('change', change);
+  console.log('value',  Number(value.trim().replace(/[^0-9.-]+/g,'')));
   
   // Déterminer la couleur en fonction de isPositive
   const getColorClass = (isPositive: boolean) => {
@@ -257,24 +273,15 @@ export function KpiCards() {
 
   const tooltips = {
     sellOut: "Montant total des ventes (TTC) réalisées sur la période sélectionnée. Indicateur principal de l'activité commerciale.",
-    sellIn: "Montant total des achats (prix d'achat HT) réceptionnés sur la période. Reflète l'approvisionnement réel.",
-    stockBreak: "Pourcentage des produits commandés mais non livrés par les fournisseurs. Un taux élevé indique des problèmes d'approvisionnement.",
-    margin: "Pourcentage de marge calculé comme (Prix de vente - Prix d'achat) / Prix de vente. Indicateur de rentabilité.",
+    sellIn: "Montant total des achats (prix d'achat HT) incluant tous les produits commandés sur la période, avec précommandes prises en compte. Reflète l'approvisionnement planifié.",
+    stockBreak: "Pourcentage des produits commandés mais non livrés par les fournisseurs, calculé uniquement sur les commandes ayant eu au moins un produit réceptionné.",
+    margin: "Pourcentage de marge calculé comme (Prix de vente - Prix d'achat moyen pondéré) / Prix de vente. Cet indicateur de rentabilité utilise le prix moyen pondéré fourni par le logiciel.",
     stock: "Valeur du stock actuel en prix d'achat HT. Représente l'investissement immobilisé.",
     rotation: "Nombre de fois où le stock est renouvelé par an. Calculé comme (CA annualisé / Valeur du stock). Un ratio élevé indique une gestion efficace.",
     orders: "Nombre total de commandes passées durant la période sélectionnée.",
     references: "Nombre de références produits différentes vendues sur la période. Indicateur de diversité de l'offre."
   };
 
-  
-  // Formatter pour la monnaie
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', { 
-      style: 'currency', 
-      currency: 'EUR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
   
   // Formatter pour les nombres
   const formatNumber = (num: number) => {
