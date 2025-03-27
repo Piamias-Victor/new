@@ -68,7 +68,11 @@ export function SegmentMarketShare({
                 Position du laboratoire: {getRankIcon(selectedLabInfo.rank)}
               </p>
               <p className="text-sm text-sky-600 dark:text-sky-400">
-                Part de marché: {formatPercentage(selectedLabInfo.market_share)} • 
+                PDM valeur: {formatPercentage(selectedLabInfo.market_share)} • 
+                PDM volume: {formatPercentage(selectedLabInfo.volume_share)} •
+                Marge: {formatPercentage(selectedLabInfo.margin_percentage)}
+              </p>
+              <p className="text-sm text-sky-600 dark:text-sky-400">
                 CA: {formatCurrency(selectedLabInfo.total_revenue)}
               </p>
             </div>
@@ -92,10 +96,16 @@ export function SegmentMarketShare({
                   Produits
                 </th>
                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  CA
+                  CA Sell-Out
                 </th>
                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  PDM
+                  PDM Valeur
+                </th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  PDM Volume
+                </th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Marge
                 </th>
               </tr>
             </thead>
@@ -141,6 +151,30 @@ export function SegmentMarketShare({
                           {formatPercentage(lab.market_share)}
                         </span>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <div className="text-sm">
+                      <div className="flex items-center justify-end">
+                        <div 
+                          className="h-2 bg-purple-500 rounded-full mr-2" 
+                          style={{ width: `${Math.min(lab.volume_share, 100) * 0.7}px` }}
+                        ></div>
+                        <span className="text-gray-900 dark:text-white font-medium">
+                          {formatPercentage(lab.volume_share)}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <div className="text-sm">
+                      <span className={`text-gray-900 dark:text-white font-medium ${
+                        lab.margin_percentage < 0 ? 'text-red-500 dark:text-red-400' :
+                        lab.margin_percentage < 10 ? 'text-amber-500 dark:text-amber-400' :
+                        'text-green-500 dark:text-green-400'
+                      }`}>
+                        {formatPercentage(lab.margin_percentage)}
+                      </span>
                     </div>
                   </td>
                 </tr>

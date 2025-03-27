@@ -44,6 +44,13 @@ export function useTopProducts(limit: number = 10): TopProductsData {
   
   useEffect(() => {
     async function fetchTopProducts() {
+      console.log("=== DÉBUT DEBUG useTopProducts ===");
+      console.log("Dates:", { startDate, endDate });
+      console.log("Pharmacies:", { selectedPharmacyIds });
+      console.log("Filter actif?", isFilterActive);
+      console.log("Selected codes:", selectedCodes);
+      console.log("Limit:", limit);
+      
       // Vérifier que les dates sont disponibles
       if (!startDate || !endDate) {
         return;
@@ -52,54 +59,40 @@ export function useTopProducts(limit: number = 10): TopProductsData {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        let response;
+        // Filtrer pour éliminer les valeurs problématiques
+        const validPharmacyIds = selectedPharmacyIds.filter(id => 
+          id && typeof id === 'string' && id !== 'NaN' && id !== 'undefined' && id !== 'null'
+        );
         
-        // Détermine si on doit utiliser GET ou POST en fonction de la taille des données
-        const shouldUsePost = isFilterActive && selectedCodes.length > 20;
+        const validCodes = isFilterActive 
+          ? selectedCodes.filter(code => 
+              code && typeof code === 'string' && code !== 'NaN' && code !== 'undefined' && code !== 'null'
+            )
+          : [];
         
-        if (shouldUsePost) {
-          // Utiliser POST pour les grandes listes de codes
-          response = await fetch('/api/products/top', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              startDate,
-              endDate,
-              limit,
-              pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-              code13refs: isFilterActive ? selectedCodes : []
-            }),
-            cache: 'no-store'
-          });
-        } else {
-          // Préparer les paramètres pour GET
-          const params = new URLSearchParams({
-            startDate,
-            endDate,
-            limit: limit.toString()
-          });
-          
-          // Si on a une sélection spécifique de pharmacies
-          if (selectedPharmacyIds.length > 0) {
-            selectedPharmacyIds.forEach(id => {
-              params.append('pharmacyIds', id);
-            });
-          }
-          
-          // Si on a une sélection de codes EAN13
-          if (isFilterActive && selectedCodes.length > 0) {
-            selectedCodes.forEach(code => {
-              params.append('code13refs', code);
-            });
-          }
-          
-          // Effectuer la requête GET
-          response = await fetch(`/api/products/top?${params}`, {
-            cache: 'no-store'
-          });
-        }
+        // S'assurer que limit est un nombre valide
+        const safeLimit = !isNaN(limit) && isFinite(limit) ? limit : 10;
+        
+        // Préparer le corps de la requête
+        const requestBody = {
+          startDate,
+          endDate,
+          limit: safeLimit,
+          pharmacyIds: validPharmacyIds,
+          code13refs: validCodes
+        };
+        
+        console.log("Requête POST avec body:", JSON.stringify(requestBody));
+        
+        // Toujours utiliser POST
+        const response = await fetch('/api/products/top', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          cache: 'no-store'
+        });
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -107,6 +100,11 @@ export function useTopProducts(limit: number = 10): TopProductsData {
         }
         
         const result = await response.json();
+        console.log("Résultat reçu:", { 
+          byRevenueCount: result.byRevenue?.length || 0,
+          byQuantityCount: result.byQuantity?.length || 0,
+          byMarginCount: result.byMargin?.length || 0
+        });
         
         // S'assurer que les tableaux existent et ne sont pas null
         const byRevenue = Array.isArray(result.byRevenue) ? result.byRevenue : [];
@@ -152,6 +150,8 @@ export function useTopProducts(limit: number = 10): TopProductsData {
           isLoading: false,
           error: null
         });
+        
+        console.log("=== FIN DEBUG useTopProducts ===");
       } catch (error) {
         console.error('Erreur dans useTopProducts:', error);
         setData({

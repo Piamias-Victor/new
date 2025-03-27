@@ -112,62 +112,83 @@ export async function POST(
       }
       
       // Obtenir les parts de marché des laboratoires pour cette famille
-      const marketShareQuery = `
-        WITH family_lab_sales AS (
-          SELECT 
-            gp.brand_lab,
-            SUM(s.quantity * i.price_with_tax) as total_revenue,
-            COUNT(DISTINCT p.code_13_ref_id) as product_count
-          FROM 
-            data_sales s
-          JOIN 
-            data_inventorysnapshot i ON s.product_id = i.id
-          JOIN 
-            data_internalproduct p ON i.product_id = p.id
-          JOIN 
-            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-          WHERE 
-            s.date BETWEEN $1 AND $2
-            AND gp.universe = $3
-            AND gp.category = $4
-            AND gp.family = $5
-            ${pharmacyCondition}
-          GROUP BY 
-            gp.brand_lab
-        ),
-        family_total_sales AS (
-          SELECT 
-            SUM(total_revenue) as total_family_revenue
-          FROM 
-            family_lab_sales
-        ),
-        lab_ranking AS (
-          SELECT 
-            brand_lab,
-            total_revenue,
-            product_count,
-            ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
-          FROM 
-            family_lab_sales
-        )
-        SELECT 
-          lr.brand_lab as id,
-          lr.brand_lab as name,
-          lr.total_revenue,
-          lr.product_count,
-          lr.lab_rank as rank,
-          CASE 
-            WHEN fts.total_family_revenue > 0 
-            THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
-            ELSE 0
-          END as market_share
-        FROM 
-          lab_ranking lr
-        CROSS JOIN 
-          family_total_sales fts
-        ORDER BY 
-          lr.lab_rank ASC
-      `;
+      // Modifier la requête marketShareQuery dans src/app/api/family/[universe]/[category]/[family]/analysis/route.ts
+// Voici la nouvelle version avec l'ajout de la PDM en volume
+
+const marketShareQuery = `
+WITH family_lab_sales AS (
+  SELECT 
+    gp.brand_lab,
+    SUM(s.quantity * i.price_with_tax) as total_revenue,
+    SUM(s.quantity) as total_quantity,
+    SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+    COUNT(DISTINCT p.code_13_ref_id) as product_count
+  FROM 
+    data_sales s
+  JOIN 
+    data_inventorysnapshot i ON s.product_id = i.id
+  JOIN 
+    data_internalproduct p ON i.product_id = p.id
+  JOIN 
+    data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+  WHERE 
+    s.date BETWEEN $1 AND $2
+    AND gp.universe = $3
+    AND gp.category = $4
+    AND gp.family = $5
+    ${pharmacyCondition}
+  GROUP BY 
+    gp.brand_lab
+),
+family_total_sales AS (
+  SELECT 
+    SUM(total_revenue) as total_family_revenue,
+    SUM(total_quantity) as total_family_quantity,
+    SUM(total_margin) as total_family_margin
+  FROM 
+    family_lab_sales
+),
+lab_ranking AS (
+  SELECT 
+    brand_lab,
+    total_revenue,
+    total_quantity,
+    total_margin,
+    product_count,
+    ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
+  FROM 
+    family_lab_sales
+)
+SELECT 
+  lr.brand_lab as id,
+  lr.brand_lab as name,
+  lr.total_revenue,
+  lr.total_quantity,
+  lr.total_margin,
+  lr.product_count,
+  lr.lab_rank as rank,
+  CASE 
+    WHEN fts.total_family_revenue > 0 
+    THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
+    ELSE 0
+  END as market_share,
+  CASE 
+    WHEN fts.total_family_quantity > 0 
+    THEN ROUND((lr.total_quantity / fts.total_family_quantity * 100)::numeric, 2)
+    ELSE 0
+  END as volume_share,
+  CASE 
+    WHEN lr.total_revenue > 0 
+    THEN ROUND((lr.total_margin / lr.total_revenue * 100)::numeric, 2)
+    ELSE 0
+  END as margin_percentage
+FROM 
+  lab_ranking lr
+CROSS JOIN 
+  family_total_sales fts
+ORDER BY 
+  lr.lab_rank ASC
+`;
       
       console.log("Exécution requête parts de marché famille avec paramètres:", JSON.stringify(revenueParams));
       const marketShareResult = await client.query(marketShareQuery, revenueParams);

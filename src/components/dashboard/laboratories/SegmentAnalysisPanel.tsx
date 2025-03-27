@@ -104,12 +104,6 @@ export function SegmentAnalysisPanel({
           {/* Top produits du laboratoire */}
           <div>
             <div className="flex items-center mb-4">
-              <div className="p-2 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300 mr-2">
-                <FiBox size={16} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Top produits du laboratoire
-              </h3>
             </div>
             <SegmentTopProducts 
               products={selectedLabProductsTop} 
@@ -120,12 +114,6 @@ export function SegmentAnalysisPanel({
           {/* Top produits des autres laboratoires */}
           <div>
             <div className="flex items-center mb-4">
-              <div className="p-2 rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300 mr-2">
-                <FiPackage size={16} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Top produits concurrents
-              </h3>
             </div>
             <SegmentTopProducts 
               products={otherLabsProductsTop}

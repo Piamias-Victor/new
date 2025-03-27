@@ -6,7 +6,14 @@ import { FiFilter, FiX } from 'react-icons/fi';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 
 export function ActiveEanFilter() {
-  const { selectedCodes, totalSelectedCount, clearFilters, isFilterActive } = useProductFilter();
+  const { 
+    selectedCodes, 
+    totalSelectedCount, 
+    clearFilters, 
+    isFilterActive,
+    filterMode,
+    toggleFilterMode
+  } = useProductFilter();
   
   // Ne rien afficher si aucun filtre n'est actif
   if (!isFilterActive) {
@@ -23,7 +30,7 @@ export function ActiveEanFilter() {
           
           <div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-              Filtre actif
+              Filtre actif ({filterMode === 'AND' ? 'ET' : 'OU'})
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-300">
               {selectedCodes.length} codes EAN • {totalSelectedCount} sélection{totalSelectedCount > 1 ? 's' : ''}
@@ -31,13 +38,23 @@ export function ActiveEanFilter() {
           </div>
         </div>
         
-        <button
-          onClick={clearFilters}
-          className="p-2 rounded-md text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/50"
-          title="Supprimer le filtre"
-        >
-          <FiX size={16} />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={toggleFilterMode}
+            className="px-2 py-1 text-xs rounded bg-sky-100 hover:bg-sky-200 text-sky-700 dark:bg-sky-900/50 dark:hover:bg-sky-800/70 dark:text-sky-300"
+            title={filterMode === 'AND' ? "Basculer en mode OU (union)" : "Basculer en mode ET (intersection)"}
+          >
+            Mode: {filterMode === 'AND' ? "ET" : "OU"}
+          </button>
+          
+          <button
+            onClick={clearFilters}
+            className="p-2 rounded-md text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/50"
+            title="Supprimer le filtre"
+          >
+            <FiX size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

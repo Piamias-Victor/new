@@ -10,6 +10,8 @@ export function GroupingComparison() {
   const selectedPharmacyId = selectedPharmacyIds.length > 0 ? selectedPharmacyIds[0] : '';
   const { pharmacy, group, isLoading, error } = useGroupingComparison(selectedPharmacyId);
   const { isFilterActive } = useProductFilter();
+
+  console.log('blasbnlba :', group)
   
   // Formateurs pour les différentes valeurs
   const formatCurrency = (value: number) => {
@@ -91,7 +93,6 @@ export function GroupingComparison() {
 
   return (
     <div>
-      
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -103,43 +104,62 @@ export function GroupingComparison() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {/* CA Sell-out */}
-            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
-              <td className="p-2">
-                <div className="flex items-center">
-                  <FiShoppingBag className="text-sky-600 mr-2" size={16} />
-                  <span className="font-medium">CA Vente</span>
-                </div>
-                {isFilterActive && pharmacy.sellout_percentage && (
-                  <div className="text-xs text-gray-500 ml-6 mt-1">
-                    {pharmacy.sellout_percentage.toFixed(1)}% du total
-                  </div>
-                )}
-              </td>
-              <td className="p-2 text-right font-bold">{formatCurrency(pharmacy.total_sellout)}</td>
-              <td className="p-2 text-right">{formatCurrency(group.avg_sellout)}</td>
-              <td className={`p-2 text-right font-medium ${selloutDiff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {formatDiff(selloutDiff)}
-              </td>
-            </tr>
-            
+
             {/* CA Sell-in */}
             <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
               <td className="p-2">
                 <div className="flex items-center">
                   <FiShoppingCart className="text-sky-600 mr-2" size={16} />
-                  <span className="font-medium">CA Achat</span>
+                  <span className="font-medium">CA Sell-In</span>
                 </div>
-                {isFilterActive && pharmacy.sellin_percentage && (
-                  <div className="text-xs text-gray-500 ml-6 mt-1">
-                    {pharmacy.sellin_percentage.toFixed(1)}% du total
+              </td>
+              <td className="p-2 text-right">
+                <div className="font-bold">{formatCurrency(pharmacy.total_sellin)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(pharmacy.sellin_percentage || 0).toFixed(1)}% du total
                   </div>
                 )}
               </td>
-              <td className="p-2 text-right font-bold">{formatCurrency(pharmacy.total_sellin)}</td>
-              <td className="p-2 text-right">{formatCurrency(group.avg_sellin)}</td>
+              <td className="p-2 text-right">
+                <div>{formatCurrency(group.avg_sellin)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(group.sellin_percentage || 0).toFixed(1)}% du total
+                  </div>
+                )}
+              </td>
               <td className={`p-2 text-right font-medium ${sellinDiff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {formatDiff(sellinDiff)}
+              </td>
+            </tr>
+            
+            {/* CA Sell-out */}
+            <tr className="hover:bg-gray-50 dark:hover:bg-gray-800">
+              <td className="p-2">
+                <div className="flex items-center">
+                  <FiShoppingBag className="text-sky-600 mr-2" size={16} />
+                  <span className="font-medium">CA Sell-Out</span>
+                </div>
+              </td>
+              <td className="p-2 text-right">
+                <div className="font-bold">{formatCurrency(pharmacy.total_sellout)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(pharmacy.sellout_percentage || 0).toFixed(1)}% du total
+                  </div>
+                )}
+              </td>
+              <td className="p-2 text-right">
+                <div>{formatCurrency(group.avg_sellout)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(group.sellout_percentage || 0).toFixed(1)}% du total
+                  </div>
+                )}
+              </td>
+              <td className={`p-2 text-right font-medium ${selloutDiff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {formatDiff(selloutDiff)}
               </td>
             </tr>
             
@@ -150,14 +170,23 @@ export function GroupingComparison() {
                   <FiTrendingUp className="text-sky-600 mr-2" size={16} />
                   <span className="font-medium">Marge</span>
                 </div>
-                {isFilterActive && pharmacy.margin_percentage_of_total && (
-                  <div className="text-xs text-gray-500 ml-6 mt-1">
-                    {pharmacy.margin_percentage_of_total.toFixed(1)}% du total
+              </td>
+              <td className="p-2 text-right">
+                <div className="font-bold">{formatCurrency(pharmacy.total_margin)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(pharmacy.margin_percentage_of_total || 0).toFixed(1)}% du total
                   </div>
                 )}
               </td>
-              <td className="p-2 text-right font-bold">{formatCurrency(pharmacy.total_margin)}</td>
-              <td className="p-2 text-right">{formatCurrency(group.avg_margin)}</td>
+              <td className="p-2 text-right">
+                <div>{formatCurrency(group.avg_margin)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(group.margin_percentage || 0).toFixed(1)}% du total
+                  </div>
+                )}
+              </td>
               <td className={`p-2 text-right font-medium ${marginDiff >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {formatDiff(marginDiff)}
               </td>
@@ -185,14 +214,23 @@ export function GroupingComparison() {
                   <FiBox className="text-sky-600 mr-2" size={16} />
                   <span className="font-medium">Stock</span>
                 </div>
-                {isFilterActive && pharmacy.stock_percentage && (
-                  <div className="text-xs text-gray-500 ml-6 mt-1">
-                    {pharmacy.stock_percentage.toFixed(1)}% du total
+              </td>
+              <td className="p-2 text-right">
+                <div className="font-bold">{formatCurrency(pharmacy.total_stock)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(pharmacy.stock_percentage || 0).toFixed(1)}% du total
                   </div>
                 )}
               </td>
-              <td className="p-2 text-right font-bold">{formatCurrency(pharmacy.total_stock)}</td>
-              <td className="p-2 text-right">{formatCurrency(group.avg_stock)}</td>
+              <td className="p-2 text-right">
+                <div>{formatCurrency(group.avg_stock)}</div>
+                {isFilterActive && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(group.stock_percentage || 0).toFixed(1)}% du total
+                  </div>
+                )}
+              </td>
               <td className={`p-2 text-right font-medium ${stockDiff <= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {formatDiff(stockDiff)}
               </td>

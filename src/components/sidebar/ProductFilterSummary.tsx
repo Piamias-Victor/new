@@ -16,7 +16,9 @@ export function ProductFilterSummary() {
     clearFilters,
     toggleProduct,
     toggleLab,
-    toggleSegment
+    toggleSegment,
+    filterMode,
+    toggleFilterMode
   } = useProductFilter();
   
   if (!isFilterActive) {
@@ -60,15 +62,25 @@ export function ProductFilterSummary() {
             {selectedCodes.length} codes EAN
           </div>
           
-          {selectedCodes.length > 0 && (
+          <div className="flex items-center space-x-2">
             <button 
-              onClick={clearFilters}
-              className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-              title="Réinitialiser tous les filtres"
+              onClick={toggleFilterMode}
+              className="text-gray-500 hover:text-purple-500 dark:text-gray-400 dark:hover:text-purple-400 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-purple-100 dark:bg-gray-700 dark:hover:bg-purple-900/30"
+              title={filterMode === 'AND' ? "Basculer en mode OU (union)" : "Basculer en mode ET (intersection)"}
             >
-              <FiTrash size={16} />
+              Mode: {filterMode === 'AND' ? "ET" : "OU"}
             </button>
-          )}
+            
+            {selectedCodes.length > 0 && (
+              <button 
+                onClick={clearFilters}
+                className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                title="Réinitialiser tous les filtres"
+              >
+                <FiTrash size={16} />
+              </button>
+            )}
+          </div>
         </div>
         
         {selectedProducts.length > 0 && (

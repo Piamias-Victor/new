@@ -1,17 +1,17 @@
 // src/app/api/products/top/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
-// Conserver GET pour la compatibilité
-export async function GET(request: Request) {
+// Fonction de gestion pour la méthode GET
+export async function GET(request: NextRequest) {
   try {
     // Récupérer les paramètres de recherche
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const code13refs = searchParams.getAll('code13refs');
-    const limit = parseInt(searchParams.get('limit') || '100', 100);
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     
     // Validation des paramètres
     if (!startDate || !endDate) {
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
   }
 }
 
-// Ajouter une méthode POST pour les grandes listes de codes
-export async function POST(request: Request) {
+// Fonction de gestion pour la méthode POST
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { 
@@ -79,16 +79,39 @@ async function processTopProducts(
     const params = [startDate, endDate];
     let paramIndex = 3;
     
-    if (pharmacyIds.length > 0) {
-      whereConditions.push(`p.pharmacy_id IN (${pharmacyIds.map((_, idx) => `$${paramIndex++}`).join(',')})`);
-      params.push(...pharmacyIds);
+    // CORRECTION : Filtrer les pharmacyIds pour éliminer les valeurs problématiques
+    const validPharmacyIds = pharmacyIds.filter(id => 
+      id && typeof id === 'string' && id !== 'NaN' && id !== 'undefined' && id !== 'null'
+    );
+    
+    if (validPharmacyIds.length > 0) {
+      whereConditions.push(`p.pharmacy_id IN (${validPharmacyIds.map((_, idx) => `$${paramIndex++}`).join(',')})`);
+      params.push(...validPharmacyIds);
     }
     
+    // CORRECTION : Filtrer les code13refs pour éliminer les valeurs problématiques
+    const validCode13refs = code13refs.filter(code => 
+      code && typeof code === 'string' && code !== 'NaN' && code !== 'undefined' && code !== 'null'
+    );
+    
     // Ajouter la condition pour les codes EAN si spécifiés
-    if (code13refs.length > 0) {
-      whereConditions.push(`p.code_13_ref_id IN (${code13refs.map((_, idx) => `$${paramIndex++}`).join(',')})`);
-      params.push(...code13refs);
+    if (validCode13refs.length > 0) {
+      whereConditions.push(`p.code_13_ref_id IN (${validCode13refs.map((_, idx) => `$${paramIndex++}`).join(',')})`);
+      params.push(...validCode13refs);
     }
+    
+    // Ajouter la limite comme un nombre valide
+    const safeLimit = !isNaN(limit) && isFinite(limit) ? limit : 100;
+    
+    // Ajout de logs pour le débogage
+    console.log("Paramètres filtrés pour SQL:", {
+      startDate,
+      endDate,
+      validPharmacyIds,
+      validCode13refs,
+      safeLimit
+    });
+    console.log("Params array pour PostgreSQL:", params);
     
     // Assembler la clause WHERE complète
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -134,7 +157,7 @@ async function processTopProducts(
     `;
 
     // Ajouter le paramètre limit
-    params.push(limit);
+    params.push(safeLimit);
     const limitParam = `$${params.length}`;
 
     // Requête pour les produits triés par chiffre d'affaires
@@ -178,6 +201,9 @@ async function processTopProducts(
       byQuantity: byQuantityResult.rows,
       byMargin: byMarginResult.rows
     });
+  } catch (error) {
+    console.error('Erreur détaillée dans processTopProducts:', error);
+    throw error;
   } finally {
     client.release();
   }

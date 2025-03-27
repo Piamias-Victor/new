@@ -10,12 +10,10 @@ export async function POST(
     const universe = decodeURIComponent(params.universe);
     const category = decodeURIComponent(params.category);
     
-    console.log("\n\n================ DÉBUT ANALYSE CATÉGORIE ================");
-    console.log(`Univers: "${universe}", Catégorie: "${category}"`);
+   
     
     // Récupérer et logger le corps de la requête
     const body = await request.json();
-    console.log("Corps de la requête complet:", JSON.stringify(body));
     
     const { 
       startDate, 
@@ -27,7 +25,6 @@ export async function POST(
 
     // Validation des entrées
     if (!universe || !category || !startDate || !endDate || !laboratoryId) {
-      console.log("ERREUR: Paramètres manquants");
       return NextResponse.json(
         { error: 'Paramètres univers, catégorie, startDate, endDate et laboratoryId requis' },
         { status: 400 }
@@ -109,61 +106,82 @@ export async function POST(
       }
       
       // Obtenir les parts de marché des laboratoires pour cette catégorie
-      const marketShareQuery = `
-        WITH category_lab_sales AS (
-          SELECT 
-            gp.brand_lab,
-            SUM(s.quantity * i.price_with_tax) as total_revenue,
-            COUNT(DISTINCT p.code_13_ref_id) as product_count
-          FROM 
-            data_sales s
-          JOIN 
-            data_inventorysnapshot i ON s.product_id = i.id
-          JOIN 
-            data_internalproduct p ON i.product_id = p.id
-          JOIN 
-            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-          WHERE 
-            s.date BETWEEN $1 AND $2
-            AND gp.universe = $3
-            AND gp.category = $4
-            ${pharmacyCondition}
-          GROUP BY 
-            gp.brand_lab
-        ),
-        category_total_sales AS (
-          SELECT 
-            SUM(total_revenue) as total_category_revenue
-          FROM 
-            category_lab_sales
-        ),
-        lab_ranking AS (
-          SELECT 
-            brand_lab,
-            total_revenue,
-            product_count,
-            ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
-          FROM 
-            category_lab_sales
-        )
-        SELECT 
-          lr.brand_lab as id,
-          lr.brand_lab as name,
-          lr.total_revenue,
-          lr.product_count,
-          lr.lab_rank as rank,
-          CASE 
-            WHEN cts.total_category_revenue > 0 
-            THEN ROUND((lr.total_revenue / cts.total_category_revenue * 100)::numeric, 2)
-            ELSE 0
-          END as market_share
-        FROM 
-          lab_ranking lr
-        CROSS JOIN 
-          category_total_sales cts
-        ORDER BY 
-          lr.lab_rank ASC
-      `;
+      // Modifier la requête marketShareQuery dans src/app/api/category/[universe]/[category]/analysis/route.ts
+// Voici la nouvelle version avec l'ajout de la PDM en volume
+
+const marketShareQuery = `
+WITH category_lab_sales AS (
+  SELECT 
+    gp.brand_lab,
+    SUM(s.quantity * i.price_with_tax) as total_revenue,
+    SUM(s.quantity) as total_quantity,
+    SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+    COUNT(DISTINCT p.code_13_ref_id) as product_count
+  FROM 
+    data_sales s
+  JOIN 
+    data_inventorysnapshot i ON s.product_id = i.id
+  JOIN 
+    data_internalproduct p ON i.product_id = p.id
+  JOIN 
+    data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+  WHERE 
+    s.date BETWEEN $1 AND $2
+    AND gp.universe = $3
+    AND gp.category = $4
+    ${pharmacyCondition}
+  GROUP BY 
+    gp.brand_lab
+),
+category_total_sales AS (
+  SELECT 
+    SUM(total_revenue) as total_category_revenue,
+    SUM(total_quantity) as total_category_quantity,
+    SUM(total_margin) as total_category_margin
+  FROM 
+    category_lab_sales
+),
+lab_ranking AS (
+  SELECT 
+    brand_lab,
+    total_revenue,
+    total_quantity,
+    total_margin,
+    product_count,
+    ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
+  FROM 
+    category_lab_sales
+)
+SELECT 
+  lr.brand_lab as id,
+  lr.brand_lab as name,
+  lr.total_revenue,
+  lr.total_quantity,
+  lr.total_margin,
+  lr.product_count,
+  lr.lab_rank as rank,
+  CASE 
+    WHEN cts.total_category_revenue > 0 
+    THEN ROUND((lr.total_revenue / cts.total_category_revenue * 100)::numeric, 2)
+    ELSE 0
+  END as market_share,
+  CASE 
+    WHEN cts.total_category_quantity > 0 
+    THEN ROUND((lr.total_quantity / cts.total_category_quantity * 100)::numeric, 2)
+    ELSE 0
+  END as volume_share,
+  CASE 
+    WHEN lr.total_revenue > 0 
+    THEN ROUND((lr.total_margin / lr.total_revenue * 100)::numeric, 2)
+    ELSE 0
+  END as margin_percentage
+FROM 
+  lab_ranking lr
+CROSS JOIN 
+  category_total_sales cts
+ORDER BY 
+  lr.lab_rank ASC
+`;
       
       console.log("Exécution requête parts de marché catégorie avec paramètres:", JSON.stringify(revenueParams));
       const marketShareResult = await client.query(marketShareQuery, revenueParams);

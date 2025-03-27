@@ -274,7 +274,7 @@ export function KpiCards() {
   const tooltips = {
     sellOut: "Montant total des ventes (TTC) réalisées sur la période sélectionnée. Indicateur principal de l'activité commerciale.",
     sellIn: "Montant total des achats (prix d'achat HT) incluant tous les produits commandés sur la période, avec précommandes prises en compte. Reflète l'approvisionnement planifié.",
-    stockBreak: "Pourcentage des produits commandés mais non livrés par les fournisseurs, calculé uniquement sur les commandes ayant eu au moins un produit réceptionné.",
+    stockBreak: "Pourcentage des produits commandés mais non livrés par les fournisseurs direct, calculé uniquement sur les commandes ayant eu au moins un produit réceptionné.",
     margin: "Pourcentage de marge calculé comme (Prix de vente - Prix d'achat moyen pondéré) / Prix de vente. Cet indicateur de rentabilité utilise le prix moyen pondéré fourni par le logiciel.",
     stock: "Valeur du stock actuel en prix d'achat HT. Représente l'investissement immobilisé.",
     rotation: "Nombre de fois où le stock est renouvelé par an. Calculé comme (CA annualisé / Valeur du stock). Un ratio élevé indique une gestion efficace.",

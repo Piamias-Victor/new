@@ -111,6 +111,8 @@ export async function POST(
           SELECT 
             gp.brand_lab,
             SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
             COUNT(DISTINCT p.code_13_ref_id) as product_count
           FROM 
             data_sales s
@@ -129,7 +131,9 @@ export async function POST(
         ),
         universe_total_sales AS (
           SELECT 
-            SUM(total_revenue) as total_universe_revenue
+            SUM(total_revenue) as total_universe_revenue,
+            SUM(total_quantity) as total_universe_quantity,
+            SUM(total_margin) as total_universe_margin
           FROM 
             universe_lab_sales
         ),
@@ -137,6 +141,8 @@ export async function POST(
           SELECT 
             brand_lab,
             total_revenue,
+            total_quantity,
+            total_margin,
             product_count,
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
           FROM 
@@ -146,13 +152,25 @@ export async function POST(
           lr.brand_lab as id,
           lr.brand_lab as name,
           lr.total_revenue,
+          lr.total_quantity,
+          lr.total_margin,
           lr.product_count,
           lr.lab_rank as rank,
           CASE 
             WHEN uts.total_universe_revenue > 0 
             THEN ROUND((lr.total_revenue / uts.total_universe_revenue * 100)::numeric, 2)
             ELSE 0
-          END as market_share
+          END as market_share,
+          CASE 
+            WHEN uts.total_universe_quantity > 0 
+            THEN ROUND((lr.total_quantity / uts.total_universe_quantity * 100)::numeric, 2)
+            ELSE 0
+          END as volume_share,
+          CASE 
+            WHEN lr.total_revenue > 0 
+            THEN ROUND((lr.total_margin / lr.total_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as margin_percentage
         FROM 
           lab_ranking lr
         CROSS JOIN 

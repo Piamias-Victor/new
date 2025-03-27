@@ -3,12 +3,16 @@ import React from 'react';
 import { useProductGroupingComparison } from '@/hooks/useProductGroupingComparison';
 import { FiTrendingUp, FiTrendingDown, FiPackage, FiRotateCw, FiShoppingCart, FiAlertCircle } from 'react-icons/fi';
 import { MdEuro } from "react-icons/md";
+import { useSession } from 'next-auth/react';
 
 interface ProductGroupingTabProps {
   code13ref: string;
 }
 
 export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
+  const { data: session } = useSession();
+  const isPharmacyUser = session?.user?.role === 'pharmacy_user';
+  
   const { price, margin, rotation, stock, sales, isLoading, error } = useProductGroupingComparison(code13ref);
   
   // Fonction pour formater les valeurs selon leur type
@@ -139,6 +143,7 @@ export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
     );
   }
   
+  // Filtrer les items de comparaison en fonction du rôle de l'utilisateur
   const comparisonItems = [
     { 
       title: 'Prix', 
@@ -146,12 +151,13 @@ export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
       data: price,
       description: 'Prix de vente public TTC'
     },
-    { 
+    // N'inclure Marge que si l'utilisateur n'est PAS une pharmacie
+    ...(!isPharmacyUser ? [{
       title: 'Marge', 
       category: 'margin' as const,
       data: margin,
       description: 'Marge brute par unité'
-    },
+    }] : []),
     { 
       title: 'Rotation', 
       category: 'rotation' as const,
@@ -164,12 +170,13 @@ export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
       data: stock,
       description: 'Quantité en stock actuelle'
     },
-    { 
+    // N'inclure Ventes que si l'utilisateur n'est PAS une pharmacie
+    ...(!isPharmacyUser ? [{
       title: 'Ventes', 
       category: 'sales' as const,
       data: sales,
       description: 'Quantité vendue sur la période'
-    }
+    }] : [])
   ];
   
   // Notice d'avertissement pour les valeurs aberrantes
@@ -200,8 +207,6 @@ export function ProductGroupingTab({ code13ref }: ProductGroupingTabProps) {
           </p>
         </div>
       )}
-      
-      {/* Gauge Chart - Indicators */}
       
       {/* Metrics List */}
       <div className="grid gap-4 mb-8">

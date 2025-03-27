@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FiX, FiCheck } from 'react-icons/fi';
+import { FiX, FiCheck, FiFilter } from 'react-icons/fi';
 import { LabSearch } from './search/LabSearch';
 import { ProductSearch } from './search/ProductSearch';
 import { UnifiedSegmentSearch } from './search/SegmentSearch';
@@ -35,7 +35,9 @@ export function ProductSelectionDrawer({
     toggleLab,
     toggleSegment,
     clearFilters,
-    totalSelectedCount
+    totalSelectedCount,
+    filterMode,
+    toggleFilterMode
   } = useProductFilter();
 
   if (!isOpen) return null;
@@ -74,6 +76,43 @@ export function ProductSelectionDrawer({
             <FiX size={20} />
           </button>
         </div>
+        
+        {/* Mode de filtrage */}
+        {totalSelectedCount > 1 && (
+          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-750">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FiFilter className="mr-2 text-purple-500" size={16} />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Mode de filtrage:
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => toggleFilterMode()}
+                  className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                    filterMode === 'AND' 
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
+                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  ET
+                </button>
+                <button
+                  onClick={() => toggleFilterMode()}
+                  className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                    filterMode === 'OR' 
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
+                      : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  OU
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className='p-2'>
            {/* Afficher le sommaire de la sélection */}
         {totalSelectedCount > 0 && (

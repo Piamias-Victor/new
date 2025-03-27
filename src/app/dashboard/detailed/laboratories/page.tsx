@@ -80,7 +80,7 @@ export default function LaboratoriesDashboard() {
             <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
               <SalesProjection />
             </div>
-
+            <div className="mt-6"/>  
             <SelectedProductsList/>
             <div className="mt-6"/>  
             <PharmaciesList />

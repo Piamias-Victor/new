@@ -6,6 +6,9 @@ import { Product } from '@/components/drawer/search/ProductSearchResults';
 import { Laboratory } from '@/components/drawer/search/LabSearchResults';
 import { UnifiedSegment } from '@/components/drawer/search/SegmentSearch';
 
+// Type pour le mode de filtrage
+type FilterMode = 'AND' | 'OR';
+
 // Types pour le contexte
 interface ProductFilterContextType {
   // Éléments sélectionnés
@@ -25,6 +28,10 @@ interface ProductFilterContextType {
   // État du filtre
   isFilterActive: boolean;
   totalSelectedCount: number;
+  
+  // Mode de filtrage
+  filterMode: FilterMode;
+  toggleFilterMode: () => void;
 }
 
 // Création du contexte
@@ -45,32 +52,108 @@ export function ProductFilterProvider({ children }: { children: React.ReactNode 
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [selectedLabs, setSelectedLabs] = useState<Laboratory[]>([]);
   const [selectedSegments, setSelectedSegments] = useState<UnifiedSegment[]>([]);
+  const [filterMode, setFilterMode] = useState<FilterMode>('AND'); // Par défaut en mode "ET"
+  
+  // Fonction pour basculer entre les modes
+  const toggleFilterMode = useCallback(() => {
+    setFilterMode(prev => prev === 'AND' ? 'OR' : 'AND');
+  }, []);
   
   // Calcul des codes uniques
   const selectedCodes = useMemo(() => {
-    const codes = new Set<string>();
-    
-    // Ajouter les codes des produits
-    selectedProducts.forEach(product => {
-      if (product.code_13_ref) codes.add(product.code_13_ref);
-    });
-    
-    // Ajouter les codes des laboratoires
-    selectedLabs.forEach(lab => {
-      if (lab.code_13_refs) {
-        lab.code_13_refs.forEach(code => codes.add(code));
+    if (filterMode === 'OR') {
+      // Comportement "OU": union des codes
+      const codes = new Set<string>();
+      
+      // Ajouter les codes des produits
+      selectedProducts.forEach(product => {
+        if (product.code_13_ref) codes.add(product.code_13_ref);
+      });
+      
+      // Ajouter les codes des laboratoires
+      selectedLabs.forEach(lab => {
+        if (lab.code_13_refs) {
+          lab.code_13_refs.forEach(code => codes.add(code));
+        }
+      });
+      
+      // Ajouter les codes des segments
+      selectedSegments.forEach(segment => {
+        if (segment.code_13_refs) {
+          segment.code_13_refs.forEach(code => codes.add(code));
+        }
+      });
+      
+      return Array.from(codes);
+    } else {
+      // Comportement "ET": intersection des codes
+      let allSets: Set<string>[] = [];
+      
+      // Ajouter les codes des produits
+      if (selectedProducts.length > 0) {
+        const productCodesSet = new Set<string>();
+        selectedProducts.forEach(product => {
+          if (product.code_13_ref) productCodesSet.add(product.code_13_ref);
+        });
+        if (productCodesSet.size > 0) {
+          allSets.push(productCodesSet);
+        }
       }
-    });
-    
-    // Ajouter les codes des segments
-    selectedSegments.forEach(segment => {
-      if (segment.code_13_refs) {
-        segment.code_13_refs.forEach(code => codes.add(code));
+      
+      // Ajouter les codes des laboratoires
+      if (selectedLabs.length > 0) {
+        const labCodesSet = new Set<string>();
+        selectedLabs.forEach(lab => {
+          if (lab.code_13_refs) {
+            lab.code_13_refs.forEach(code => labCodesSet.add(code));
+          }
+        });
+        if (labCodesSet.size > 0) {
+          allSets.push(labCodesSet);
+        }
       }
-    });
-    
-    return Array.from(codes);
-  }, [selectedProducts, selectedLabs, selectedSegments]);
+      
+      // Ajouter les codes des segments
+      if (selectedSegments.length > 0) {
+        const segmentCodesSet = new Set<string>();
+        selectedSegments.forEach(segment => {
+          if (segment.code_13_refs) {
+            segment.code_13_refs.forEach(code => segmentCodesSet.add(code));
+          }
+        });
+        if (segmentCodesSet.size > 0) {
+          allSets.push(segmentCodesSet);
+        }
+      }
+      
+      // Si aucun filtre n'est appliqué, retourner un tableau vide
+      if (allSets.length === 0) {
+        return [];
+      }
+      
+      // Si un seul type de filtre est appliqué, retourner ses codes
+      if (allSets.length === 1) {
+        return Array.from(allSets[0]);
+      }
+      
+      // Calculer l'intersection de tous les ensembles
+      const intersection = new Set(allSets[0]);
+      for (let i = 1; i < allSets.length; i++) {
+        const currentSet = allSets[i];
+        const toRemove: string[] = [];
+        
+        intersection.forEach(code => {
+          if (!currentSet.has(code)) {
+            toRemove.push(code);
+          }
+        });
+        
+        toRemove.forEach(code => intersection.delete(code));
+      }
+      
+      return Array.from(intersection);
+    }
+  }, [selectedProducts, selectedLabs, selectedSegments, filterMode]);
   
   // Compteurs
   const totalSelectedCount = selectedProducts.length + selectedLabs.length + selectedSegments.length;
@@ -122,7 +205,9 @@ export function ProductFilterProvider({ children }: { children: React.ReactNode 
     toggleSegment,
     clearFilters,
     isFilterActive,
-    totalSelectedCount
+    totalSelectedCount,
+    filterMode,
+    toggleFilterMode
   }), [
     selectedProducts, 
     selectedLabs, 
@@ -133,7 +218,9 @@ export function ProductFilterProvider({ children }: { children: React.ReactNode 
     toggleSegment, 
     clearFilters, 
     isFilterActive, 
-    totalSelectedCount
+    totalSelectedCount,
+    filterMode,
+    toggleFilterMode
   ]);
   
   return (

@@ -129,6 +129,47 @@ export function ImprovedSalesEvolutionChart() {
     }
     return value;
   };
+
+  // Ajouter cette fonction à votre composant ImprovedSalesEvolutionChart
+const calculateYAxisDomain = () => {
+  if (!combinedData || combinedData.length === 0) {
+    return [0, 10]; // Valeurs par défaut si pas de données
+  }
+  
+  // Trouver les valeurs max pour toutes les séries
+  let maxValue = 0;
+  
+  combinedData.forEach(item => {
+    maxValue = Math.max(
+      maxValue, 
+      item.revenue || 0,
+      item.margin || 0,
+      item.sellInAmount || 0
+    );
+  });
+  
+  // Si la valeur max est trop petite, définir un minimum pour éviter un graphique aplati
+  if (maxValue < 10) maxValue = 10;
+  
+  // Ajouter un espace de 10% au-dessus pour éviter que les points ne touchent le haut
+  const ceiling = Math.ceil(maxValue * 1.1);
+  
+  // Arrondir à une valeur "propre" pour l'affichage
+  // Par exemple, arrondir à la centaine ou au millier supérieur
+  let roundedCeiling = ceiling;
+  if (ceiling > 1000) {
+    roundedCeiling = Math.ceil(ceiling / 1000) * 1000;
+  } else if (ceiling > 100) {
+    roundedCeiling = Math.ceil(ceiling / 100) * 100;
+  } else if (ceiling > 10) {
+    roundedCeiling = Math.ceil(ceiling / 10) * 10;
+  }
+  
+  return [0, roundedCeiling];
+};
+
+// Calculer le domaine de l'axe Y
+const yAxisDomain = calculateYAxisDomain();
   
   // Calculer la tendance (% d'évolution)
   const calculateTrend = () => {
@@ -321,6 +362,7 @@ export function ImprovedSalesEvolutionChart() {
                 axisLine={{ stroke: '#E5E7EB', strokeWidth: 1 }}
               />
               <YAxis 
+                domain={yAxisDomain}
                 tickFormatter={formatYAxis} 
                 tick={{ fontSize: 12 }}
                 stroke="#9CA3AF"
