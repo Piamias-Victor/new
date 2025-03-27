@@ -1,11 +1,12 @@
 // src/components/dashboard/laboratories/SegmentMarketShare.tsx
+
 import React from 'react';
 import { FiAward } from 'react-icons/fi';
 import { LaboratoryMarketShare } from '@/hooks/useSegmentAnalysis';
 
 interface SegmentMarketShareProps {
   marketShareData: LaboratoryMarketShare[];
-  selectedLabId: string;
+  selectedLabId: string; // Peut être une chaîne vide en mode global
 }
 
 export function SegmentMarketShare({ 
@@ -51,12 +52,13 @@ export function SegmentMarketShare({
     );
   }
 
-  // Trouver la position du laboratoire sélectionné
-  const selectedLabInfo = marketShareData.find(lab => lab.id === selectedLabId);
+  // Trouver la position du laboratoire sélectionné (si un laboratoire est sélectionné)
+  const selectedLabInfo = selectedLabId ? 
+    marketShareData.find(lab => lab.id === selectedLabId) : null;
 
   return (
     <div className="space-y-4">
-      {/* Information sur la position du laboratoire sélectionné */}
+      {/* Information sur la position du laboratoire sélectionné - affiché uniquement si un labo est sélectionné */}
       {selectedLabInfo && (
         <div className="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-lg border border-sky-100 dark:border-sky-800">
           <div className="flex items-center">
@@ -69,8 +71,8 @@ export function SegmentMarketShare({
               </p>
               <p className="text-sm text-sky-600 dark:text-sky-400">
                 PDM valeur: {formatPercentage(selectedLabInfo.market_share)} • 
-                PDM volume: {formatPercentage(selectedLabInfo.volume_share)} •
-                Marge: {formatPercentage(selectedLabInfo.margin_percentage)}
+                {selectedLabInfo.volume_share && `PDM volume: ${formatPercentage(selectedLabInfo.volume_share)} • `}
+                {selectedLabInfo.margin_percentage && `Marge: ${formatPercentage(selectedLabInfo.margin_percentage)}`}
               </p>
               <p className="text-sm text-sky-600 dark:text-sky-400">
                 CA: {formatCurrency(selectedLabInfo.total_revenue)}
@@ -101,12 +103,16 @@ export function SegmentMarketShare({
                 <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   PDM Valeur
                 </th>
-                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  PDM Volume
-                </th>
-                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Marge
-                </th>
+                {marketShareData[0]?.volume_share !== undefined && (
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    PDM Volume
+                  </th>
+                )}
+                {marketShareData[0]?.margin_percentage !== undefined && (
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Marge
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -153,30 +159,34 @@ export function SegmentMarketShare({
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <div className="text-sm">
-                      <div className="flex items-center justify-end">
-                        <div 
-                          className="h-2 bg-purple-500 rounded-full mr-2" 
-                          style={{ width: `${Math.min(lab.volume_share, 100) * 0.7}px` }}
-                        ></div>
-                        <span className="text-gray-900 dark:text-white font-medium">
-                          {formatPercentage(lab.volume_share)}
+                  {lab.volume_share !== undefined && (
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="text-sm">
+                        <div className="flex items-center justify-end">
+                          <div 
+                            className="h-2 bg-purple-500 rounded-full mr-2" 
+                            style={{ width: `${Math.min(lab.volume_share, 100) * 0.7}px` }}
+                          ></div>
+                          <span className="text-gray-900 dark:text-white font-medium">
+                            {formatPercentage(lab.volume_share)}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                  )}
+                  {lab.margin_percentage !== undefined && (
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="text-sm">
+                        <span className={`text-gray-900 dark:text-white font-medium ${
+                          lab.margin_percentage < 0 ? 'text-red-500 dark:text-red-400' :
+                          lab.margin_percentage < 10 ? 'text-amber-500 dark:text-amber-400' :
+                          'text-green-500 dark:text-green-400'
+                        }`}>
+                          {formatPercentage(lab.margin_percentage)}
                         </span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <div className="text-sm">
-                      <span className={`text-gray-900 dark:text-white font-medium ${
-                        lab.margin_percentage < 0 ? 'text-red-500 dark:text-red-400' :
-                        lab.margin_percentage < 10 ? 'text-amber-500 dark:text-amber-400' :
-                        'text-green-500 dark:text-green-400'
-                      }`}>
-                        {formatPercentage(lab.margin_percentage)}
-                      </span>
-                    </div>
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

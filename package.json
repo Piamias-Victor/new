@@ -16,6 +16,7 @@
     "chart.js": "^4.4.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "fs": "^0.0.1-security",
     "leaflet": "^1.9.4",
     "next": "15.2.1",
     "next-auth": "^4.24.11",

@@ -1,13 +1,14 @@
 // src/components/dashboard/laboratories/SegmentAnalysisPanel.tsx
+
 import React from 'react';
-import { FiBarChart2, FiPieChart, FiBox, FiPackage } from 'react-icons/fi';
+import { FiBarChart2, FiPieChart } from 'react-icons/fi';
 import { useSegmentAnalysis } from '@/hooks/useSegmentAnalysis';
 import { SegmentMarketShare } from './SegmentMarketShare';
 import { SegmentTopProducts } from './SegmentTopProducts';
 
 interface SegmentAnalysisPanelProps {
   segmentId: string;
-  laboratoryId: string;
+  laboratoryId?: string; // Rendre laboratoryId optionnel
 }
 
 export function SegmentAnalysisPanel({ 
@@ -50,6 +51,9 @@ export function SegmentAnalysisPanel({
     );
   }
 
+  // Déterminer si on est en mode global (sans laboratoire spécifique)
+  const isGlobalMode = !laboratoryId;
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
       {/* En-tête avec informations sur le segment */}
@@ -63,7 +67,7 @@ export function SegmentAnalysisPanel({
               Analyse du segment: {segmentInfo.name}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Univers: {segmentInfo.universe} • Catégorie: {segmentInfo.category}
+              Univers: {segmentInfo.universe} {segmentInfo.category && `• Catégorie: ${segmentInfo.category}`}
             </p>
           </div>
         </div>
@@ -77,11 +81,17 @@ export function SegmentAnalysisPanel({
               currency: 'EUR',
               maximumFractionDigits: 0 
             }).format(segmentInfo.total_revenue)}
+            
+            {isGlobalMode && (
+              <span className="ml-2 text-xs bg-purple-200 dark:bg-purple-800 px-2 py-0.5 rounded">
+                Analyse globale tous laboratoires
+              </span>
+            )}
           </p>
         </div>
       </div>
 
-      {/* Contenu principal - Réorganisé */}
+      {/* Contenu principal - Réorganisé selon le mode */}
       <div className="p-6 space-y-6">
         {/* Part de marché des laboratoires - Sur toute la largeur */}
         <div>
@@ -95,32 +105,33 @@ export function SegmentAnalysisPanel({
           </div>
           <SegmentMarketShare 
             marketShareData={marketShareByLab} 
-            selectedLabId={laboratoryId}
+            selectedLabId={laboratoryId || ''} // Chaîne vide si pas de laboratoryId
           />
         </div>
 
-        {/* Top produits côte à côte */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top produits du laboratoire */}
+        {/* Top produits côte à côte ou global selon le mode */}
+        {isGlobalMode ? (
+          // Mode global: afficher tous les produits dans une seule liste
           <div>
-            <div className="flex items-center mb-4">
-            </div>
+            <SegmentTopProducts 
+              products={[...selectedLabProductsTop, ...otherLabsProductsTop]
+                .sort((a, b) => b.total_revenue - a.total_revenue)} 
+              title="Top produits du segment"
+            />
+          </div>
+        ) : (
+          // Mode laboratoire: afficher les produits du labo et les concurrents côte à côte
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SegmentTopProducts 
               products={selectedLabProductsTop} 
               title="Top produits du laboratoire"
             />
-          </div>
-
-          {/* Top produits des autres laboratoires */}
-          <div>
-            <div className="flex items-center mb-4">
-            </div>
             <SegmentTopProducts 
               products={otherLabsProductsTop}
               title="Top produits concurrents"
             />
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

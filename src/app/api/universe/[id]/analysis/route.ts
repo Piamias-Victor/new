@@ -7,7 +7,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const universeId = decodeURIComponent(params.id);
+    // Résoudre l'ID de manière compatible avec Next.js
+    const id = params.id;
+    const universeId = decodeURIComponent(id);
+    
     console.log("\n\n================ DÉBUT ANALYSE UNIVERS ================");
     console.log(`ID de l'univers: "${universeId}"`);
     
@@ -18,16 +21,16 @@ export async function POST(
     const { 
       startDate, 
       endDate, 
-      laboratoryId, 
+      laboratoryId = '', // Rendre laboratoryId optionnel avec valeur par défaut vide
       pharmacyIds = [], 
       limit = 10
     } = body;
 
     // Validation des entrées
-    if (!universeId || !startDate || !endDate || !laboratoryId) {
+    if (!universeId || !startDate || !endDate) {
       console.log("ERREUR: Paramètres manquants");
       return NextResponse.json(
-        { error: 'Paramètres universeId, startDate, endDate et laboratoryId requis' },
+        { error: 'Paramètres universeId, startDate et endDate requis' },
         { status: 400 }
       );
     }
@@ -87,23 +90,6 @@ export async function POST(
       };
       
       console.log("CRÉATION SEGMENTINFO POUR UNIVERS:", JSON.stringify(segmentInfo));
-      
-      // Paramètres pour les requêtes suivantes qui incluent le laboratoryId
-      const labParams = [...baseParams, laboratoryId];
-      
-      // Condition pharmacies pour les requêtes suivantes
-      let pharmacyConditionNextQueries = '';
-      
-      if (pharmacyIds && pharmacyIds.length > 0) {
-        const placeholders = pharmacyIds.map((_, i) => `$${i + 5}`).join(',');
-        pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
-      }
-      
-      // Paramètres complets pour les requêtes suivantes
-      const nextQueriesParams = [...labParams];
-      if (pharmacyIds.length > 0) {
-        nextQueriesParams.push(...pharmacyIds);
-      }
       
       // Obtenir les parts de marché des laboratoires pour cet univers
       const marketShareQuery = `
@@ -185,103 +171,173 @@ export async function POST(
       
       console.log(`Parts de marché trouvées pour l'univers: ${marketShareData.length}`);
       
-      // Obtenir les top produits du laboratoire sélectionné pour cet univers
-      const labProductsQuery = `
-        SELECT 
-          p.id,
-          p.id as product_id,
-          p.name,
-          COALESCE(gp.name, p.name) as display_name,
-          p.code_13_ref_id as code_13_ref,
-          gp.brand_lab,
-          SUM(s.quantity) as total_quantity,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
-          CASE 
-            WHEN SUM(s.quantity * i.price_with_tax) > 0 
-            THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
-                       SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
-            ELSE 0
-          END as margin_percentage,
-          MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
-        FROM 
-          data_sales s
-        JOIN 
-          data_inventorysnapshot i ON s.product_id = i.id
-        JOIN 
-          data_internalproduct p ON i.product_id = p.id
-        JOIN 
-          data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-        WHERE 
-          s.date BETWEEN $1 AND $2
-          AND gp.universe = $3
-          AND gp.brand_lab = $4
-          ${pharmacyConditionNextQueries}
-        GROUP BY 
-          p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
-        ORDER BY 
-          total_revenue DESC
-        LIMIT ${limit}
-      `;
+      // Variables pour les top produits
+      let selectedLabProductsTop = [];
+      // Ici est le problème - initialiser correctement
+      let otherLabProductsTop = [];
+
+      // Si un laboratoryId est fourni, utiliser les requêtes spécifiques au laboratoire
+      if (laboratoryId) {
+        // Paramètres pour les requêtes qui incluent le laboratoryId
+        const labParams = [...baseParams, laboratoryId];
       
-      console.log("Exécution requête produits du laboratoire pour l'univers");
-      console.log("Paramètres produits lab:", JSON.stringify(nextQueriesParams));
-      const labProductsResult = await client.query(labProductsQuery, nextQueriesParams);
-      const selectedLabProducts = labProductsResult.rows || [];
+        // Condition pharmacies pour les requêtes suivantes
+        let pharmacyConditionNextQueries = '';
+        
+        if (pharmacyIds && pharmacyIds.length > 0) {
+          const placeholders = pharmacyIds.map((_, i) => `$${i + 5}`).join(',');
+          pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
+        }
+        
+        // Paramètres complets pour les requêtes suivantes
+        const nextQueriesParams = [...labParams];
+        if (pharmacyIds.length > 0) {
+          nextQueriesParams.push(...pharmacyIds);
+        }
+        
+        // Obtenir les top produits du laboratoire sélectionné pour cet univers
+        const labProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.universe = $3
+            AND gp.brand_lab = $4
+            ${pharmacyConditionNextQueries}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit}
+        `;
+        
+        console.log("Exécution requête produits du laboratoire pour l'univers");
+        console.log("Paramètres produits lab:", JSON.stringify(nextQueriesParams));
+        const labProductsResult = await client.query(labProductsQuery, nextQueriesParams);
+        selectedLabProductsTop = labProductsResult.rows || [];
+        
+        console.log(`Produits du laboratoire trouvés pour l'univers: ${selectedLabProductsTop.length}`);
+        
+        // Obtenir les top produits des autres laboratoires pour cet univers
+        const otherLabsProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.universe = $3
+            AND gp.brand_lab != $4
+            ${pharmacyConditionNextQueries}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit}
+        `;
+        
+        console.log("Exécution requête produits des autres laboratoires pour l'univers");
+        const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
+        otherLabProductsTop = otherLabsProductsResult.rows || [];
+        
+        console.log(`Produits des autres laboratoires trouvés pour l'univers: ${otherLabProductsTop.length}`);
+      } else {
+        // Pas de laboratoire spécifique - récupérer les top produits globaux
+        const topProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.universe = $3
+            ${pharmacyCondition}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit * 2}
+        `;
+        
+        console.log("Exécution requête produits globaux pour l'univers");
+        const topProductsResult = await client.query(topProductsQuery, revenueParams);
+        selectedLabProductsTop = topProductsResult.rows || [];
+        // otherLabProductsTop reste un tableau vide
+        
+        console.log(`Produits globaux trouvés pour l'univers: ${selectedLabProductsTop.length}`);
+      }
       
-      console.log(`Produits du laboratoire trouvés pour l'univers: ${selectedLabProducts.length}`);
-      
-      // Obtenir les top produits des autres laboratoires pour cet univers
-      const otherLabsProductsQuery = `
-        SELECT 
-          p.id,
-          p.id as product_id,
-          p.name,
-          COALESCE(gp.name, p.name) as display_name,
-          p.code_13_ref_id as code_13_ref,
-          gp.brand_lab,
-          SUM(s.quantity) as total_quantity,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
-          CASE 
-            WHEN SUM(s.quantity * i.price_with_tax) > 0 
-            THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
-                       SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
-            ELSE 0
-          END as margin_percentage,
-          MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
-        FROM 
-          data_sales s
-        JOIN 
-          data_inventorysnapshot i ON s.product_id = i.id
-        JOIN 
-          data_internalproduct p ON i.product_id = p.id
-        JOIN 
-          data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-        WHERE 
-          s.date BETWEEN $1 AND $2
-          AND gp.universe = $3
-          AND gp.brand_lab != $4
-          ${pharmacyConditionNextQueries}
-        GROUP BY 
-          p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
-        ORDER BY 
-          total_revenue DESC
-        LIMIT ${limit}
-      `;
-      
-      console.log("Exécution requête produits des autres laboratoires pour l'univers");
-      const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
-      const otherLabProducts = otherLabsProductsResult.rows || [];
-      
-      console.log(`Produits des autres laboratoires trouvés pour l'univers: ${otherLabProducts.length}`);
-      
-      // Retourner les données
+      // Retourner les données - ici nous assurons que otherLabProductsTop est défini
       const finalResponse = {
         segmentInfo,
         marketShareByLab: marketShareData,
-        selectedLabProductsTop: selectedLabProducts,
-        otherLabsProductsTop: otherLabProducts
+        selectedLabProductsTop,
+        otherLabProductsTop
       };
       
       console.log("RÉPONSE FINALE - segmentInfo univers:", JSON.stringify(finalResponse.segmentInfo));
@@ -306,19 +362,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const universeId = decodeURIComponent(params.id);
+    const id = params.id;
+    const universeId = decodeURIComponent(id);
     const searchParams = request.nextUrl.searchParams;
     
     // Récupérer les paramètres de recherche
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const laboratoryId = searchParams.get('laboratoryId');
+    const laboratoryId = searchParams.get('laboratoryId') || ''; // Optionnel avec valeur par défaut
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const limit = searchParams.get('limit') || '10';
     
-    if (!startDate || !endDate || !laboratoryId) {
+    if (!startDate || !endDate) {
       return NextResponse.json(
-        { error: 'Paramètres requis manquants' },
+        { error: 'Paramètres startDate et endDate requis' },
         { status: 400 }
       );
     }

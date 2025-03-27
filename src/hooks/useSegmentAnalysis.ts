@@ -69,7 +69,7 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
   useEffect(() => {
     async function fetchData() {
       // Vérification des paramètres requis
-      if (!segmentId || !laboratoryId || !startDate || !endDate) {
+      if (!segmentId || !startDate || !endDate) {
         console.log("HOOK - Paramètres manquants, pas d'appel API");
         return;
       }
@@ -78,87 +78,92 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
       console.log("HOOK - État de chargement activé");
       
       try {
-        // Déterminer le type de segment (univers, catégorie ou famille)
-        let segmentType: 'universe' | 'category' | 'family' = 'category';
-        
-        // Analyse de segmentId
-        if (segmentId.startsWith('universe_')) {
-          segmentType = 'universe';
-        } else {
-          // Compter le nombre de segments "_" pour déterminer s'il s'agit d'une catégorie ou d'une famille
-          const parts = segmentId.split('_');
-          if (parts.length === 2) {
-            segmentType = 'category';
-          } else if (parts.length >= 3) {
-            segmentType = 'family';
-          }
-        }
-        
-        console.log(`HOOK - Type de segment identifié: ${segmentType}`);
-        
-        // Préparation des paramètres de requête communs
-        const commonParams = {
-          startDate,
-          endDate,
-          laboratoryId,
-          pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-          limit: 10
-        };
-        
+        // Découper le segmentId pour en extraire les parties
+        const parts = segmentId.split('_');
         let response;
         
-        if (segmentType === 'universe') {
-          // APPEL API UNIVERS
-          // Extraction de l'univers: "universe_DERMOCOSMETIQUE" -> "DERMOCOSMETIQUE"
-          const universeValue = segmentId.substring(9);
-          console.log(`HOOK - Valeur de l'univers: "${universeValue}"`);
+        // Cas spécial: segmentId commence par "family_"
+        if (segmentId.startsWith('family_')) {
+          // C'est une famille directe, sans univers ni catégorie spécifiés
+          const family = segmentId.substring(7); // Enlever "family_"
           
-          console.log(`HOOK - Appel API univers: /api/universe/${encodeURIComponent(universeValue)}/analysis`);
-          response = await fetch(`/api/universe/${encodeURIComponent(universeValue)}/analysis`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(commonParams),
-            cache: 'no-store'
-          });
-        } else if (segmentType === 'category') {
-          // APPEL API CATÉGORIE
-          // Extraction de l'univers et de la catégorie: "MEDICAMENT_DOULEUR" -> ["MEDICAMENT", "DOULEUR"]
-          const parts = segmentId.split('_');
-          if (parts.length < 2) {
-            throw new Error('Format de segmentId invalide pour une catégorie');
-          }
+          // Utiliser des valeurs par défaut pour univers/catégorie
+          // puisque nous n'avons que la famille
+          const universe = "default";
+          const category = "default";
           
-          const universe = parts[0];
-          const category = parts[1];
-          
-          console.log(`HOOK - Univers: "${universe}", Catégorie: "${category}"`);
-          console.log(`HOOK - Appel API catégorie: /api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`);
-          
-          response = await fetch(`/api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(commonParams),
-            cache: 'no-store'
-          });
-        } else {
-          // APPEL API FAMILLE
-          // Extraction de l'univers, de la catégorie et de la famille: "MEDICAMENT_DOULEUR_TETE" -> ["MEDICAMENT", "DOULEUR", "TETE"]
-          const parts = segmentId.split('_');
-          if (parts.length < 3) {
-            throw new Error('Format de segmentId invalide pour une famille');
-          }
-          
-          const universe = parts[0];
-          const category = parts[1];
-          const family = parts.slice(2).join('_'); // Au cas où le nom de famille contiendrait des underscores
-          
-          console.log(`HOOK - Univers: "${universe}", Catégorie: "${category}", Famille: "${family}"`);
+          console.log(`HOOK - Détection de famille directe: famille="${family}"`);
           console.log(`HOOK - Appel API famille: /api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`);
           
           response = await fetch(`/api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(commonParams),
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              laboratoryId,
+              pharmacyIds: selectedPharmacyIds
+            }),
+            cache: 'no-store'
+          });
+        } else if (parts.length >= 3) {
+          // Format: "universe_category_family"
+          // C'est un segment de type famille avec univers et catégorie spécifiés
+          const universe = parts[0];
+          const category = parts[1];
+          const family = parts.slice(2).join('_'); // Prend en compte les noms avec underscores
+          
+          console.log(`HOOK - Détection de famille: univers="${universe}", catégorie="${category}", famille="${family}"`);
+          console.log(`HOOK - Appel API famille: /api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`);
+          
+          response = await fetch(`/api/family/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/${encodeURIComponent(family)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              laboratoryId,
+              pharmacyIds: selectedPharmacyIds
+            }),
+            cache: 'no-store'
+          });
+        } else if (parts.length === 2) {
+          // Format: "universe_category"
+          // C'est un segment de type catégorie
+          const universe = parts[0];
+          const category = parts[1];
+          
+          console.log(`HOOK - Détection de catégorie: univers="${universe}", catégorie="${category}"`);
+          console.log(`HOOK - Appel API catégorie: /api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`);
+          
+          response = await fetch(`/api/category/${encodeURIComponent(universe)}/${encodeURIComponent(category)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              laboratoryId,
+              pharmacyIds: selectedPharmacyIds
+            }),
+            cache: 'no-store'
+          });
+        } else {
+          // Format: "universe_VALUE" ou autre format spécial
+          // C'est un segment de type univers
+          const universe = parts[0].replace('universe_', '');
+          
+          console.log(`HOOK - Détection d'univers: univers="${universe}"`);
+          console.log(`HOOK - Appel API univers: /api/universe/${encodeURIComponent(universe)}/analysis`);
+          
+          response = await fetch(`/api/universe/${encodeURIComponent(universe)}/analysis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              startDate,
+              endDate,
+              laboratoryId,
+              pharmacyIds: selectedPharmacyIds
+            }),
             cache: 'no-store'
           });
         }

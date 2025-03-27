@@ -7,9 +7,14 @@ export async function POST(
   { params }: { params: { universe: string; category: string; family: string } }
 ) {
   try {
-    const universe = decodeURIComponent(params.universe);
-    const category = decodeURIComponent(params.category);
-    const family = decodeURIComponent(params.family);
+    // Récupérer les paramètres de manière sûre avec des vérifications
+    const universePath = params?.universe || '';
+    const categoryPath = params?.category || '';
+    const familyPath = params?.family || '';
+    
+    const universe = decodeURIComponent(universePath);
+    const category = decodeURIComponent(categoryPath);
+    const family = decodeURIComponent(familyPath);
     
     console.log("\n\n================ DÉBUT ANALYSE FAMILLE ================");
     console.log(`Univers: "${universe}", Catégorie: "${category}", Famille: "${family}"`);
@@ -27,10 +32,10 @@ export async function POST(
     } = body;
 
     // Validation des entrées
-    if (!universe || !category || !family || !startDate || !endDate || !laboratoryId) {
+    if (!startDate || !endDate) {
       console.log("ERREUR: Paramètres manquants");
       return NextResponse.json(
-        { error: 'Paramètres univers, catégorie, famille, startDate, endDate et laboratoryId requis' },
+        { error: 'Paramètres startDate et endDate requis' },
         { status: 400 }
       );
     }
@@ -39,17 +44,60 @@ export async function POST(
     
     try {
       // Construction des paramètres pour la requête principale
-      const baseParams = [startDate, endDate, universe, category, family];
+      const baseParams = [startDate, endDate, family];
       
       // Construire la condition pour les pharmacies
       let pharmacyCondition = '';
       
       if (pharmacyIds && pharmacyIds.length > 0) {
-        const placeholders = pharmacyIds.map((_, i) => `$${i + 6}`).join(',');
+        const placeholders = pharmacyIds.map((_, i) => `$${i + 4}`).join(',');
         pharmacyCondition = ` AND p.pharmacy_id IN (${placeholders})`;
       }
 
       // Requête pour obtenir le chiffre d'affaires total de la famille
+      // Vérifier d'abord si SOLAIRE est une famille, une sous-famille ou autre
+      const checkFamilyQuery = `
+        SELECT COUNT(*) as count FROM data_globalproduct WHERE family = $1
+      `;
+      
+      console.log(`Vérification si "${family}" est une famille...`);
+      const checkResult = await client.query(checkFamilyQuery, [family]);
+      const isFamily = parseInt(checkResult.rows[0].count) > 0;
+      
+      let segmentColumn = 'family';
+      
+      if (!isFamily) {
+        // Si ce n'est pas dans family, vérifier sub_family
+        const checkSubFamilyQuery = `
+          SELECT COUNT(*) as count FROM data_globalproduct WHERE sub_family = $1
+        `;
+        
+        const checkSubResult = await client.query(checkSubFamilyQuery, [family]);
+        const isSubFamily = parseInt(checkSubResult.rows[0].count) > 0;
+        
+        if (isSubFamily) {
+          segmentColumn = 'sub_family';
+          console.log(`"${family}" est une sous-famille`);
+        } else {
+          // Vérifier si c'est une catégorie
+          const checkCategoryQuery = `
+            SELECT COUNT(*) as count FROM data_globalproduct WHERE category = $1
+          `;
+          
+          const checkCatResult = await client.query(checkCategoryQuery, [family]);
+          const isCategory = parseInt(checkCatResult.rows[0].count) > 0;
+          
+          if (isCategory) {
+            segmentColumn = 'category';
+            console.log(`"${family}" est une catégorie`);
+          } else {
+            console.log(`"${family}" non trouvé comme famille/sous-famille/catégorie - utilisation par défaut de 'family'`);
+          }
+        }
+      } else {
+        console.log(`"${family}" est une famille`);
+      }
+      
       const revenueQuery = `
         SELECT COALESCE(SUM(s.quantity * i.price_with_tax), 0) as total_revenue
         FROM 
@@ -62,9 +110,7 @@ export async function POST(
           data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
         WHERE 
           s.date BETWEEN $1 AND $2
-          AND gp.universe = $3
-          AND gp.category = $4
-          AND gp.family = $5
+          AND gp.${segmentColumn} = $3
           ${pharmacyCondition}
       `;
       
@@ -94,101 +140,61 @@ export async function POST(
       
       console.log("CRÉATION SEGMENTINFO POUR FAMILLE:", JSON.stringify(segmentInfo));
       
-      // Paramètres pour les requêtes suivantes qui incluent le laboratoryId
-      const labParams = [...baseParams, laboratoryId];
-      
-      // Condition pharmacies pour les requêtes suivantes
-      let pharmacyConditionNextQueries = '';
-      
-      if (pharmacyIds && pharmacyIds.length > 0) {
-        const placeholders = pharmacyIds.map((_, i) => `$${i + 7}`).join(',');
-        pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
-      }
-      
-      // Paramètres complets pour les requêtes suivantes
-      const nextQueriesParams = [...labParams];
-      if (pharmacyIds.length > 0) {
-        nextQueriesParams.push(...pharmacyIds);
-      }
-      
       // Obtenir les parts de marché des laboratoires pour cette famille
-      // Modifier la requête marketShareQuery dans src/app/api/family/[universe]/[category]/[family]/analysis/route.ts
-// Voici la nouvelle version avec l'ajout de la PDM en volume
-
-const marketShareQuery = `
-WITH family_lab_sales AS (
-  SELECT 
-    gp.brand_lab,
-    SUM(s.quantity * i.price_with_tax) as total_revenue,
-    SUM(s.quantity) as total_quantity,
-    SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
-    COUNT(DISTINCT p.code_13_ref_id) as product_count
-  FROM 
-    data_sales s
-  JOIN 
-    data_inventorysnapshot i ON s.product_id = i.id
-  JOIN 
-    data_internalproduct p ON i.product_id = p.id
-  JOIN 
-    data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-  WHERE 
-    s.date BETWEEN $1 AND $2
-    AND gp.universe = $3
-    AND gp.category = $4
-    AND gp.family = $5
-    ${pharmacyCondition}
-  GROUP BY 
-    gp.brand_lab
-),
-family_total_sales AS (
-  SELECT 
-    SUM(total_revenue) as total_family_revenue,
-    SUM(total_quantity) as total_family_quantity,
-    SUM(total_margin) as total_family_margin
-  FROM 
-    family_lab_sales
-),
-lab_ranking AS (
-  SELECT 
-    brand_lab,
-    total_revenue,
-    total_quantity,
-    total_margin,
-    product_count,
-    ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
-  FROM 
-    family_lab_sales
-)
-SELECT 
-  lr.brand_lab as id,
-  lr.brand_lab as name,
-  lr.total_revenue,
-  lr.total_quantity,
-  lr.total_margin,
-  lr.product_count,
-  lr.lab_rank as rank,
-  CASE 
-    WHEN fts.total_family_revenue > 0 
-    THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
-    ELSE 0
-  END as market_share,
-  CASE 
-    WHEN fts.total_family_quantity > 0 
-    THEN ROUND((lr.total_quantity / fts.total_family_quantity * 100)::numeric, 2)
-    ELSE 0
-  END as volume_share,
-  CASE 
-    WHEN lr.total_revenue > 0 
-    THEN ROUND((lr.total_margin / lr.total_revenue * 100)::numeric, 2)
-    ELSE 0
-  END as margin_percentage
-FROM 
-  lab_ranking lr
-CROSS JOIN 
-  family_total_sales fts
-ORDER BY 
-  lr.lab_rank ASC
-`;
+      const marketShareQuery = `
+        WITH family_lab_sales AS (
+          SELECT 
+            gp.brand_lab,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            COUNT(DISTINCT p.code_13_ref_id) as product_count
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.family = $3
+            ${pharmacyCondition}
+          GROUP BY 
+            gp.brand_lab
+        ),
+        family_total_sales AS (
+          SELECT 
+            SUM(total_revenue) as total_family_revenue
+          FROM 
+            family_lab_sales
+        ),
+        lab_ranking AS (
+          SELECT 
+            brand_lab,
+            total_revenue,
+            product_count,
+            ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
+          FROM 
+            family_lab_sales
+        )
+        SELECT 
+          lr.brand_lab as id,
+          lr.brand_lab as name,
+          lr.total_revenue,
+          lr.product_count,
+          lr.lab_rank as rank,
+          CASE 
+            WHEN fts.total_family_revenue > 0 
+            THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as market_share
+        FROM 
+          lab_ranking lr
+        CROSS JOIN 
+          family_total_sales fts
+        ORDER BY 
+          lr.lab_rank ASC
+      `;
       
       console.log("Exécution requête parts de marché famille avec paramètres:", JSON.stringify(revenueParams));
       const marketShareResult = await client.query(marketShareQuery, revenueParams);
@@ -196,107 +202,171 @@ ORDER BY
       
       console.log(`Parts de marché trouvées pour la famille: ${marketShareData.length}`);
       
-      // Obtenir les top produits du laboratoire sélectionné pour cette famille
-      const labProductsQuery = `
-        SELECT 
-          p.id,
-          p.id as product_id,
-          p.name,
-          COALESCE(gp.name, p.name) as display_name,
-          p.code_13_ref_id as code_13_ref,
-          gp.brand_lab,
-          SUM(s.quantity) as total_quantity,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
-          CASE 
-            WHEN SUM(s.quantity * i.price_with_tax) > 0 
-            THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
-                       SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
-            ELSE 0
-          END as margin_percentage,
-          MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
-        FROM 
-          data_sales s
-        JOIN 
-          data_inventorysnapshot i ON s.product_id = i.id
-        JOIN 
-          data_internalproduct p ON i.product_id = p.id
-        JOIN 
-          data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-        WHERE 
-          s.date BETWEEN $1 AND $2
-          AND gp.universe = $3
-          AND gp.category = $4
-          AND gp.family = $5
-          AND gp.brand_lab = $6
-          ${pharmacyConditionNextQueries}
-        GROUP BY 
-          p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
-        ORDER BY 
-          total_revenue DESC
-        LIMIT ${limit}
-      `;
+      // Variables pour les top produits
+      let selectedLabProductsTop = [];
+      let otherLabProductsTop = [];
       
-      console.log("Exécution requête produits du laboratoire pour la famille");
-      console.log("Paramètres produits lab:", JSON.stringify(nextQueriesParams));
-      const labProductsResult = await client.query(labProductsQuery, nextQueriesParams);
-      const selectedLabProducts = labProductsResult.rows || [];
-      
-      console.log(`Produits du laboratoire trouvés pour la famille: ${selectedLabProducts.length}`);
-      
-      // Obtenir les top produits des autres laboratoires pour cette famille
-      const otherLabsProductsQuery = `
-        SELECT 
-          p.id,
-          p.id as product_id,
-          p.name,
-          COALESCE(gp.name, p.name) as display_name,
-          p.code_13_ref_id as code_13_ref,
-          gp.brand_lab,
-          SUM(s.quantity) as total_quantity,
-          SUM(s.quantity * i.price_with_tax) as total_revenue,
-          SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
-          CASE 
-            WHEN SUM(s.quantity * i.price_with_tax) > 0 
-            THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
-                       SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
-            ELSE 0
-          END as margin_percentage,
-          MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
-        FROM 
-          data_sales s
-        JOIN 
-          data_inventorysnapshot i ON s.product_id = i.id
-        JOIN 
-          data_internalproduct p ON i.product_id = p.id
-        JOIN 
-          data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
-        WHERE 
-          s.date BETWEEN $1 AND $2
-          AND gp.universe = $3
-          AND gp.category = $4
-          AND gp.family = $5
-          AND gp.brand_lab != $6
-          ${pharmacyConditionNextQueries}
-        GROUP BY 
-          p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
-        ORDER BY 
-          total_revenue DESC
-        LIMIT ${limit}
-      `;
-      
-      console.log("Exécution requête produits des autres laboratoires pour la famille");
-      const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
-      const otherLabProducts = otherLabsProductsResult.rows || [];
-      
-      console.log(`Produits des autres laboratoires trouvés pour la famille: ${otherLabProducts.length}`);
+      // Si un laboratoryId est fourni, obtenir ses produits
+      if (laboratoryId) {
+        // Paramètres pour les requêtes suivantes qui incluent le laboratoryId
+        const labParams = [...baseParams, laboratoryId];
+        
+        // Condition pharmacies pour les requêtes suivantes
+        let pharmacyConditionNextQueries = '';
+        
+        if (pharmacyIds && pharmacyIds.length > 0) {
+          const placeholders = pharmacyIds.map((_, i) => `${i + 5}`).join(',');
+          pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
+        }
+        
+        // Paramètres complets pour les requêtes suivantes
+        const nextQueriesParams = [...labParams];
+        if (pharmacyIds.length > 0) {
+          nextQueriesParams.push(...pharmacyIds);
+        }
+        
+        // Obtenir les top produits du laboratoire sélectionné pour cette famille
+        const labProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.${segmentColumn} = $3
+            AND gp.brand_lab = $4
+            ${pharmacyConditionNextQueries}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit}
+        `;
+        
+        console.log("Exécution requête produits du laboratoire pour la famille");
+        console.log("Paramètres produits lab:", JSON.stringify(nextQueriesParams));
+        const labProductsResult = await client.query(labProductsQuery, nextQueriesParams);
+        selectedLabProductsTop = labProductsResult.rows || [];
+        
+        console.log(`Produits du laboratoire trouvés pour la famille: ${selectedLabProductsTop.length}`);
+        
+        // Obtenir les top produits des autres laboratoires pour cette famille
+        const otherLabsProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.${segmentColumn} = $3
+            AND gp.brand_lab != $4
+            ${pharmacyConditionNextQueries}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit}
+        `;
+        
+        console.log("Exécution requête produits des autres laboratoires pour la famille");
+        const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
+        otherLabProductsTop = otherLabsProductsResult.rows || [];
+        
+        console.log(`Produits des autres laboratoires trouvés pour la famille: ${otherLabProductsTop.length}`);
+      } else {
+        // Si pas de laboratoire spécifié, juste récupérer les produits globaux
+        const globalProductsQuery = `
+          SELECT 
+            p.id,
+            p.id as product_id,
+            p.name,
+            COALESCE(gp.name, p.name) as display_name,
+            p.code_13_ref_id as code_13_ref,
+            gp.brand_lab,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
+            CASE 
+              WHEN SUM(s.quantity * i.price_with_tax) > 0 
+              THEN ROUND((SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) / 
+                         SUM(s.quantity * i.price_with_tax) * 100)::numeric, 2)
+              ELSE 0
+            END as margin_percentage,
+            MAX(CASE WHEN i.date = (SELECT MAX(date) FROM data_inventorysnapshot) THEN i.stock ELSE NULL END) as current_stock
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.${segmentColumn} = $3
+            ${pharmacyCondition}
+          GROUP BY 
+            p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
+          ORDER BY 
+            total_revenue DESC
+          LIMIT ${limit * 2}
+        `;
+        
+        console.log("Exécution requête produits globaux pour la famille");
+        const globalProductsResult = await client.query(globalProductsQuery, revenueParams);
+        selectedLabProductsTop = globalProductsResult.rows || [];
+        
+        console.log(`Produits globaux trouvés pour la famille: ${selectedLabProductsTop.length}`);
+      }
       
       // Retourner les données
       const finalResponse = {
         segmentInfo,
         marketShareByLab: marketShareData,
-        selectedLabProductsTop: selectedLabProducts,
-        otherLabsProductsTop: otherLabProducts
+        selectedLabProductsTop,
+        otherLabProductsTop
       };
       
       console.log("RÉPONSE FINALE - segmentInfo famille:", JSON.stringify(finalResponse.segmentInfo));
@@ -321,9 +391,12 @@ export async function GET(
   { params }: { params: { universe: string; category: string; family: string } }
 ) {
   try {
-    const universe = decodeURIComponent(params.universe);
-    const category = decodeURIComponent(params.category);
-    const family = decodeURIComponent(params.family);
+    const { universe: universePath, category: categoryPath, family: familyPath } = params;
+    
+    const universe = decodeURIComponent(universePath);
+    const category = decodeURIComponent(categoryPath);
+    const family = decodeURIComponent(familyPath);
+    
     const searchParams = request.nextUrl.searchParams;
     
     // Récupérer les paramètres de recherche
@@ -333,9 +406,9 @@ export async function GET(
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const limit = searchParams.get('limit') || '10';
     
-    if (!startDate || !endDate || !laboratoryId) {
+    if (!startDate || !endDate) {
       return NextResponse.json(
-        { error: 'Paramètres requis manquants' },
+        { error: 'Paramètres startDate et endDate requis' },
         { status: 400 }
       );
     }
