@@ -37,7 +37,7 @@ export function SidebarNavigation() {
           }`}
         >
           <FiBarChart2 className="mr-2 text-sky-500 dark:text-sky-400" size={16} />
-          <span>Vue globale</span>
+          <span>Tableau de bord</span>
         </Link>
         
         <Link

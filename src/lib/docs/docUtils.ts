@@ -23,6 +23,12 @@ const documentationStructure: DocSection[] = [
     ]
   },
   {
+    title: 'Data',
+    items: [
+      { slug: 'data/collection', title: 'Collecte des données' },
+    ]
+  },
+  {
     title: 'Fonctionnalités',
     items: [
       { slug: 'features/segment-filter', title: 'Filtre de produits' },
@@ -30,19 +36,6 @@ const documentationStructure: DocSection[] = [
       { slug: 'features/dashboard', title: 'Page globale' },
       { slug: 'features/product-page', title: 'Page Produit' },
       { slug: 'features/laboratory-page', title: 'Page Labo' }
-    ]
-  },
-  {
-    title: 'Data',
-    items: [
-      { slug: 'data/collection', title: 'Collecte des données' },
-      { slug: 'data/indicators', title: 'Calcul des indicateurs' }
-    ]
-  },
-  {
-    title: 'Guides pratiques',
-    items: [
-      { slug: 'guides/svr-analysis', title: 'Analyse du labo SVR' }
     ]
   }
 ];
