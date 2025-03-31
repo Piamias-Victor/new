@@ -3,10 +3,50 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getDocStructure } from '@/lib/docs/docUtils';
+export interface DocItem {
+  slug: string;
+  title: string;
+}
+
+export interface DocSection {
+  title: string;
+  items: DocItem[];
+}
+
+// Structure statique pour éviter les appels côté client
+const structure: DocSection[] = [
+  {
+    title: 'Prise en main',
+    items: [
+      { slug: 'getting-started', title: 'Premiers pas' }
+    ]
+  },
+  {
+    title: 'Fonctionnalités',
+    items: [
+      { slug: 'features/segment-filter', title: 'Filtre de produits' },
+      { slug: 'features/date-filter', title: 'Filtre de dates' },
+      { slug: 'features/dashboard', title: 'Page globale' },
+      { slug: 'features/product-page', title: 'Page Produit' },
+      { slug: 'features/laboratory-page', title: 'Page Labo' }
+    ]
+  },
+  {
+    title: 'Data',
+    items: [
+      { slug: 'data/collection', title: 'Collecte des données' },
+      { slug: 'data/indicators', title: 'Calcul des indicateurs' }
+    ]
+  },
+  {
+    title: 'Guides pratiques',
+    items: [
+      { slug: 'guides/svr-analysis', title: 'Analyse du labo SVR' }
+    ]
+  }
+];
 
 export function DocSidebar() {
-  const structure = getDocStructure();
   const pathname = usePathname();
   
   return (

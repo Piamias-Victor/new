@@ -1,5 +1,5 @@
 // src/lib/docs/docUtils.ts
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
 
@@ -14,9 +14,6 @@ interface DocSection {
   items: DocItem[];
 }
 
-// Chemin vers le dossier des documents
-const docsDirectory = path.join(process.cwd(), 'src/content/docs');
-
 // Structure de documentation pour ApoData
 const documentationStructure: DocSection[] = [
   {
@@ -28,7 +25,8 @@ const documentationStructure: DocSection[] = [
   {
     title: 'Fonctionnalités',
     items: [
-      { slug: 'features/segment-filter', title: 'Segment de filtre' },
+      { slug: 'features/segment-filter', title: 'Filtre de produits' },
+      { slug: 'features/date-filter', title: 'Filtre de dates' },
       { slug: 'features/dashboard', title: 'Page globale' },
       { slug: 'features/product-page', title: 'Page Produit' },
       { slug: 'features/laboratory-page', title: 'Page Labo' }
@@ -61,25 +59,50 @@ export function getDocStructure(): DocSection[] {
   return documentationStructure;
 }
 
-// Vérifier si un dossier existe, sinon le créer
-function ensureDirectoryExists(directoryPath: string) {
-  if (!fs.existsSync(directoryPath)) {
-    fs.mkdirSync(directoryPath, { recursive: true });
-    console.log(`Dossier créé: ${directoryPath}`);
-  }
-}
+// Séparer le code côté serveur du code côté client
+// Créer un drapeau pour indiquer si le code s'exécute côté serveur
+const isServer = typeof window === 'undefined';
 
 // Obtenir le contenu d'un document
-export function getDocContent(slug: string): { title: string; content: string } | null {
+export async function getDocContent(slug: string): Promise<{ title: string; content: string } | null> {
+  // Si nous sommes côté client, retournons un contenu de secours statique
+  if (!isServer) {
+    // Trouver le document dans la structure si possible
+    for (const section of documentationStructure) {
+      const item = section.items.find(item => item.slug === slug);
+      if (item) {
+        return {
+          title: item.title,
+          content: `# ${item.title}\n\nChargement du contenu...`
+        };
+      }
+    }
+    
+    // Si c'est la page d'index
+    if (slug === 'index' || slug === '') {
+      return {
+        title: 'Documentation ApoData',
+        content: '# Documentation ApoData\n\nChargement du contenu...'
+      };
+    }
+    
+    return {
+      title: 'Documentation',
+      content: 'Chargement du contenu...'
+    };
+  }
+  
   try {
-    // S'assurer que le dossier de documentation existe
-    ensureDirectoryExists(docsDirectory);
+    // Code exécuté uniquement côté serveur
+    const docsDirectory = path.join(process.cwd(), 'src/content/docs');
     
     // Pour l'index, utiliser le fichier index.md ou retourner un contenu par défaut
     const fullPath = path.join(docsDirectory, `${slug}.md`);
     
     // Vérifier si le fichier existe
-    if (!fs.existsSync(fullPath)) {
+    try {
+      await fs.access(fullPath);
+    } catch (error) {
       console.warn(`Fichier non trouvé: ${fullPath}`);
       
       // Si c'est l'index mais que le fichier n'existe pas, retourner un contenu par défaut
@@ -133,7 +156,7 @@ ApoData vous permet de :
     }
     
     // Lire le fichier et extraire les métadonnées avec gray-matter
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const fileContents = await fs.readFile(fullPath, 'utf8');
     const { data, content } = matter(fileContents);
     
     return {
@@ -165,19 +188,28 @@ ApoData vous permet de :
   }
 }
 
-// Fonction utilitaire pour créer un fichier Markdown s'il n'existe pas
-export function createMarkdownFileIfNotExists(slug: string, title: string, content: string): void {
+// Ces fonctions ne doivent être utilisées que côté serveur dans des API routes ou getServerSideProps
+export async function createMarkdownFileIfNotExists(slug: string, title: string, content: string): Promise<void> {
+  if (!isServer) {
+    console.warn('Cette fonction ne peut être utilisée que côté serveur');
+    return;
+  }
+  
   try {
+    const docsDirectory = path.join(process.cwd(), 'src/content/docs');
     const fullPath = path.join(docsDirectory, `${slug}.md`);
     
-    // Si le fichier existe déjà, ne pas l'écraser
-    if (fs.existsSync(fullPath)) {
-      return;
+    // Vérifier si le fichier existe déjà
+    try {
+      await fs.access(fullPath);
+      return; // Le fichier existe déjà, ne rien faire
+    } catch (error) {
+      // Le fichier n'existe pas, on continue
     }
     
     // Créer les répertoires nécessaires
     const directory = path.dirname(fullPath);
-    ensureDirectoryExists(directory);
+    await fs.mkdir(directory, { recursive: true });
     
     // Créer le contenu avec les métadonnées
     const fileContent = `---
@@ -189,21 +221,28 @@ lastUpdated: "${new Date().toISOString().split('T')[0]}"
 ${content}`;
     
     // Écrire le fichier
-    fs.writeFileSync(fullPath, fileContent);
+    await fs.writeFile(fullPath, fileContent);
     console.log(`Fichier Markdown créé: ${fullPath}`);
   } catch (error) {
     console.error(`Erreur lors de la création du fichier Markdown ${slug}:`, error);
   }
 }
 
-// Fonction pour initialiser tous les fichiers de documentation manquants
-export function initializeDocumentationFiles(): void {
+// Fonction pour initialiser tous les fichiers de documentation manquants (à utiliser dans un script Node.js séparé)
+export async function initializeDocumentationFiles(): Promise<void> {
+  if (!isServer) {
+    console.warn('Cette fonction ne peut être utilisée que côté serveur');
+    return;
+  }
+  
   try {
+    const docsDirectory = path.join(process.cwd(), 'src/content/docs');
+    
     // Créer le répertoire de documentation s'il n'existe pas
-    ensureDirectoryExists(docsDirectory);
+    await fs.mkdir(docsDirectory, { recursive: true });
     
     // Créer le fichier d'index s'il n'existe pas
-    createMarkdownFileIfNotExists('index', 'Documentation ApoData', `# ApoData - Documentation
+    await createMarkdownFileIfNotExists('index', 'Documentation ApoData', `# ApoData - Documentation
 
 ## Bienvenue dans la documentation
 
@@ -236,7 +275,7 @@ ApoData vous permet de :
     // Parcourir toute la structure et créer les fichiers manquants
     for (const section of documentationStructure) {
       for (const item of section.items) {
-        createMarkdownFileIfNotExists(
+        await createMarkdownFileIfNotExists(
           item.slug, 
           item.title, 
           `# ${item.title}\n\nContenu de la page ${item.title}. Cette page est en cours de rédaction.`
