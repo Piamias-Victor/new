@@ -1,0 +1,110 @@
+/* src/components/docs/DocContent.css */
+
+.doc-content {
+    max-width: 800px;
+    margin: 0 auto;
+    color: #2D3748;
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  
+  .doc-h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #0EA5E9; /* Sky-600 - Couleur principale */
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+  }
+  
+  .doc-h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    color: #0284C7; /* Sky-700 */
+  }
+  
+  .doc-h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: #0369A1; /* Sky-800 */
+  }
+  
+  .doc-p {
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+  }
+  
+  .doc-ul, .doc-ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+  }
+  
+  .doc-li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .doc-link {
+    color: #0EA5E9;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  
+  .doc-link:hover {
+    border-color: #0EA5E9;
+  }
+  
+  .doc-blockquote {
+    border-left: 4px solid #0EA5E9;
+    padding: 0.5rem 0 0.5rem 1rem;
+    margin: 1.5rem 0;
+    background-color: #f0f9ff; /* Sky-50 */
+    font-style: italic;
+  }
+  
+  .doc-inline-code {
+    background-color: #f1f5f9;
+    border-radius: 3px;
+    font-family: monospace;
+    padding: 0.1em 0.4em;
+    color: #0EA5E9;
+  }
+  
+  .doc-code-block {
+    background-color: #0F172A; /* Slate-900 */
+    border-radius: 5px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    color: #e2e8f0;
+    font-family: monospace;
+  }
+  
+  .doc-strong {
+    font-weight: 700;
+    color: #0284C7; /* Sky-700 */
+  }
+  
+  .doc-em {
+    font-style: italic;
+    color: #0EA5E9; /* Sky-600 */
+  }
+  
+  /* Styliser les listes pour qu'elles se démarquent mieux */
+  .doc-ul {
+    list-style-type: disc;
+  }
+  
+  .doc-ol {
+    list-style-type: decimal;
+  }
+  
+  /* Ajouter un peu d'espace entre les éléments de liste */
+  .doc-li + .doc-li {
+    margin-top: 0.5rem;
+  }
