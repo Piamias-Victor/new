@@ -15,6 +15,16 @@ export async function middleware(req: NextRequest) {
   if (!pharmacyRestrictedPaths.some(p => path.startsWith(p))) {
     return NextResponse.next();
   }
+
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    // Continuer avec la requête, mais modifier la réponse ensuite
+    const response = NextResponse.next();
+    
+    // Ajouter les en-têtes de cache
+    response.headers.set('Cache-Control', 'public, max-age=120, s-maxage=120, stale-while-revalidate=60');
+    
+    return response;
+  }
   
   // Récupérer le token de session
   const token = await getToken({

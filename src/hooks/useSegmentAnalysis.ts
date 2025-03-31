@@ -36,7 +36,7 @@ export interface SegmentAnalysisData {
     total_revenue: number;
   };
   selectedLabProductsTop: TopProduct[];
-  otherLabsProductsTop: TopProduct[];
+  otherLabProductsTop: TopProduct[];
   marketShareByLab: LaboratoryMarketShare[];
   isLoading: boolean;
   error: string | null;
@@ -56,7 +56,7 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
       total_revenue: 0
     },
     selectedLabProductsTop: [],
-    otherLabsProductsTop: [],
+    otherLabProductsTop: [],
     marketShareByLab: [],
     isLoading: true,
     error: null
@@ -177,7 +177,6 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
         
         // Traitement de la réponse
         const result = await response.json();
-        console.log("HOOK - Réponse API reçue:", JSON.stringify(result.segmentInfo));
         
         // Extraction des données
         const segmentInfo = result.segmentInfo || {
@@ -198,8 +197,8 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
           ? result.selectedLabProductsTop 
           : [];
           
-        const otherLabsProductsTop = Array.isArray(result.otherLabsProductsTop)
-          ? result.otherLabsProductsTop
+        const otherLabProductsTop = Array.isArray(result.otherLabProductsTop)
+          ? result.otherLabProductsTop
           : [];
           
         const marketShareByLab = Array.isArray(result.marketShareByLab)
@@ -210,7 +209,7 @@ export function useSegmentAnalysis(segmentId: string, laboratoryId: string): Seg
         const newData = {
           segmentInfo,
           selectedLabProductsTop,
-          otherLabsProductsTop,
+          otherLabProductsTop,
           marketShareByLab,
           isLoading: false,
           error: null

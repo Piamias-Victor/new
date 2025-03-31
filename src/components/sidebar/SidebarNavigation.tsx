@@ -64,7 +64,7 @@ export function SidebarNavigation() {
           <span>Par laboratoire</span>
         </Link>
         
-        <Link
+        {/* <Link
           href={createUrlWithParams("/dashboard/detailed/categories")}
           className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors ${
             isActive('/categories')
@@ -74,9 +74,9 @@ export function SidebarNavigation() {
         >
           <FiGrid className="mr-2 text-emerald-500 dark:text-emerald-400" size={16} />
           <span>Par catégorie</span>
-        </Link>
+        </Link> */}
         
-        <Link
+        {/* <Link
           href={createUrlWithParams("/dashboard/detailed/generics")}
           className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors ${
             isActive('/generics')
@@ -86,9 +86,9 @@ export function SidebarNavigation() {
         >
           <FiCopy className="mr-2 text-purple-500 dark:text-purple-400" size={16} />
           <span>Par générique</span>
-        </Link>
+        </Link> */}
         
-        <Link
+        {/* <Link
           href={createUrlWithParams("/dashboard/detailed/wholesalers")}
           className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors ${
             isActive('/wholesalers')
@@ -98,7 +98,7 @@ export function SidebarNavigation() {
         >
           <FiTruck className="mr-2 text-amber-500 dark:text-amber-400" size={16} />
           <span>Par grossiste</span>
-        </Link>
+        </Link> */}
       </nav>
     </SidebarCard>
   );

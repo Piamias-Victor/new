@@ -45,6 +45,8 @@ export default function LaboratoriesDashboard() {
   // Détermine si un laboratoire est sélectionné
   const hasSelectedLab = selectedLabs.length > 0;
 
+  const isPharmacyUser = session.user?.role === 'pharmacy_user';
+
   return (
     <SidebarLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -83,7 +85,7 @@ export default function LaboratoriesDashboard() {
             <div className="mt-6"/>  
             <SelectedProductsList/>
             <div className="mt-6"/>  
-            <PharmaciesList />
+            {!isPharmacyUser && <PharmaciesList />}
           </>
       </div>
     </div>

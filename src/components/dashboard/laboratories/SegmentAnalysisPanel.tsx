@@ -1,5 +1,4 @@
 // src/components/dashboard/laboratories/SegmentAnalysisPanel.tsx
-
 import React from 'react';
 import { FiBarChart2, FiPieChart } from 'react-icons/fi';
 import { useSegmentAnalysis } from '@/hooks/useSegmentAnalysis';
@@ -18,7 +17,7 @@ export function SegmentAnalysisPanel({
   const { 
     segmentInfo, 
     selectedLabProductsTop, 
-    otherLabsProductsTop, 
+    otherLabProductsTop, 
     marketShareByLab,
     isLoading, 
     error 
@@ -53,6 +52,10 @@ export function SegmentAnalysisPanel({
 
   // Déterminer si on est en mode global (sans laboratoire spécifique)
   const isGlobalMode = !laboratoryId;
+
+  console.log('otherLabsProductsTop', otherLabProductsTop);
+
+  // Vérifier si nous avons des produits concurrents
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
@@ -114,8 +117,7 @@ export function SegmentAnalysisPanel({
           // Mode global: afficher tous les produits dans une seule liste
           <div>
             <SegmentTopProducts 
-              products={[...selectedLabProductsTop, ...otherLabsProductsTop]
-                .sort((a, b) => b.total_revenue - a.total_revenue)} 
+              products={selectedLabProductsTop || []} 
               title="Top produits du segment"
             />
           </div>
@@ -123,13 +125,14 @@ export function SegmentAnalysisPanel({
           // Mode laboratoire: afficher les produits du labo et les concurrents côte à côte
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SegmentTopProducts 
-              products={selectedLabProductsTop} 
+              products={selectedLabProductsTop || []} 
               title="Top produits du laboratoire"
             />
-            <SegmentTopProducts 
-              products={otherLabsProductsTop}
-              title="Top produits concurrents"
-            />
+            {/* Seulement afficher les produits concurrents s'il y en a */}
+              <SegmentTopProducts 
+                products={otherLabProductsTop || []}
+                title="Top produits concurrents"
+              />
           </div>
         )}
       </div>

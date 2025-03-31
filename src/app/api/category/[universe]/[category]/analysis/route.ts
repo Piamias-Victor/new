@@ -14,12 +14,9 @@ export async function POST(
     const universe = decodeURIComponent(universePath);
     const category = decodeURIComponent(categoryPath);
     
-    console.log("\n\n================ DÉBUT ANALYSE CATÉGORIE ================");
-    console.log(`Univers: "${universe}", Catégorie: "${category}"`);
     
     // Récupérer et logger le corps de la requête
     const body = await request.json();
-    console.log("Corps de la requête complet:", JSON.stringify(body));
     
     const { 
       startDate, 

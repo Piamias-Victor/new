@@ -138,7 +138,6 @@ export async function POST(
         total_revenue: totalRevenue
       };
       
-      console.log("CRÉATION SEGMENTINFO POUR FAMILLE:", JSON.stringify(segmentInfo));
       
       // Obtenir les parts de marché des laboratoires pour cette famille
       const marketShareQuery = `
@@ -146,6 +145,8 @@ export async function POST(
           SELECT 
             gp.brand_lab,
             SUM(s.quantity * i.price_with_tax) as total_revenue,
+            SUM(s.quantity) as total_quantity,
+            SUM(s.quantity * (i.price_with_tax - (i.weighted_average_price * (1 + p."TVA"/100)))) as total_margin,
             COUNT(DISTINCT p.code_13_ref_id) as product_count
           FROM 
             data_sales s
@@ -157,14 +158,16 @@ export async function POST(
             data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
           WHERE 
             s.date BETWEEN $1 AND $2
-            AND gp.family = $3
+            AND gp.${segmentColumn} = $3
             ${pharmacyCondition}
           GROUP BY 
             gp.brand_lab
         ),
         family_total_sales AS (
           SELECT 
-            SUM(total_revenue) as total_family_revenue
+            SUM(total_revenue) as total_family_revenue,
+            SUM(total_quantity) as total_family_quantity,
+            SUM(total_margin) as total_family_margin
           FROM 
             family_lab_sales
         ),
@@ -172,6 +175,8 @@ export async function POST(
           SELECT 
             brand_lab,
             total_revenue,
+            total_quantity,
+            total_margin,
             product_count,
             ROW_NUMBER() OVER (ORDER BY total_revenue DESC) as lab_rank
           FROM 
@@ -181,13 +186,25 @@ export async function POST(
           lr.brand_lab as id,
           lr.brand_lab as name,
           lr.total_revenue,
+          lr.total_quantity,
+          lr.total_margin,
           lr.product_count,
           lr.lab_rank as rank,
           CASE 
             WHEN fts.total_family_revenue > 0 
             THEN ROUND((lr.total_revenue / fts.total_family_revenue * 100)::numeric, 2)
             ELSE 0
-          END as market_share
+          END as market_share,
+          CASE 
+            WHEN fts.total_family_quantity > 0 
+            THEN ROUND((lr.total_quantity / fts.total_family_quantity * 100)::numeric, 2)
+            ELSE 0
+          END as volume_share,
+          CASE 
+            WHEN lr.total_revenue > 0 
+            THEN ROUND((lr.total_margin / lr.total_revenue * 100)::numeric, 2)
+            ELSE 0
+          END as margin_percentage
         FROM 
           lab_ranking lr
         CROSS JOIN 
@@ -215,7 +232,7 @@ export async function POST(
         let pharmacyConditionNextQueries = '';
         
         if (pharmacyIds && pharmacyIds.length > 0) {
-          const placeholders = pharmacyIds.map((_, i) => `${i + 5}`).join(',');
+          const placeholders = pharmacyIds.map((_, i) => `$${i + 5}`).join(',');
           pharmacyConditionNextQueries = ` AND p.pharmacy_id IN (${placeholders})`;
         }
         
@@ -301,7 +318,7 @@ export async function POST(
           WHERE 
             s.date BETWEEN $1 AND $2
             AND gp.${segmentColumn} = $3
-            AND gp.brand_lab != $4
+            AND (gp.brand_lab IS NULL OR gp.brand_lab != $4)
             ${pharmacyConditionNextQueries}
           GROUP BY 
             p.id, p.name, gp.name, p.code_13_ref_id, gp.brand_lab
@@ -311,10 +328,43 @@ export async function POST(
         `;
         
         console.log("Exécution requête produits des autres laboratoires pour la famille");
+        console.log("SQL otherLabsProductsQuery:", otherLabsProductsQuery.replace(/\s+/g, ' '));
+        console.log("Paramètres utilisés:", JSON.stringify(nextQueriesParams));
+
         const otherLabsProductsResult = await client.query(otherLabsProductsQuery, nextQueriesParams);
+        console.log("Résultat brut de otherLabsProductsQuery:", JSON.stringify(otherLabsProductsResult));
         otherLabProductsTop = otherLabsProductsResult.rows || [];
         
         console.log(`Produits des autres laboratoires trouvés pour la famille: ${otherLabProductsTop.length}`);
+        
+        // Requête simplifiée pour vérifier si des produits d'autres laboratoires existent
+        const testQuery = `
+          SELECT COUNT(*) as count
+          FROM data_globalproduct gp
+          WHERE gp.${segmentColumn} = $1
+          AND (gp.brand_lab IS NULL OR gp.brand_lab != $2)
+        `;
+        const testResult = await client.query(testQuery, [family, laboratoryId]);
+        console.log(`Test - Nombre de produits d'autres laboratoires: ${testResult.rows[0].count}`);
+        
+        // Vérifier s'il y a des ventes pour ces produits
+        const testSalesQuery = `
+          SELECT COUNT(*) as count
+          FROM 
+            data_sales s
+          JOIN 
+            data_inventorysnapshot i ON s.product_id = i.id
+          JOIN 
+            data_internalproduct p ON i.product_id = p.id
+          JOIN 
+            data_globalproduct gp ON p.code_13_ref_id = gp.code_13_ref
+          WHERE 
+            s.date BETWEEN $1 AND $2
+            AND gp.${segmentColumn} = $3
+            AND (gp.brand_lab IS NULL OR gp.brand_lab != $4)
+        `;
+        const testSalesResult = await client.query(testSalesQuery, nextQueriesParams.slice(0, 4));
+        console.log(`Test - Nombre de ventes de produits d'autres laboratoires: ${testSalesResult.rows[0].count}`);
       } else {
         // Si pas de laboratoire spécifié, juste récupérer les produits globaux
         const globalProductsQuery = `
@@ -360,6 +410,10 @@ export async function POST(
         
         console.log(`Produits globaux trouvés pour la famille: ${selectedLabProductsTop.length}`);
       }
+
+      console.log(`Produits des autres laboratoires trouvés pour la famille: ${otherLabProductsTop}`);
+      console.log(`Produits du laboratoires trouvés pour la famille: ${selectedLabProductsTop}`);
+
       
       // Retourner les données
       const finalResponse = {
