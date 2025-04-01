@@ -42,6 +42,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/docs" className="text-gray-600 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 text-sm">
+                  Documentation
+                </Link>
+              </li>
+              <li>
                 <Link href="/auth/login" className="text-gray-600 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 text-sm">
                   Connexion
                 </Link>
