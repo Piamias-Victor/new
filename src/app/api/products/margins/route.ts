@@ -102,20 +102,21 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
           g.category,
           g.brand_lab,
           g.code_13_ref,
-          ls.current_stock,
-          ls.price_with_tax,
-          ls.weighted_average_price,
-          p."TVA" as tva_rate,
+          COALESCE(ls.current_stock, 0) as current_stock,
+          COALESCE(ls.price_with_tax, 0) as price_with_tax,
+          COALESCE(ls.weighted_average_price, 0) as weighted_average_price,
+          COALESCE(p."TVA", 0) as tva_rate,
           CASE 
-            WHEN ls.weighted_average_price > 0 THEN
-              -- Calcul standard de la marge brute: (Prix vente HT - Prix achat HT) / Prix achat HT * 100
-              ROUND(((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price) / (ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) * 100, 2)
+            WHEN COALESCE(ls.weighted_average_price, 0) > 0 AND (COALESCE(ls.price_with_tax, 0) / (1 + COALESCE(p."TVA", 0)/100)) > 0 THEN
+              -- Calcul standard de la marge brute: (Prix vente HT - Prix achat HT) / Prix vente HT * 100
+              ROUND(((COALESCE(ls.price_with_tax, 0) / (1 + COALESCE(p."TVA", 0)/100)) - COALESCE(ls.weighted_average_price, 0)) / 
+              NULLIF((COALESCE(ls.price_with_tax, 0) / (1 + COALESCE(p."TVA", 0)/100)), 0) * 100, 2)
             ELSE 0
           END as margin_percentage,
           CASE 
-            WHEN ls.weighted_average_price > 0 THEN
+            WHEN COALESCE(ls.weighted_average_price, 0) > 0 THEN
               -- Calcul de la marge en valeur absolue (Prix de vente HT - Prix d'achat HT)
-              ROUND((ls.price_with_tax / (1 + COALESCE(p."TVA", 0)/100)) - ls.weighted_average_price, 2)
+              ROUND((COALESCE(ls.price_with_tax, 0) / (1 + COALESCE(p."TVA", 0)/100)) - COALESCE(ls.weighted_average_price, 0), 2)
             ELSE 0
           END as margin_amount,
           COALESCE(ps.total_sales, 0) as total_sales
@@ -127,7 +128,7 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
           product_sales ps ON p.id = ps.product_id
         LEFT JOIN
           data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
-        ${whereClause.length > 0 ? whereClause : 'WHERE ls.current_stock > 0'}
+        ${whereClause.length > 0 ? whereClause : 'WHERE COALESCE(ls.current_stock, 0) > 0'}
       ),
       -- Agrégation par code EAN13 pour éviter les doublons
       aggregated_ean AS (
@@ -138,17 +139,17 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
           MAX(brand_lab) AS brand_lab,
           SUM(current_stock) AS current_stock,
           -- Prix moyen pondéré par le stock
-          SUM(price_with_tax * current_stock) / NULLIF(SUM(current_stock), 0) AS price_with_tax,
+          SUM(price_with_tax * NULLIF(current_stock, 0)) / NULLIF(SUM(current_stock), 0) AS price_with_tax,
           -- Prix d'achat moyen pondéré par le stock
-          SUM(weighted_average_price * current_stock) / NULLIF(SUM(current_stock), 0) AS weighted_average_price,
+          SUM(weighted_average_price * NULLIF(current_stock, 0)) / NULLIF(SUM(current_stock), 0) AS weighted_average_price,
           -- TVA moyenne (pourrait être la même pour tous les produits avec le même EAN)
           AVG(tva_rate) AS tva_rate,
           -- Ventes totales
           SUM(total_sales) AS total_sales,
           -- Marge moyenne pondérée par les ventes
-          SUM(margin_percentage * total_sales) / NULLIF(SUM(total_sales), 0) AS margin_percentage,
+          SUM(margin_percentage * NULLIF(total_sales, 0)) / NULLIF(SUM(total_sales), 0) AS margin_percentage,
           -- Marge unitaire moyenne pondérée par le stock
-          SUM(margin_amount * current_stock) / NULLIF(SUM(current_stock), 0) AS margin_amount
+          SUM(margin_amount * NULLIF(current_stock, 0)) / NULLIF(SUM(current_stock), 0) AS margin_amount
         FROM
           product_data
         WHERE
@@ -165,25 +166,26 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
         category,
         brand_lab,
         code_13_ref,
-        current_stock,
-        price_with_tax,
-        weighted_average_price,
-        tva_rate,
+        COALESCE(current_stock, 0) AS current_stock,
+        COALESCE(price_with_tax, 0) AS price_with_tax,
+        COALESCE(weighted_average_price, 0) AS weighted_average_price,
+        COALESCE(tva_rate, 0) AS tva_rate,
         -- Recalculer la marge si nécessaire (si les valeurs agrégées sont significativement différentes)
         CASE
-          WHEN weighted_average_price > 0 THEN
-            ROUND(((price_with_tax / (1 + tva_rate/100)) - weighted_average_price) / (price_with_tax / (1 + tva_rate/100)) * 100, 2)
+          WHEN COALESCE(weighted_average_price, 0) > 0 AND COALESCE(price_with_tax, 0) > 0 THEN
+            ROUND(((COALESCE(price_with_tax, 0) / (1 + NULLIF(COALESCE(tva_rate, 0), 0)/100)) - COALESCE(weighted_average_price, 0)) / 
+            NULLIF((COALESCE(price_with_tax, 0) / (1 + NULLIF(COALESCE(tva_rate, 0), 0)/100)), 0) * 100, 2)
           ELSE
-            margin_percentage
+            COALESCE(margin_percentage, 0)
         END AS margin_percentage,
         -- Recalculer le montant de la marge si nécessaire
         CASE
-          WHEN weighted_average_price > 0 THEN
-            ROUND((price_with_tax / (1 + tva_rate/100)) - weighted_average_price, 2)
+          WHEN COALESCE(weighted_average_price, 0) > 0 AND COALESCE(price_with_tax, 0) > 0 THEN
+            ROUND((COALESCE(price_with_tax, 0) / (1 + NULLIF(COALESCE(tva_rate, 0), 0)/100)) - COALESCE(weighted_average_price, 0), 2)
           ELSE
-            margin_amount
+            COALESCE(margin_amount, 0)
         END AS margin_amount,
-        total_sales
+        COALESCE(total_sales, 0) AS total_sales
       FROM
         aggregated_ean
       ORDER BY 
@@ -193,12 +195,12 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
     const result = await client.query(query, params);
     
     // Classifier les produits par catégorie de marge selon les seuils standards
-    // Marge brute standard: (Prix vente HT - Prix achat HT) / Prix achat HT * 100
-    const negativeMargin = result.rows.filter(p => parseFloat(p.margin_percentage) < 0);
-    const lowMargin = result.rows.filter(p => parseFloat(p.margin_percentage) >= 0 && parseFloat(p.margin_percentage) < 25);
-    const mediumMargin = result.rows.filter(p => parseFloat(p.margin_percentage) >= 25 && parseFloat(p.margin_percentage) < 30);
-    const goodMargin = result.rows.filter(p => parseFloat(p.margin_percentage) >= 30 && parseFloat(p.margin_percentage) <= 35);
-    const excellentMargin = result.rows.filter(p => parseFloat(p.margin_percentage) > 35);
+    // Marge brute standard: (Prix vente HT - Prix achat HT) / Prix vente HT * 100
+    const negativeMargin = result.rows.filter(p => parseFloat(p.margin_percentage || '0') < 0);
+    const lowMargin = result.rows.filter(p => parseFloat(p.margin_percentage || '0') >= 0 && parseFloat(p.margin_percentage || '0') < 25);
+    const mediumMargin = result.rows.filter(p => parseFloat(p.margin_percentage || '0') >= 25 && parseFloat(p.margin_percentage || '0') < 30);
+    const goodMargin = result.rows.filter(p => parseFloat(p.margin_percentage || '0') >= 30 && parseFloat(p.margin_percentage || '0') <= 35);
+    const excellentMargin = result.rows.filter(p => parseFloat(p.margin_percentage || '0') > 35);
     
     return NextResponse.json({
       pharmacyIds: pharmacyIds.length > 0 ? pharmacyIds : 'all',

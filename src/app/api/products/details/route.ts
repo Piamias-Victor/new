@@ -64,10 +64,22 @@ export async function POST(request: NextRequest) {
             MAX(i.weighted_average_price) AS sell_in_price_ht,
             -- Taux de TVA (pour conversion HT/TTC)
             COALESCE(MAX(p."TVA"), 20) AS tva_rate,
-            -- Quantité en stock actuelle
-            SUM(i.stock) AS stock_quantity,
-            -- Valeur du stock HT
-            SUM(i.stock * i.weighted_average_price) AS stock_value_ht,
+            -- Quantité en stock actuelle (dernière valeur connue, pas une somme)
+            (
+              SELECT stock 
+              FROM data_inventorysnapshot 
+              WHERE product_id = p.id 
+              ORDER BY date DESC 
+              LIMIT 1
+            ) AS stock_quantity,
+            -- Valeur du stock HT (basée sur le stock actuel, pas une somme)
+            (
+              SELECT stock * weighted_average_price 
+              FROM data_inventorysnapshot 
+              WHERE product_id = p.id 
+              ORDER BY date DESC 
+              LIMIT 1
+            ) AS stock_value_ht,
             -- CA total TTC (sell-out)
             SUM(s.quantity * i.price_with_tax) AS total_sell_out,
             -- CA total HT (sell-in)
@@ -121,7 +133,7 @@ export async function POST(request: NextRequest) {
             SUM(cp.sell_in_price_ht * cp.sales_quantity) / NULLIF(SUM(cp.sales_quantity), 0) AS sell_in_price_ht,
             -- Taux TVA moyen
             AVG(cp.tva_rate) AS tva_rate,
-            -- Stock total
+            -- Stock total (somme des stocks actuels)
             SUM(cp.stock_quantity) AS stock_quantity,
             SUM(cp.stock_value_ht) AS stock_value_ht,
             -- Totaux ventes 
