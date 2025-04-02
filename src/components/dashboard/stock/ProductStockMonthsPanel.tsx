@@ -69,20 +69,6 @@ export function ProductStockMonthsPanelFiltered() {
       </div>
     );
   }
-  
-  // Si pas de filtre actif, afficher un message d'invite
-  if (!isFilterActive) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        <div className="text-center p-6">
-          <FiClock className="mx-auto text-gray-400 mb-3" size={24} />
-          <p className="text-gray-500 dark:text-gray-400">
-            Sélectionnez des produits via le filtre pour voir leur analyse de stock
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">

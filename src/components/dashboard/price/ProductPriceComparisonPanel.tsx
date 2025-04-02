@@ -63,19 +63,6 @@ export function ProductPriceComparisonPanel() {
       </div>
     );
   }
-  
-  if (!isFilterActive) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        <div className="text-center p-6">
-          <MdEuro className="mx-auto text-gray-400 mb-3" size={24} />
-          <p className="text-gray-500 dark:text-gray-400">
-            Sélectionnez des produits via le filtre pour voir leur analyse de prix
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
