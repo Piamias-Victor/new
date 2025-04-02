@@ -10,7 +10,8 @@ import {
   FiTrendingUp, 
   FiTrendingDown,
   FiInfo,
-  FiChevronDown
+  FiChevronDown,
+  FiDownload
 } from 'react-icons/fi';
 import { ProductInfoTab } from './tabs/ProductInfoTab';
 import { ProductSalesTab } from './tabs/ProductSalesTab';
@@ -31,6 +32,7 @@ export function SelectedProductsList() {
   const [showTotals, setShowTotals] = useState(true);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('info');
+  const [isExporting, setIsExporting] = useState(false);
   
   // Fonction pour formatter les valeurs monétaires
   const formatCurrency = (amount: number) => {
@@ -133,6 +135,68 @@ export function SelectedProductsList() {
     return products.find(product => product.id === expandedProductId) || null;
   }, [expandedProductId, products]);
   
+  // Fonction pour exporter les données en CSV
+  const exportToCSV = () => {
+    if (sortedProducts.length === 0) return;
+    
+    setIsExporting(true);
+    
+    try {
+      // Préparer les données pour l'export
+      const exportData = sortedProducts.map(product => ({
+        'Produit': product.display_name,
+        'Code EAN': product.code_13_ref,
+        'Laboratoire': product.brand_lab || '',
+        'Prix HT': product.sell_in_price_ht,
+        'Prix TTC': product.sell_out_price_ttc,
+        'CA Sell-in': product.total_sell_in,
+        'CA Sell-out': product.total_sell_out,
+        'Taux de marge (%)': product.margin_percentage,
+        'Marge (€)': product.margin_amount,
+        'Stock (unités)': product.stock_quantity,
+        'Valeur stock (€)': product.stock_value_ht,
+        'Qté vendue': product.sales_quantity,
+        'Évolution ventes (%)': product.sales_evolution_percentage
+      }));
+      
+      // Convertir en CSV
+      const headers = Object.keys(exportData[0]).join(';');
+      const csvData = exportData.map(row => {
+        return Object.values(row).map(value => {
+          // Gérer les nombres pour assurer la compatibilité Excel français (virgule décimale)
+          if (typeof value === 'number') {
+            return String(value).replace('.', ',');
+          }
+          // Échapper les valeurs contenant des points-virgules
+          if (typeof value === 'string' && value.includes(';')) {
+            return `"${value}"`;
+          }
+          return value;
+        }).join(';');
+      }).join('\n');
+      
+      const csvContent = `${headers}\n${csvData}`;
+      
+      // Créer un blob et un lien de téléchargement
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Configurer et déclencher le téléchargement
+      const date = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `produits_selectionnes_${date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Erreur lors de l\'exportation:', error);
+      alert('Une erreur est survenue lors de l\'exportation. Veuillez réessayer.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+  
   // Affichage pendant le chargement
   if (isLoading) {
     return (
@@ -218,6 +282,19 @@ export function SelectedProductsList() {
             >
               <FiRefreshCw className="mr-2 h-4 w-4" />
               {showTotals ? "Afficher prix unitaires" : "Afficher totaux"}
+            </button>
+            
+            <button
+              onClick={exportToCSV}
+              disabled={isExporting || sortedProducts.length === 0}
+              className={`inline-flex items-center px-3 py-2 border rounded-md shadow-sm text-sm font-medium 
+                ${isExporting || sortedProducts.length === 0
+                  ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 border-green-500 dark:border-green-600'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500`}
+            >
+              <FiDownload className="mr-2 h-4 w-4" />
+              {isExporting ? 'Exportation...' : 'Exporter CSV'}
             </button>
           </div>
         </div>

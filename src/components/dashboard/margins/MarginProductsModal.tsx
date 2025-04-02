@@ -1,6 +1,6 @@
 // src/components/dashboard/margins/MarginProductsModal.tsx
 import React, { useState } from 'react';
-import { FiX, FiSearch, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import { FiX, FiSearch, FiTrendingUp, FiTrendingDown, FiDownload } from 'react-icons/fi';
 import { MarginProductData } from '@/hooks/useProductMargins';
 
 interface MarginProductsModalProps {
@@ -19,6 +19,7 @@ export function MarginProductsModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof MarginProductData>('margin_percentage');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isExporting, setIsExporting] = useState(false);
   
   if (!isOpen) return null;
   
@@ -73,6 +74,62 @@ export function MarginProductsModal({
     }).format(amount);
   };
 
+  // Fonction pour exporter les données en CSV
+  const exportToCSV = () => {
+    setIsExporting(true);
+    
+    try {
+      // Préparer les données pour l'export
+      const exportData = sortedProducts.map(product => ({
+        'Produit': product.display_name,
+        'Laboratoire': product.brand_lab || '',
+        'Code EAN': product.code_13_ref || '',
+        'Prix TTC': product.price_with_tax,
+        'Prix achat HT': product.weighted_average_price,
+        'Marge (%)': product.margin_percentage,
+        'Marge (€)': product.margin_amount,
+        'Stock': product.current_stock
+      }));
+      
+      // Convertir en CSV
+      const headers = Object.keys(exportData[0]).join(';');
+      const csvData = exportData.map(row => {
+        return Object.values(row).map(value => {
+          // Gérer les nombres pour assurer la compatibilité Excel français (virgule décimale)
+          if (typeof value === 'number') {
+            return String(value).replace('.', ',');
+          }
+          // Échapper les valeurs contenant des points-virgules
+          if (typeof value === 'string' && value.includes(';')) {
+            return `"${value}"`;
+          }
+          return value;
+        }).join(';');
+      }).join('\n');
+      
+      const csvContent = `${headers}\n${csvData}`;
+      
+      // Créer un blob et un lien de téléchargement
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Configurer et déclencher le téléchargement
+      const filename = title.replace(/[^\w\s]/gi, '_').replace(/\s+/g, '_');
+      const date = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${filename}_${date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Erreur lors de l\'exportation:', error);
+      alert('Une erreur est survenue lors de l\'exportation. Veuillez réessayer.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-30 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -87,19 +144,33 @@ export function MarginProductsModal({
           </button>
         </div>
         
-        {/* Barre de recherche */}
+        {/* Barre de recherche et bouton d'export */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiSearch className="h-5 w-5 text-gray-400" />
+          <div className="flex justify-between items-center">
+            <div className="relative flex-1 mr-4">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:text-white text-sm"
+                placeholder="Rechercher par nom, laboratoire, catégorie ou code"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:text-white text-sm"
-              placeholder="Rechercher par nom, laboratoire, catégorie ou code"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <button
+              onClick={exportToCSV}
+              disabled={isExporting || sortedProducts.length === 0}
+              className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                isExporting || sortedProducts.length === 0
+                  ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500`}
+            >
+              <FiDownload className="mr-2" />
+              {isExporting ? 'Exportation...' : 'Exporter CSV'}
+            </button>
           </div>
         </div>
         
@@ -170,7 +241,7 @@ export function MarginProductsModal({
                 </tr>
               ) : (
                 sortedProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr key={product.code_13_ref || product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-3 py-2 whitespace-nowrap text-sm">
                       <div className="font-medium text-gray-900 dark:text-white">{product.display_name}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -223,13 +294,18 @@ export function MarginProductsModal({
         
         {/* Pied de la modale */}
         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-right">
-          <button
-            type="button"
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-            onClick={onClose}
-          >
-            Fermer
-          </button>
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {sortedProducts.length} produit{sortedProducts.length !== 1 ? 's' : ''}
+            </div>
+            <button
+              type="button"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              onClick={onClose}
+            >
+              Fermer
+            </button>
+          </div>
         </div>
       </div>
     </div>

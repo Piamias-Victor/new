@@ -1,6 +1,6 @@
-// src/components/dashboard/TopProducts.tsx - Modifié pour le filtrage EAN
+// src/components/dashboard/TopProducts.tsx - Modifié pour le filtrage EAN et l'export CSV
 import React, { useState } from 'react';
-import { FiPackage, FiBarChart2, FiShoppingCart, FiTrendingUp } from 'react-icons/fi';
+import { FiPackage, FiBarChart2, FiShoppingCart, FiTrendingUp, FiDownload } from 'react-icons/fi';
 import { useTopProducts, SortByType, TopProduct } from '@/hooks/useTopProducts';
 import { useProductFilter } from '@/contexts/ProductFilterContext'; // Ajouté pour accéder au contexte de filtrage
 import { FilterBadge } from '@/components/filters/FilterBadge'; // Composant pour afficher le badge de filtrage
@@ -150,6 +150,7 @@ export function TopProducts() {
   const [sortBy, setSortBy] = useState<SortByType>('revenue');
   const { byRevenue, byQuantity, byMargin, isLoading, error } = useTopProducts(100);
   const { isFilterActive, selectedCodes } = useProductFilter(); // Accès au contexte de filtrage
+  const [isExporting, setIsExporting] = useState(false);
   
   // Obtenir les produits en fonction du tri sélectionné
   const getProductsBySortType = () => {
@@ -175,6 +176,83 @@ export function TopProducts() {
       case 'quantity': return <FiShoppingCart size={20} />;
       case 'margin': return <FiTrendingUp size={20} />;
       default: return <FiBarChart2 size={20} />;
+    }
+  };
+
+  // Formatage pour l'export
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { 
+      style: 'currency', 
+      currency: 'EUR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('fr-FR').format(Math.round(num));
+  };
+
+  // Fonction pour exporter les données en CSV
+  const exportToCSV = () => {
+    const products = getProductsBySortType();
+    if (!products || products.length === 0) return;
+    
+    setIsExporting(true);
+    
+    try {
+      // Préparer les données pour l'export
+      const exportData = products.map((product, index) => ({
+        'Rang': index + 1,
+        'Produit': product.display_name,
+        'Code EAN': product.code_13_ref || '',
+        'Laboratoire': product.brand_lab || '',
+        'Catégorie': product.category || '',
+        'CA': product.total_revenue,
+        'Quantité vendue': product.total_quantity,
+        'Marge (€)': product.total_margin,
+        'Marge (%)': product.margin_percentage,
+        'Stock actuel': product.current_stock,
+        'TVA (%)': product.tva_rate > 1 ? product.tva_rate : product.tva_rate * 100
+      }));
+      
+      // Convertir en CSV
+      const headers = Object.keys(exportData[0]).join(';');
+      const csvData = exportData.map(row => {
+        return Object.values(row).map(value => {
+          // Gérer les nombres pour assurer la compatibilité Excel français (virgule décimale)
+          if (typeof value === 'number') {
+            return String(value).replace('.', ',');
+          }
+          // Échapper les valeurs contenant des points-virgules
+          if (typeof value === 'string' && value.includes(';')) {
+            return `"${value}"`;
+          }
+          return value;
+        }).join(';');
+      }).join('\n');
+      
+      const csvContent = `${headers}\n${csvData}`;
+      
+      // Créer un blob et un lien de téléchargement
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Configurer et déclencher le téléchargement
+      const fileName = sortBy === 'quantity' ? 'top_produits_volume' : 
+                       sortBy === 'margin' ? 'top_produits_marge' : 
+                       'top_produits_ca';
+      const date = new Date().toISOString().split('T')[0];
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${fileName}_${date}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Erreur lors de l\'exportation:', error);
+      alert('Une erreur est survenue lors de l\'exportation. Veuillez réessayer.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -244,6 +322,9 @@ export function TopProducts() {
               {getIconBySortType()}
             </div>
             <div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                {getTitleBySortType()}
+              </h3>
               <div className="flex items-center gap-2">
                 {/* Ajout du badge de filtrage si le filtre est actif */}
                 {isFilterActive && <FilterBadge count={selectedCodes.length} size="sm" />}
@@ -251,38 +332,54 @@ export function TopProducts() {
             </div>
           </div>
           
-          {/* Options de tri */}
-          <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 inline-flex">
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Bouton d'export CSV */}
             <button
-              onClick={() => setSortBy('revenue')}
-              className={`px-3 py-1.5 text-xs font-medium rounded ${
-                sortBy === 'revenue' 
-                  ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-300'
+              onClick={exportToCSV}
+              disabled={isExporting || !products || products.length === 0}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md flex items-center ${
+                isExporting || !products || products.length === 0
+                  ? 'bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700'
               }`}
             >
-              CA
+              <FiDownload className="mr-1" size={14} />
+              {isExporting ? 'Exportation...' : 'CSV'}
             </button>
-            <button
-              onClick={() => setSortBy('quantity')}
-              className={`px-3 py-1.5 text-xs font-medium rounded ${
-                sortBy === 'quantity' 
-                  ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              Quantité
-            </button>
-            <button
-              onClick={() => setSortBy('margin')}
-              className={`px-3 py-1.5 text-xs font-medium rounded ${
-                sortBy === 'margin' 
-                  ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              Marge
-            </button>
+            
+            {/* Options de tri */}
+            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 inline-flex">
+              <button
+                onClick={() => setSortBy('revenue')}
+                className={`px-3 py-1.5 text-xs font-medium rounded ${
+                  sortBy === 'revenue' 
+                    ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                CA
+              </button>
+              <button
+                onClick={() => setSortBy('quantity')}
+                className={`px-3 py-1.5 text-xs font-medium rounded ${
+                  sortBy === 'quantity' 
+                    ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                Qte
+              </button>
+              <button
+                onClick={() => setSortBy('margin')}
+                className={`px-3 py-1.5 text-xs font-medium rounded ${
+                  sortBy === 'margin' 
+                    ? 'bg-white dark:bg-gray-600 text-sky-600 dark:text-sky-400 shadow-sm' 
+                    : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                Marge
+              </button>
+            </div>
           </div>
         </div>
       </div>
