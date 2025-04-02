@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         aggregated_ean AS (
           SELECT
             code_13_ref,
-            MAX(display_name) AS display_name,
+            (array_agg(display_name ORDER BY id))[1] AS display_name,
             MAX(brand_lab) AS brand_lab,
             MAX(category) AS category,
             -- Utiliser la moyenne des prix pour les produits ayant le même code EAN13

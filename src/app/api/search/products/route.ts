@@ -42,10 +42,7 @@ export async function GET(request: Request) {
             p.internal_id,
             p.name AS internal_name,
             gp.name AS global_name,
-            CASE 
-              WHEN gp.name IS NULL OR gp.name = '' OR gp.name = 'Default Name' THEN p.name
-              ELSE gp.name
-            END AS display_name,
+            p.name AS display_name,
             p.code_13_ref_id AS code_13_ref,
             gp.category,
             gp.brand_lab,

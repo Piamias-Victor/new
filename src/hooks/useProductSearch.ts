@@ -80,10 +80,20 @@ export function useProductSearch() {
         const data = await response.json();
         searchResults = data.products || [];
       } else if (params.type === 'code') {
+        // Vérifier si la recherche est un suffixe (commence par *)
+        const isSuffixSearch = params.term.startsWith('*');
+        const searchTerm = isSuffixSearch ? params.term.substring(1) : params.term;
+        
+        // Utiliser le paramètre approprié selon le type de recherche
         const queryParams = new URLSearchParams({
-          code: params.term,
           limit: (params.limit || 200).toString()
         });
+        
+        if (isSuffixSearch) {
+          queryParams.set('suffix', searchTerm);
+        } else {
+          queryParams.set('code', searchTerm);
+        }
         
         // Ajouter les pharmacies sélectionnées
         if (selectedPharmacyIds.length > 0) {
@@ -126,10 +136,19 @@ export function useProductSearch() {
         
         // Recherche pour chaque code
         const searchPromises = codes.map(async (code) => {
+          // Déterminer si c'est une recherche par suffixe
+          const isSuffixSearch = code.startsWith('*');
+          const searchTerm = isSuffixSearch ? code.substring(1) : code;
+          
           const queryParams = new URLSearchParams({
-            code: code,
             limit: '1'
           });
+          
+          if (isSuffixSearch) {
+            queryParams.set('suffix', searchTerm);
+          } else {
+            queryParams.set('code', searchTerm);
+          }
           
           // Ajouter les pharmacies sélectionnées
           if (selectedPharmacyIds.length > 0) {

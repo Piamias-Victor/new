@@ -63,7 +63,7 @@ export async function POST(request: Request) {
             p.id AS product_id,
             p.name AS product_name,
             g.name AS global_name,
-            CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END AS display_name,
+            p.name AS display_name,
             g.category,
             g.brand_lab,
             pha.id AS pharmacy_id,

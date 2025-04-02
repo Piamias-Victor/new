@@ -38,12 +38,8 @@ export async function GET(request: Request) {
           SELECT 
             ip.id AS product_id,
             ip.name AS display_name,
-            gp.name AS global_name,
-            CASE 
-              WHEN gp.name IS NULL OR gp.name = '' THEN ip.name 
-              WHEN gp.name = 'Default Name' THEN ip.name
-              ELSE gp.name 
-            END AS product_label,
+            ip.name AS global_name,
+            ip.name AS product_label,
             gp.code_13_ref AS product_code,
             gp.category,
             gp.brand_lab,
@@ -167,7 +163,7 @@ export async function GET(request: Request) {
               'strongDecrease', (
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
-                  'display_name', product_label,
+                  'display_name', display_name,
                   'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
@@ -183,7 +179,7 @@ export async function GET(request: Request) {
               'slightDecrease', (
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
-                  'display_name', product_label,
+                  'display_name', display_name,
                   'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
@@ -199,7 +195,7 @@ export async function GET(request: Request) {
               'stable', (
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
-                  'display_name', product_label,
+                  'display_name', display_name,
                   'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
@@ -215,7 +211,7 @@ export async function GET(request: Request) {
               'slightIncrease', (
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
-                  'display_name', product_label,
+                  'display_name', display_name,
                   'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,
@@ -231,7 +227,7 @@ export async function GET(request: Request) {
               'strongIncrease', (
                 SELECT json_agg(json_build_object(
                   'product_id', product_id,
-                  'display_name', product_label,
+                  'display_name', display_name,
                   'code_13_ref', product_code,
                   'category', category,
                   'brand_lab', brand_lab,

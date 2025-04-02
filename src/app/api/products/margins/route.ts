@@ -98,7 +98,7 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
           p.id,
           p.name as product_name,
           g.name as global_name,
-          CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END as display_name,
+          p.name as display_name,
           g.category,
           g.brand_lab,
           g.code_13_ref,
@@ -134,7 +134,7 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
       aggregated_ean AS (
         SELECT
           code_13_ref,
-          MAX(display_name) AS display_name,
+          (array_agg(product_name ORDER BY id))[1] AS display_name,
           MAX(category) AS category,
           MAX(brand_lab) AS brand_lab,
           SUM(current_stock) AS current_stock,
