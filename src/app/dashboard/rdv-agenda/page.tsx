@@ -8,10 +8,11 @@ import { FiPlus, FiCalendar, FiSearch } from 'react-icons/fi';
 
 import { SidebarLayout } from '@/components/layout/SidebarLayout';
 import { Button } from '@/components/ui/Button';
-import { MeetingPlannerModal } from '@/components/dashboard/meetings/MeetingPlannerModal';
-import { MeetingsCalendarView } from '@/components/dashboard/meetings/MeetingsCalendarView';
-import { MeetingsListView } from '@/components/dashboard/meetings/MeetingsListView';
+
 import { useMeetings } from '@/hooks/useMeetings';
+import { MeetingPlannerModal } from '../meetings/MeetingPlannerModal';
+import { MeetingsCalendarView } from '../meetings/MeetingsCalendarView';
+import { MeetingsListView } from '../meetings/MeetingsListView';
 
 export default function MeetingsPage() {
   const { data: session, status } = useSession();
