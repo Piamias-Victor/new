@@ -105,7 +105,13 @@ export function SelectedProductsList() {
           }
           break;
         case 'margin_percentage':
-          compareResult = a.margin_percentage - b.margin_percentage;
+          if (showTotals) {
+            // Trier par montant total de marge quand on est en mode "totaux"
+            compareResult = (a.margin_amount * a.sales_quantity) - (b.margin_amount * b.sales_quantity);
+          } else {
+            // Trier par pourcentage quand on est en mode "unitaire"
+            compareResult = a.margin_percentage - b.margin_percentage;
+          }
           break;
         case 'stock_quantity':
           compareResult = a.stock_quantity - b.stock_quantity;
@@ -362,7 +368,7 @@ export function SelectedProductsList() {
                   onClick={() => handleSort('margin_percentage')}
                 >
                   <div className="flex items-center">
-                    Taux de Marge
+                    {showTotals ? "Marge (€)" : "Taux de Marge"}
                     {sortField === 'margin_percentage' && (
                       <span className="ml-1">
                         {sortDirection === 'asc' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
@@ -423,8 +429,23 @@ export function SelectedProductsList() {
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">{formatPercentage(product.margin_percentage)}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{formatCurrency(product.margin_amount)}</div>
+                      {showTotals ? (
+                        // En mode total, on affiche la marge en valeur absolue (€)
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {formatCurrency(product.margin_amount * product.sales_quantity)}
+                        </div>
+                      ) : (
+                        // En mode unitaire, on affiche le taux de marge en pourcentage
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {formatPercentage(product.margin_percentage)}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {showTotals 
+                          ? `(${formatPercentage(product.margin_percentage)})` // Affiche le pourcentage en plus petit si on est en mode total
+                          : formatCurrency(product.margin_amount) // Affiche le montant unitaire en plus petit si on est en mode unitaire
+                        }
+                      </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">{product.stock_quantity} unités</div>

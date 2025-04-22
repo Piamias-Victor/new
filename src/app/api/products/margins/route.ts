@@ -8,8 +8,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const pharmacyIds = searchParams.getAll('pharmacyIds');
     const code13refs = searchParams.getAll('code13refs');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const onlySoldProducts = searchParams.get('onlySoldProducts') === 'true';
     
-    return await processProductMargins(pharmacyIds, code13refs);
+    return await processProductMargins(pharmacyIds, code13refs, startDate, endDate, onlySoldProducts);
   } catch (error) {
     console.error('Erreur lors de la récupération des données de marges:', error);
     return NextResponse.json(
@@ -22,9 +25,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pharmacyIds = [], code13refs = [] } = body;
+    const { 
+      pharmacyIds = [], 
+      code13refs = [], 
+      startDate, 
+      endDate, 
+      onlySoldProducts = false 
+    } = body;
     
-    return await processProductMargins(pharmacyIds, code13refs);
+    return await processProductMargins(pharmacyIds, code13refs, startDate, endDate, onlySoldProducts);
   } catch (error) {
     console.error('Erreur lors de la récupération des données de marges:', error);
     return NextResponse.json(
@@ -35,7 +44,13 @@ export async function POST(request: NextRequest) {
 }
 
 // Fonction commune pour traiter la logique
-async function processProductMargins(pharmacyIds: string[], code13refs: string[]) {
+async function processProductMargins(
+  pharmacyIds: string[], 
+  code13refs: string[],
+  startDate?: string | null,
+  endDate?: string | null,
+  onlySoldProducts: boolean = false
+) {
   const client = await pool.connect();
   
   try {
@@ -57,6 +72,15 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
       const codePlaceholders = code13refs.map((_, i) => `$${paramIndex + i}`).join(',');
       conditions.push(`g.code_13_ref IN (${codePlaceholders})`);
       params.push(...code13refs);
+      paramIndex += code13refs.length;
+    }
+    
+    // Ajouter les paramètres de date si fournis
+    let salesDateFilter = '';
+    if (startDate && endDate) {
+      params.push(startDate, endDate);
+      salesDateFilter = `AND s.date BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+      paramIndex += 2;
     }
     
     const whereClause = conditions.length > 0 
@@ -87,18 +111,20 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
             WHERE product_id = p.id 
             ORDER BY date DESC LIMIT 1
           )
+          ${salesDateFilter}
         JOIN
           data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
         ${whereClause}
         GROUP BY 
           i.product_id
+        ${onlySoldProducts ? 'HAVING COALESCE(SUM(s.quantity), 0) > 0' : ''}
       ),
       product_data AS (
         SELECT
           p.id,
           p.name as product_name,
           g.name as global_name,
-          p.name as display_name,
+          CASE WHEN g.name IS NULL OR g.name = 'Default Name' THEN p.name ELSE g.name END as display_name,
           g.category,
           g.brand_lab,
           g.code_13_ref,
@@ -128,13 +154,14 @@ async function processProductMargins(pharmacyIds: string[], code13refs: string[]
           product_sales ps ON p.id = ps.product_id
         LEFT JOIN
           data_globalproduct g ON p.code_13_ref_id = g.code_13_ref
-        ${whereClause.length > 0 ? whereClause : 'WHERE COALESCE(ls.current_stock, 0) > 0'}
+        ${whereClause.length > 0 ? whereClause : 'WHERE 1=1'}
+        ${onlySoldProducts ? 'AND COALESCE(ps.total_sales, 0) > 0' : ''}
       ),
       -- Agrégation par code EAN13 pour éviter les doublons
       aggregated_ean AS (
         SELECT
           code_13_ref,
-          (array_agg(product_name ORDER BY id))[1] AS display_name,
+          MAX(display_name) AS display_name,
           MAX(category) AS category,
           MAX(brand_lab) AS brand_lab,
           SUM(current_stock) AS current_stock,

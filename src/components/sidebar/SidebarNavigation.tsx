@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiBox, FiPackage, FiGrid, FiBarChart2, FiCopy, FiTruck } from 'react-icons/fi';
+import { FiBox, FiPackage, FiGrid, FiBarChart2, FiCopy, FiTruck, FiCalendar } from 'react-icons/fi';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { SidebarCard } from './SidebarCard';
 
@@ -55,13 +55,25 @@ export function SidebarNavigation() {
         <Link
           href={createUrlWithParams("/dashboard/detailed/laboratories")}
           className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors ${
-            isActive('/laboratories')
+            isActive('/laboratories') && !isActive('/rdv-labos')
               ? 'bg-gray-100 dark:bg-gray-700 text-teal-600 dark:text-teal-400'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
           <FiPackage className="mr-2 text-teal-500 dark:text-teal-400" size={16} />
           <span>Par laboratoire</span>
+        </Link>
+        
+        <Link
+          href={createUrlWithParams("/dashboard/rdv-labos")}
+          className={`flex items-center px-2 py-1.5 text-sm rounded-md transition-colors ${
+            isActive('/rdv-labos')
+              ? 'bg-gray-100 dark:bg-gray-700 text-purple-600 dark:text-purple-400'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+        >
+          <FiCalendar className="mr-2 text-purple-500 dark:text-purple-400" size={16} />
+          <span>RDV Laboratoires</span>
         </Link>
         
         {/* <Link

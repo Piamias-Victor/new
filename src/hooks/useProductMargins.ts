@@ -1,6 +1,7 @@
 // src/hooks/useProductMargins.ts
 import { useState, useEffect } from 'react';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
+import { useDateRange } from '@/contexts/DateRangeContext';
 
 export interface MarginProductData {
   id: string;
@@ -40,24 +41,25 @@ export function useProductMargins(): ProductMarginsData {
   });
   
   const { selectedPharmacyIds } = usePharmacySelection();
+  const { startDate, endDate } = useDateRange();
   
   useEffect(() => {
     async function fetchProductMargins() {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        // Préparer les paramètres de la requête
-        const params = new URLSearchParams();
-        
-        // Si on a une sélection spécifique, on l'ajoute aux paramètres
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
-            params.append('pharmacyIds', id);
-          });
-        }
-        
-        // Effectuer la requête
-        const response = await fetch(`/api/products/margins?${params}`, {
+        // Utiliser POST au lieu de GET pour envoyer les données dans le corps
+        const response = await fetch('/api/products/margins', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pharmacyIds: selectedPharmacyIds,
+            startDate, // Ajouter la période
+            endDate,   // Ajouter la période
+            onlySoldProducts: true // Nouveau paramètre pour indiquer qu'on veut uniquement les produits vendus
+          }),
           cache: 'no-store'
         });
         
@@ -88,7 +90,7 @@ export function useProductMargins(): ProductMarginsData {
     }
     
     fetchProductMargins();
-  }, [selectedPharmacyIds]);
+  }, [selectedPharmacyIds, startDate, endDate]);
   
   return data;
 }
