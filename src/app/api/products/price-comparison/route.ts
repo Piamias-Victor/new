@@ -1,18 +1,50 @@
 // src/app/api/products/price-comparison/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { pharmacyIds = [], code13refs = [] } = body;
+    const { 
+      pharmacyIds = [], 
+      code13refs = [],
+      startDate,  // Date de début de la période
+      endDate     // Date de fin de la période
+    } = body;
+
+    if (!startDate || !endDate) {
+      return NextResponse.json(
+        { error: 'Les dates de début et de fin sont requises' },
+        { status: 400 }
+      );
+    }
 
     const client = await pool.connect();
     
     try {
       // Requête pour comparer les prix des produits avec la moyenne du groupement
+      // Mais seulement pour les produits vendus sur la période
       const query = `
-        WITH pharmacy_products AS (
+        WITH products_sold AS (
+          -- Sélectionner les produits qui ont été vendus sur la période
+          SELECT DISTINCT
+            ip.id AS product_id,
+            ip.pharmacy_id,
+            gp.code_13_ref
+          FROM 
+            data_internalproduct ip
+          JOIN 
+            data_globalproduct gp ON ip.code_13_ref_id = gp.code_13_ref
+          JOIN 
+            data_inventorysnapshot i ON ip.id = i.product_id
+          JOIN 
+            data_sales s ON i.id = s.product_id
+          WHERE 
+            ($1::uuid[] IS NULL OR ip.pharmacy_id = ANY($1))
+            AND ($2::text[] IS NULL OR gp.code_13_ref = ANY($2))
+            AND s.date BETWEEN $3 AND $4
+        ),
+        pharmacy_products AS (
           SELECT 
             ip.id,
             ip.name AS display_name,
@@ -27,6 +59,8 @@ export async function POST(request: Request) {
             data_inventorysnapshot i ON ip.id = i.product_id
           JOIN 
             data_globalproduct gp ON ip.code_13_ref_id = gp.code_13_ref
+          JOIN
+            products_sold ps ON ip.id = ps.product_id
           WHERE 
             ($1::uuid[] IS NULL OR ip.pharmacy_id = ANY($1))
             AND ($2::text[] IS NULL OR gp.code_13_ref = ANY($2))
@@ -48,6 +82,8 @@ export async function POST(request: Request) {
             data_inventorysnapshot i ON ip.id = i.product_id
           JOIN 
             data_globalproduct gp ON ip.code_13_ref_id = gp.code_13_ref
+          JOIN
+            products_sold ps ON gp.code_13_ref = ps.code_13_ref
           WHERE 
             i.date = (
               SELECT MAX(date) 
@@ -116,7 +152,9 @@ export async function POST(request: Request) {
       
       const result = await client.query(query, [
         pharmacyIds.length > 0 ? pharmacyIds : null,
-        code13refs.length > 0 ? code13refs : null
+        code13refs.length > 0 ? code13refs : null,
+        startDate,
+        endDate
       ]);
       
       // Classement des produits selon leur écart de prix

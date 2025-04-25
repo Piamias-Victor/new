@@ -40,19 +40,28 @@ export function usePriceComparison(): PriceComparisonData {
   
   const { selectedPharmacyIds } = usePharmacySelection();
   const { selectedCodes, isFilterActive } = useProductFilter();
-    const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
-  
+  const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   
   useEffect(() => {
     async function fetchPriceComparison() {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
         
-        // Pas besoin de faire de requête si aucun produit n'est sélectionné
+        // Si aucun produit n'est sélectionné alors que le filtre est actif, on retourne des tableaux vides
         if (isFilterActive && selectedCodes.length === 0) {
           setData(prev => ({
             ...prev,
             isLoading: false
+          }));
+          return;
+        }
+        
+        // Vérification que les dates sont présentes
+        if (!startDate || !endDate) {
+          setData(prev => ({
+            ...prev,
+            isLoading: false,
+            error: "Dates de période manquantes"
           }));
           return;
         }
@@ -64,7 +73,9 @@ export function usePriceComparison(): PriceComparisonData {
           },
           body: JSON.stringify({
             pharmacyIds: selectedPharmacyIds.length > 0 ? selectedPharmacyIds : [],
-            code13refs: isFilterActive ? selectedCodes : []
+            code13refs: isFilterActive ? selectedCodes : [],
+            startDate: startDate,
+            endDate: endDate
           }),
           cache: 'no-store'
         });
