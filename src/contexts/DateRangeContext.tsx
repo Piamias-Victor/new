@@ -228,59 +228,147 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
     }
   };
   
-  // Fonction pour mettre à jour temporairement la plage de dates principale
-  const updateTempDateRange = (newRange: DateRangeType, newStartDate?: string, newEndDate?: string) => {
-    setTempRange(newRange);
-    
-    // Si c'est une plage personnalisée, utiliser les dates fournies
-    if (newRange === 'custom' && newStartDate && newEndDate) {
+// Fonction pour mettre à jour temporairement la plage de dates principale
+const updateTempDateRange = (newRange: DateRangeType, newStartDate?: string, newEndDate?: string) => {
+  console.log('updateTempDateRange appelé avec:', newRange, newStartDate, newEndDate);
+  
+  setTempRange(newRange);
+  
+  // Fonction pour vérifier si une date est valide
+  const isValidDate = (dateStr?: string): boolean => {
+    if (!dateStr) return false;
+    try {
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime());
+    } catch (e) {
+      return false;
+    }
+  };
+  
+  // Important: Si c'est une plage personnalisée, utiliser les dates fournies sans modification
+  if (newRange === 'custom') {
+    // Ne mettre à jour que si les nouvelles valeurs sont définies et valides
+    if (newStartDate !== undefined && isValidDate(newStartDate)) {
       setTempStartDate(newStartDate);
+    }
+    
+    if (newEndDate !== undefined && isValidDate(newEndDate)) {
       setTempEndDate(newEndDate);
-    } else {
-      // Pour les plages prédéfinies, calculer les dates
+    }
+    
+    // Si la comparaison est aussi personnalisée, ne pas la modifier
+    if (tempComparisonRange === 'custom') {
+      return; // Ne pas mettre à jour automatiquement la plage de comparaison
+    }
+  } else {
+    // Pour les plages prédéfinies, calculer les dates
+    try {
       const { start, end } = calculateDateRange(newRange);
       setTempStartDate(start);
       setTempEndDate(end);
+    } catch (error) {
+      console.error("Erreur lors du calcul de la plage de dates:", error);
+      return;
+    }
+  }
+  
+  // Important: Ne mettre à jour la comparaison temporaire QUE si elle n'est pas personnalisée
+  if (tempComparisonRange && tempComparisonRange !== 'custom') {
+    try {
+      let dateRangeToUse;
+      
+      if (newRange === 'custom') {
+        const start = newStartDate !== undefined && isValidDate(newStartDate) 
+          ? newStartDate 
+          : tempStartDate;
+        
+        const end = newEndDate !== undefined && isValidDate(newEndDate) 
+          ? newEndDate 
+          : tempEndDate;
+        
+        // Vérifier que les deux dates sont valides
+        if (!isValidDate(start) || !isValidDate(end)) {
+          console.error("Dates invalides pour la comparaison:", { start, end });
+          return;
+        }
+        
+        dateRangeToUse = { start, end };
+      } else {
+        const newTempData = calculateDateRange(newRange);
+        dateRangeToUse = { 
+          start: newTempData.start, 
+          end: newTempData.end 
+        };
+      }
+      
+      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, dateRangeToUse);
+      
+      if (comparisonResult) {
+        setTempComparisonStartDate(comparisonResult.start);
+        setTempComparisonEndDate(comparisonResult.end);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de la comparaison:", error);
+    }
+  }
+};
+  
+// Fonction pour mettre à jour temporairement la plage de comparaison
+const updateTempComparisonDateRange = (newRange: ComparisonRangeType, newStartDate?: string, newEndDate?: string) => {
+  console.log('updateTempComparisonDateRange appelé avec:', newRange, newStartDate, newEndDate);
+  
+  // Fonction pour vérifier si une date est valide
+  const isValidDate = (dateStr?: string): boolean => {
+    if (!dateStr) return false;
+    try {
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime());
+    } catch (e) {
+      return false;
+    }
+  };
+  
+  setTempComparisonRange(newRange);
+  
+  if (newRange === null) {
+    setTempComparisonStartDate(null);
+    setTempComparisonEndDate(null);
+    return;
+  }
+  
+  if (newRange === 'custom') {
+    // Pour une plage personnalisée, utiliser exactement les dates fournies si elles sont valides
+    if (newStartDate !== undefined && isValidDate(newStartDate)) {
+      setTempComparisonStartDate(newStartDate);
     }
     
-    // Mettre à jour la comparaison temporaire si ce n'est pas une plage personnalisée
-    if (tempComparisonRange && tempComparisonRange !== 'custom') {
-      const newTempData = calculateDateRange(newRange);
-      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, { 
-        start: newTempData.start, 
-        end: newTempData.end 
+    if (newEndDate !== undefined && isValidDate(newEndDate)) {
+      setTempComparisonEndDate(newEndDate);
+    }
+  } else {
+    try {
+      // Vérifier que les dates principales sont valides
+      if (!isValidDate(tempStartDate) || !isValidDate(tempEndDate)) {
+        console.error("Dates principales invalides pour la comparaison:", { tempStartDate, tempEndDate });
+        return;
+      }
+      
+      // Pour les plages prédéfinies, calculer les dates
+      const comparisonResult = calculateComparisonDateRange(newRange, { 
+        start: tempStartDate, 
+        end: tempEndDate 
       });
       
       if (comparisonResult) {
         setTempComparisonStartDate(comparisonResult.start);
         setTempComparisonEndDate(comparisonResult.end);
       }
+    } catch (error) {
+      console.error("Erreur lors du calcul de la plage de comparaison:", error);
     }
-  };
-  
-  // Fonction pour mettre à jour temporairement la plage de comparaison
-  const updateTempComparisonDateRange = (newRange: ComparisonRangeType, newStartDate?: string, newEndDate?: string) => {
-    setTempComparisonRange(newRange);
-    
-    if (newRange === null) {
-      setTempComparisonStartDate(null);
-      setTempComparisonEndDate(null);
-      return;
-    }
-    
-    if (newRange === 'custom' && newStartDate && newEndDate) {
-      setTempComparisonStartDate(newStartDate);
-      setTempComparisonEndDate(newEndDate);
-    } else {
-      const comparisonResult = calculateComparisonDateRange(newRange, { start: tempStartDate, end: tempEndDate });
-      
-      if (comparisonResult) {
-        setTempComparisonStartDate(comparisonResult.start);
-        setTempComparisonEndDate(comparisonResult.end);
-      }
-    }
-  };
-  
+  }
+};
+
   // Fonction pour appliquer les changements temporaires
   const applyChanges = () => {
     // Mettre à jour la plage principale
@@ -305,7 +393,10 @@ export function DateRangeProvider({ children }: DateRangeProviderProps) {
     if (tempComparisonRange === 'custom' && tempComparisonStartDate && tempComparisonEndDate) {
       setComparisonDisplayLabel(`${formatDateForDisplay(tempComparisonStartDate)} - ${formatDateForDisplay(tempComparisonEndDate)}`);
     } else if (tempComparisonRange) {
-      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, { start: tempStartDate, end: tempEndDate });
+      const comparisonResult = calculateComparisonDateRange(tempComparisonRange, { 
+        start: tempStartDate, 
+        end: tempEndDate 
+      });
       if (comparisonResult) {
         setComparisonDisplayLabel(comparisonResult.label);
       }

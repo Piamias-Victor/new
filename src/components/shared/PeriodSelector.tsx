@@ -8,44 +8,52 @@ import { PERIOD_OPTIONS } from './date-constants';
 
 export function PeriodSelector() {
   const { tempRange, tempStartDate, tempEndDate, setTempDateRange } = useDateRange();
-  const [selectedPeriod, setSelectedPeriod] = useState<DateRangeType>(tempRange);
-  const [customStartDate, setCustomStartDate] = useState(tempStartDate);
-  const [customEndDate, setCustomEndDate] = useState(tempEndDate);
-  
-  // Synchroniser l'état local avec le contexte
-  useEffect(() => {
-    setSelectedPeriod(tempRange);
-    setCustomStartDate(tempStartDate);
-    setCustomEndDate(tempEndDate);
-  }, [tempRange, tempStartDate, tempEndDate]);
   
   // Mettre à jour le contexte temporaire lorsqu'une option est sélectionnée
   const handlePeriodSelect = (value: string) => {
     const periodType = value as DateRangeType;
-    setSelectedPeriod(periodType);
     
-    if (periodType === 'custom') {
-      // Pour une période personnalisée, attendre les dates personnalisées
-      return;
+    if (periodType !== 'custom') {
+      // Pour les périodes prédéfinies, mettre à jour immédiatement
+      setTempDateRange(periodType);
+    } else {
+      // Pour custom, définir le type mais conserver les dates actuelles
+      // S'assurer que nous avons des dates valides à utiliser
+      if (tempStartDate && tempEndDate) {
+        setTempDateRange('custom', tempStartDate, tempEndDate);
+      } else {
+        // Si pas de dates valides, utiliser aujourd'hui et dans 7 jours comme valeurs par défaut
+        const today = new Date();
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        
+        const defaultStart = today.toISOString().split('T')[0];
+        const defaultEnd = nextWeek.toISOString().split('T')[0];
+        
+        setTempDateRange('custom', defaultStart, defaultEnd);
+      }
     }
-    
-    // Pour les périodes prédéfinies, mettre à jour immédiatement
-    setTempDateRange(periodType);
   };
   
   // Mettre à jour la date de début personnalisée
   const handleStartDateChange = (date: string) => {
-    setCustomStartDate(date);
-    if (selectedPeriod === 'custom') {
-      setTempDateRange('custom', date, customEndDate);
+    console.log('PeriodSelector - startDate changée:', date);
+    // Ne mettre à jour que si la date est non vide
+    if (date) {
+      // Toujours utiliser 'custom' et la date de fin actuelle, ou une date par défaut
+      const endDateToUse = tempEndDate || new Date().toISOString().split('T')[0];
+      setTempDateRange('custom', date, endDateToUse);
     }
   };
   
   // Mettre à jour la date de fin personnalisée
   const handleEndDateChange = (date: string) => {
-    setCustomEndDate(date);
-    if (selectedPeriod === 'custom') {
-      setTempDateRange('custom', customStartDate, date);
+    console.log('PeriodSelector - endDate changée:', date);
+    // Ne mettre à jour que si la date est non vide
+    if (date) {
+      // Toujours utiliser 'custom' et la date de début actuelle, ou une date par défaut
+      const startDateToUse = tempStartDate || new Date().toISOString().split('T')[0];
+      setTempDateRange('custom', startDateToUse, date);
     }
   };
   
@@ -56,16 +64,16 @@ export function PeriodSelector() {
           <PeriodOption 
             key={period.value}
             label={period.label}
-            isSelected={selectedPeriod === period.value}
+            isSelected={tempRange === period.value}
             onClick={() => handlePeriodSelect(period.value)}
           />
         ))}
       </div>
       
-      {selectedPeriod === 'custom' && (
+      {tempRange === 'custom' && (
         <CustomDateRange 
-          startDate={customStartDate}
-          endDate={customEndDate}
+          startDate={tempStartDate || ''}
+          endDate={tempEndDate || ''}
           onStartDateChange={handleStartDateChange}
           onEndDateChange={handleEndDateChange}
         />

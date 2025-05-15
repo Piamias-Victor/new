@@ -180,6 +180,9 @@ export function calculateDateRange(rangeType: DateRangeType): {
 /**
  * Calcule la plage de dates de comparaison en fonction du type choisi
  */
+/**
+ * Calcule la plage de dates de comparaison en fonction du type choisi
+ */
 export function calculateComparisonDateRange(
   rangeType: ComparisonRangeType, 
   primaryRange: { start: string, end: string }
@@ -192,50 +195,90 @@ export function calculateComparisonDateRange(
     return null;
   }
 
-  const primaryStart = new Date(primaryRange.start);
-  const primaryEnd = new Date(primaryRange.end);
-  
-  // Calcule la durée en jours entre les deux dates
-  const durationInDays = Math.floor(
-    (primaryEnd.getTime() - primaryStart.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  
-  let start: Date;
-  let end: Date;
-  let label: string;
-
-  switch (rangeType) {
-    case 'previousYear':
-      start = new Date(primaryStart);
-      start.setFullYear(start.getFullYear() - 1);
-      end = new Date(primaryEnd);
-      end.setFullYear(end.getFullYear() - 1);
-      label = "Année précédente";
-      break;
-      
-    case 'previousPeriod':
-      // Période précédente de même durée
-      end = new Date(primaryStart);
-      end.setDate(end.getDate() - 1);
-      start = new Date(end);
-      start.setDate(start.getDate() - durationInDays);
-      label = "Période précédente";
-      break;
-      
-    case 'custom':
-    default:
-      start = new Date(primaryStart);
-      start.setFullYear(start.getFullYear() - 1);
-      end = new Date(primaryEnd);
-      end.setFullYear(end.getFullYear() - 1);
-      label = "Comparaison personnalisée";
+  // Vérifier que les dates sont valides
+  if (!primaryRange.start || !primaryRange.end) {
+    console.error("Dates de plage primaire manquantes:", primaryRange);
+    // Retourner des dates par défaut pour éviter les erreurs
+    return {
+      start: new Date().toISOString().split('T')[0],  // aujourd'hui
+      end: new Date().toISOString().split('T')[0],    // aujourd'hui
+      label: "Période par défaut"
+    };
   }
 
-  return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
-    label
-  };
+  try {
+    const primaryStart = new Date(primaryRange.start);
+    const primaryEnd = new Date(primaryRange.end);
+    
+    // Vérifier que les dates sont valides
+    if (isNaN(primaryStart.getTime()) || isNaN(primaryEnd.getTime())) {
+      console.error("Dates de plage primaire invalides:", primaryRange);
+      return {
+        start: new Date().toISOString().split('T')[0],  // aujourd'hui
+        end: new Date().toISOString().split('T')[0],    // aujourd'hui
+        label: "Période par défaut"
+      };
+    }
+    
+    // Calcule la durée en jours entre les deux dates
+    const durationInDays = Math.floor(
+      (primaryEnd.getTime() - primaryStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    
+    let start: Date;
+    let end: Date;
+    let label: string;
+
+    switch (rangeType) {
+      case 'previousYear':
+        start = new Date(primaryStart);
+        start.setFullYear(start.getFullYear() - 1);
+        end = new Date(primaryEnd);
+        end.setFullYear(end.getFullYear() - 1);
+        label = "Année précédente";
+        break;
+        
+      case 'previousPeriod':
+        // Période précédente de même durée
+        end = new Date(primaryStart);
+        end.setDate(end.getDate() - 1);
+        start = new Date(end);
+        start.setDate(start.getDate() - durationInDays);
+        label = "Période précédente";
+        break;
+        
+      case 'custom':
+      default:
+        start = new Date(primaryStart);
+        start.setFullYear(start.getFullYear() - 1);
+        end = new Date(primaryEnd);
+        end.setFullYear(end.getFullYear() - 1);
+        label = "Comparaison personnalisée";
+    }
+
+    // Vérifier encore une fois que les dates calculées sont valides
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.error("Dates calculées invalides:", { start, end });
+      return {
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0],
+        label: "Période par défaut"
+      };
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      label
+    };
+  } catch (error) {
+    console.error("Erreur lors du calcul de la plage de comparaison:", error);
+    return {
+      start: new Date().toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+      label: "Période par défaut"
+    };
+  }
 }
 
 /**
