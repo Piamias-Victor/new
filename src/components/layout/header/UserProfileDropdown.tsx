@@ -86,6 +86,16 @@ export function UserProfileDropdown({ user, handleSignOut }: UserProfileDropdown
                 Administration
               </Link>
             )}
+            {user.role === 'admin' && (
+              <Link 
+                href="/admin/pharmacies" 
+                className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                onClick={() => setIsOpen(false)}
+              >
+                <FiShield className="mr-3 text-gray-500 dark:text-gray-400" />
+                Pharmacie
+              </Link>
+            )}
           </div>
           
           <div className="py-1 border-t border-gray-200 dark:border-gray-700">
