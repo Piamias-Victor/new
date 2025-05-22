@@ -1,5 +1,5 @@
 // src/hooks/usePharmacies.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export interface Pharmacy {
   id: string;
@@ -16,13 +16,21 @@ export function usePharmacies() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Fonction pour charger les pharmacies
-  const loadPharmacies = async () => {
+  // Fonction pour charger les pharmacies (avec useCallback pour éviter les re-renders inutiles)
+  const loadPharmacies = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/admin/pharmacies');
+      console.log('🔄 Rechargement des pharmacies...');
+      
+      const response = await fetch('/api/admin/pharmacies', {
+        // Forcer le rechargement sans cache
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Erreur lors de la récupération des pharmacies');
@@ -30,17 +38,19 @@ export function usePharmacies() {
       
       const data = await response.json();
       setPharmacies(data.pharmacies || []);
+      console.log('✅ Pharmacies rechargées:', data.pharmacies?.length || 0);
     } catch (error) {
+      console.error('❌ Erreur lors du rechargement des pharmacies:', error);
       setError(error instanceof Error ? error.message : 'Une erreur est survenue');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
   
   // Charger les pharmacies au montage du composant
   useEffect(() => {
     loadPharmacies();
-  }, []);
+  }, [loadPharmacies]);
   
   // Fonction pour obtenir une pharmacie spécifique
   const getPharmacy = async (id: string) => {
@@ -48,7 +58,12 @@ export function usePharmacies() {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch(`/api/admin/pharmacies/${id}`);
+      const response = await fetch(`/api/admin/pharmacies/${id}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Erreur lors de la récupération de la pharmacie');
