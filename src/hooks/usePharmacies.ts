@@ -16,19 +16,29 @@ export function usePharmacies() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Fonction pour charger les pharmacies (avec useCallback pour éviter les re-renders inutiles)
-  const loadPharmacies = useCallback(async () => {
+  // Fonction pour charger les pharmacies avec force refresh
+  const loadPharmacies = useCallback(async (forceRefresh = false) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 Rechargement des pharmacies...');
+      const timestamp = Date.now();
+      console.log('🔄 Rechargement des pharmacies...', { 
+        forceRefresh, 
+        timestamp 
+      });
       
-      const response = await fetch('/api/admin/pharmacies', {
-        // Forcer le rechargement sans cache
+      const url = forceRefresh 
+        ? `/api/admin/pharmacies?_force=${timestamp}&_t=${timestamp}`
+        : `/api/admin/pharmacies?_t=${timestamp}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
         cache: 'no-store',
         headers: {
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         }
       });
       
@@ -38,7 +48,10 @@ export function usePharmacies() {
       
       const data = await response.json();
       setPharmacies(data.pharmacies || []);
-      console.log('✅ Pharmacies rechargées:', data.pharmacies?.length || 0);
+      console.log('✅ Pharmacies rechargées:', {
+        count: data.pharmacies?.length || 0,
+        timestamp: Date.now()
+      });
     } catch (error) {
       console.error('❌ Erreur lors du rechargement des pharmacies:', error);
       setError(error instanceof Error ? error.message : 'Une erreur est survenue');

@@ -15,6 +15,7 @@ export default function PharmaciesAdminPage() {
   const pathname = usePathname();
   const { pharmacies, isLoading, error, loadPharmacies } = usePharmacies();
   const [searchTerm, setSearchTerm] = useState('');
+  const [refreshSuccess, setRefreshSuccess] = useState(false);
   
   // Ref pour savoir si c'est le premier chargement
   const isFirstLoad = useRef(true);
@@ -75,9 +76,17 @@ export default function PharmaciesAdminPage() {
   }, [loadPharmacies]);
 
   // Rechargement forcé quand on clique sur le bouton refresh
-  const handleManualRefresh = () => {
+  const handleManualRefresh = async () => {
     console.log('🔄 Rechargement manuel demandé');
-    loadPharmacies();
+    setRefreshSuccess(false);
+    try {
+      await loadPharmacies(true); // Passer true pour forcer le refresh
+      setRefreshSuccess(true);
+      // Masquer le message de succès après 3 secondes
+      setTimeout(() => setRefreshSuccess(false), 3000);
+    } catch (error) {
+      console.error('Erreur lors du rechargement manuel:', error);
+    }
   };
 
   // Filtrer les pharmacies par recherche
@@ -140,21 +149,29 @@ export default function PharmaciesAdminPage() {
             <button
               onClick={handleManualRefresh}
               disabled={isLoading}
-              className={`p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              className={`flex items-center px-4 py-2 bg-sky-600 hover:bg-sky-700 disabled:bg-sky-400 text-white rounded-md font-medium transition-colors ${
+                isLoading ? 'cursor-not-allowed' : 'cursor-pointer'
               }`}
-              title="Actualiser"
+              title="Actualiser les données"
             >
-              <FiRefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+              <FiRefreshCw size={18} className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Actualisation...' : 'Actualiser'}
             </button>
           </div>
         </div>
         
-        {/* Affichage des messages d'erreur */}
+        {/* Affichage des messages */}
         {error && (
           <Notification 
             type="error" 
             message={error} 
+          />
+        )}
+        
+        {refreshSuccess && (
+          <Notification 
+            type="success" 
+            message="Données actualisées avec succès !" 
           />
         )}
         
