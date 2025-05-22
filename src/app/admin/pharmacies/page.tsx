@@ -1,9 +1,9 @@
-// src/app/admin/pharmacies/page.tsx (version améliorée)
+// src/app/admin/pharmacies/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { FiEdit, FiSearch, FiRefreshCw, FiHome } from 'react-icons/fi';
 import { usePharmacies } from '@/hooks/usePharmacies';
@@ -12,8 +12,13 @@ import { Notification } from '@/components/ui/Notification';
 export default function PharmaciesAdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { pharmacies, isLoading, error, loadPharmacies } = usePharmacies();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Ref pour savoir si c'est le premier chargement
+  const isFirstLoad = useRef(true);
+  const lastPathname = useRef(pathname);
 
   // Redirection si non authentifié ou non admin
   useEffect(() => {
@@ -23,6 +28,57 @@ export default function PharmaciesAdminPage() {
       router.push('/dashboard');
     }
   }, [status, session, router]);
+
+  // Rechargement à chaque fois qu'on arrive sur cette page
+  useEffect(() => {
+    // Si c'est le premier chargement, on laisse le hook faire son travail
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      lastPathname.current = pathname;
+      return;
+    }
+
+    // Si on revient sur cette page depuis une autre page
+    if (lastPathname.current !== pathname || document.visibilityState === 'visible') {
+      console.log('🔄 Navigation détectée - Rechargement des pharmacies');
+      loadPharmacies();
+    }
+    
+    lastPathname.current = pathname;
+  }, [pathname, loadPharmacies]);
+
+  // Listener pour le focus de la page/onglet
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isFirstLoad.current) {
+        console.log('👁️ Page visible - Rechargement des pharmacies');
+        loadPharmacies();
+      }
+    };
+
+    const handleFocus = () => {
+      if (!isFirstLoad.current) {
+        console.log('🎯 Focus détecté - Rechargement des pharmacies');
+        loadPharmacies();
+      }
+    };
+
+    // Écouter les changements de visibilité
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Écouter le focus de la fenêtre
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadPharmacies]);
+
+  // Rechargement forcé quand on clique sur le bouton refresh
+  const handleManualRefresh = () => {
+    console.log('🔄 Rechargement manuel demandé');
+    loadPharmacies();
+  };
 
   // Filtrer les pharmacies par recherche
   const filteredPharmacies = pharmacies.filter(pharmacy => 
@@ -42,7 +98,7 @@ export default function PharmaciesAdminPage() {
   };
 
   // État de chargement
-  if (status === 'loading' || (status === 'authenticated' && isLoading)) {
+  if (status === 'loading' || (status === 'authenticated' && isLoading && isFirstLoad.current)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-sky-500"></div>
@@ -62,6 +118,9 @@ export default function PharmaciesAdminPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
             <FiHome className="mr-2" />
             Gestion des pharmacies
+            {isLoading && !isFirstLoad.current && (
+              <div className="ml-2 animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-sky-500"></div>
+            )}
           </h1>
           
           <div className="flex items-center space-x-2">
@@ -79,11 +138,14 @@ export default function PharmaciesAdminPage() {
             </div>
             
             <button
-              onClick={loadPharmacies}
-              className="p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
+              onClick={handleManualRefresh}
+              disabled={isLoading}
+              className={`p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               title="Actualiser"
             >
-              <FiRefreshCw size={18} />
+              <FiRefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
@@ -119,7 +181,16 @@ export default function PharmaciesAdminPage() {
                 {filteredPharmacies.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                      {pharmacies.length === 0 ? 'Aucune pharmacie trouvée' : 'Aucun résultat pour votre recherche'}
+                      {isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-sky-500 mr-2"></div>
+                          Chargement...
+                        </div>
+                      ) : pharmacies.length === 0 ? (
+                        'Aucune pharmacie trouvée'
+                      ) : (
+                        'Aucun résultat pour votre recherche'
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -156,6 +227,9 @@ export default function PharmaciesAdminPage() {
           {pharmacies.length > 0 && (
             <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 text-sm">
               Affichage de {filteredPharmacies.length} sur {pharmacies.length} pharmacies
+              {isLoading && !isFirstLoad.current && (
+                <span className="ml-2 text-sky-500">• Actualisation en cours...</span>
+              )}
             </div>
           )}
         </div>
