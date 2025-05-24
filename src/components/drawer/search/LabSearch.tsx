@@ -111,15 +111,7 @@ const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           {results.length} laboratoire(s) trouvé(s)
         </p>
         
-        {/* 🔥 PANEL DE DEBUG TEMPORAIRE */}
-        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-          <div><strong>Debug LabSearch:</strong></div>
-          <div>Term: "{searchTerm}" (length: {searchTerm.length})</div>
-          <div>PharmacyIds: {selectedPharmacyIds.length}</div>
-          <div>Results: {results.length}</div>
-          <div>Loading: {isLoading ? 'OUI' : 'NON'}</div>
-          <div>Error: {error || 'Aucune'}</div>
-        </div>
+   
       </div>
 
       {/* Affichage des résultats */}

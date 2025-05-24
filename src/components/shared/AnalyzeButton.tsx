@@ -67,7 +67,7 @@ export function AnalyzeButton({
       ) : (
         <>
           <FiPlay className="mr-2" size={iconSizes[size]} />
-          <span>Analyser</span>
+          <span>Appliquer</span>
         </>
       )}
     </button>
