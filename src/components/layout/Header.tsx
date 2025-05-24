@@ -11,6 +11,7 @@ import { ModernDateSelector } from '../shared/DateRangeSelector';
 import { PharmacySelector } from '../shared/PharmacySelector';
 import { AnalysisNavMenu } from './header/AnalysisNavMenu';
 import { ProductSelectionDrawer } from '../drawer/ProductSelectionDrawer';
+import { AnalyzeButton } from '../shared/AnalyzeButton'; // 🔥 AJOUT
 import { useDrawerState } from '@/hooks/useDrawerState';
 import { ProductSelectionButton } from './header/ProductSelectionButton';
 import { Product } from '../drawer/search/ProductSearchResults';
@@ -152,6 +153,9 @@ const handleConfirmSelection = () => {
                     <PharmacySelector />
                   )}
                   <ProductSelectionButton openDrawer={openDrawer} />
+                  
+                  {/* 🔥 BOUTON ANALYSER AJOUTÉ ICI */}
+                  <AnalyzeButton variant="primary" size="md" />
                 </div>
               )}
             </div>
@@ -199,7 +203,7 @@ const handleConfirmSelection = () => {
                 
                 {/* Bouton de sélection de produits pour mobile */}
                 {status === 'authenticated' && (
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
                     <button 
                       onClick={() => {
                         closeMenu();
@@ -209,6 +213,11 @@ const handleConfirmSelection = () => {
                     >
                       <span className="font-medium">Sélection produits</span>
                     </button>
+                    
+                    {/* 🔥 BOUTON ANALYSER POUR MOBILE */}
+                    <div onClick={closeMenu}>
+                      <AnalyzeButton variant="primary" size="md" className="w-full" />
+                    </div>
                   </div>
                 )}
               </div>

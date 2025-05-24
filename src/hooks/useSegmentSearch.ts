@@ -1,6 +1,5 @@
-// src/hooks/useSegmentSearch.ts
+// src/hooks/useSegmentSearch.ts (Version corrigée)
 import { useState, useCallback } from 'react';
-import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { UnifiedSegment } from '@/components/drawer/search/SegmentSearch';
 
 interface SegmentSearchState {
@@ -16,10 +15,10 @@ export function useSegmentSearch() {
     error: null
   });
   
-  const { selectedPharmacyIds } = usePharmacySelection();
+  // 🔥 SUPPRESSION de la dépendance usePharmacySelection
   
   // Nouvelle fonction de recherche unifiée
-  const searchUnifiedSegments = useCallback(async (term: string) => {
+  const searchUnifiedSegments = useCallback(async (term: string, pharmacyIds: string[] = []) => {
     // Validation de base
     if (!term || term.trim().length < 2) {
       setState(prev => ({
@@ -41,9 +40,9 @@ export function useSegmentSearch() {
         mode: 'unified'  
       });
       
-      // Ajouter les pharmacies sélectionnées
-      if (selectedPharmacyIds.length > 0) {
-        selectedPharmacyIds.forEach(id => {
+      // 🔥 UTILISER les pharmacyIds passés en paramètre
+      if (pharmacyIds.length > 0) {
+        pharmacyIds.forEach(id => {
           queryParams.append('pharmacyIds', id);
         });
       }
@@ -77,7 +76,7 @@ export function useSegmentSearch() {
         error: error instanceof Error ? error.message : 'Erreur lors de la recherche'
       });
     }
-  }, [selectedPharmacyIds]);
+  }, []); // 🔥 ARRAY VIDE - aucune dépendance
   
   // Fonction pour réinitialiser les résultats
   const clearResults = useCallback(() => {

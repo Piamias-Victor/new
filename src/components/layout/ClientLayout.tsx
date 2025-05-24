@@ -8,6 +8,7 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { DateRangeProvider } from "@/contexts/DateRangeContext";
 import { PharmacyProvider } from "@/providers/PharmacyProvider";
 import { ProductFilterProvider } from '@/contexts/ProductFilterContext';
+import { DataLoadingProvider } from '@/contexts/DataLoadingContext';
 
 interface ClientLayoutProps {
   children: ReactNode;
@@ -33,21 +34,17 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
 
   return (
     <AuthProvider>
-      <DateRangeProvider>
-        <PharmacyProvider>
-        <ProductFilterProvider>
-          {/* Global header */}
+  <DateRangeProvider>
+    <PharmacyProvider>        {/* D'ABORD les données de base */}
+      <ProductFilterProvider>
+        <DataLoadingProvider>  {/* ENSUITE le contrôle de chargement */}
           <Header />
-          
-          {/* Main content */}
           {children}
-
-          {/* Global footer */}
           <Footer />
-          </ProductFilterProvider>
-        </PharmacyProvider>
-        
-      </DateRangeProvider>
-    </AuthProvider>
+        </DataLoadingProvider>
+      </ProductFilterProvider>
+    </PharmacyProvider>
+  </DateRangeProvider>
+</AuthProvider>
   );
 }
