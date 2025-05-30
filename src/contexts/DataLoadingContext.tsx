@@ -58,9 +58,6 @@ export function DataLoadingProvider({ children }: DataLoadingProviderProps) {
   const triggerDataLoad = () => {
     console.log('🚀 DataLoading: Déclenchement du chargement des données');
     
-    // 🔥 MARQUER qu'on a déclenché au moins une fois
-    setHasEverTriggered(true);
-    
     // Si déjà en cours de chargement, on force l'annulation et on relance
     if (isGlobalLoading) {
       console.log('🔄 DataLoading: Annulation du chargement en cours et relance');
@@ -71,6 +68,9 @@ export function DataLoadingProvider({ children }: DataLoadingProviderProps) {
     
     // Créer un nouveau controller pour cette session de chargement
     abortControllerRef.current = new AbortController();
+    
+    // 🔥 MARQUER qu'on a déclenché AVANT de démarrer le chargement
+    setHasEverTriggered(true);
     
     // Activer le chargement
     setIsReadyToLoad(true);
@@ -131,8 +131,9 @@ export function DataLoadingProvider({ children }: DataLoadingProviderProps) {
   const value: DataLoadingContextType = {
     isReadyToLoad,
     isGlobalLoading,
+    hasEverTriggered, // 🔥 AJOUT MANQUANT !
     triggerDataLoad,
-    setGlobalLoading: setIsGlobalLoading, // 🔥 FIX: Utiliser le bon nom
+    setGlobalLoading: setIsGlobalLoading,
     abortController: abortControllerRef.current,
     createAbortSignal,
     cancelAllRequests,
