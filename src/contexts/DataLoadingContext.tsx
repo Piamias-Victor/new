@@ -8,6 +8,9 @@ interface DataLoadingContextType {
   isReadyToLoad: boolean;
   isGlobalLoading: boolean;
   
+  // 🔥 NOUVEL ÉTAT : Premier déclenchement
+  hasEverTriggered: boolean;
+  
   // Méthodes de contrôle
   triggerDataLoad: () => void;
   setGlobalLoading: (loading: boolean) => void;
@@ -45,12 +48,23 @@ export function DataLoadingProvider({ children }: DataLoadingProviderProps) {
   const [isGlobalLoading, setIsGlobalLoading] = useState(false);
   const [activeRequestsCount, setActiveRequestsCount] = useState(0);
   
+  // 🔥 NOUVEL ÉTAT : A-t-on déjà cliqué sur Appliquer au moins une fois ?
+  const [hasEverTriggered, setHasEverTriggered] = useState(false);
+  
   // Référence pour l'AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
   
   // Déclencher le chargement des données
   const triggerDataLoad = () => {
     console.log('🚀 DataLoading: Déclenchement du chargement des données');
+    
+    // 🔥 MARQUER qu'on a déclenché au moins une fois
+    setHasEverTriggered(true);
+    
+    // Si déjà en cours de chargement, on force l'annulation et on relance
+    if (isGlobalLoading) {
+      console.log('🔄 DataLoading: Annulation du chargement en cours et relance');
+    }
     
     // Annuler les requêtes précédentes si elles existent
     cancelAllRequests();

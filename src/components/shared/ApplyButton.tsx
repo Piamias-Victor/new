@@ -1,23 +1,23 @@
-// src/components/shared/AnalyzeButton.tsx
+// src/components/shared/ApplyButton.tsx (Version toujours active)
 import React from 'react';
-import { FiPlay, FiLoader } from 'react-icons/fi';
+import { FiPlay, FiLoader, FiRefreshCw } from 'react-icons/fi';
 import { useDataLoading } from '@/contexts/DataLoadingContext';
 
-interface AnalyzeButtonProps {
+interface ApplyButtonProps {
   variant?: 'primary' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function AnalyzeButton({ 
+export function ApplyButton({ 
   variant = 'primary', 
   size = 'md',
   className = '' 
-}: AnalyzeButtonProps) {
+}: ApplyButtonProps) {
   const { triggerDataLoad, isGlobalLoading, activeRequestsCount } = useDataLoading();
   
   // Classes CSS en fonction des props
-  const baseClasses = 'inline-flex items-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseClasses = 'inline-flex items-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer';
   
   const variantClasses = {
     primary: 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500 text-white',
@@ -40,24 +40,31 @@ export function AnalyzeButton({
     ${baseClasses} 
     ${variantClasses[variant]} 
     ${sizeClasses[size]}
-    ${isGlobalLoading ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}
     ${className}
   `.trim();
   
+  // Fonction pour gérer le clic
+  const handleClick = () => {
+    console.log('🔄 ApplyButton: Déclenchement de l\'application');
+    triggerDataLoad();
+  };
+  
   return (
     <button
-      onClick={triggerDataLoad}
-      disabled={isGlobalLoading}
+      onClick={handleClick}
       className={buttonClasses}
-      title={isGlobalLoading ? `Chargement en cours... (${activeRequestsCount} requêtes)` : 'Lancer l\'analyse des données'}
+      title={isGlobalLoading 
+        ? `Rechargement en cours... (${activeRequestsCount} requêtes) - Cliquer pour relancer` 
+        : 'Appliquer les paramètres et charger les données'
+      }
     >
       {isGlobalLoading ? (
         <>
-          <FiLoader 
+          <FiRefreshCw 
             className="animate-spin mr-2" 
             size={iconSizes[size]} 
           />
-          <span>Analyse...</span>
+          <span>Rechargement...</span>
           {activeRequestsCount > 0 && (
             <span className="ml-1 text-xs opacity-75">
               ({activeRequestsCount})

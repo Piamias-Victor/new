@@ -1,4 +1,4 @@
-// src/app/dashboard/rdv-labos/page.tsx
+// src/app/dashboard/rdv-labos/page.tsx (Avec écran d'accueil)
 'use client';
 
 import React, { useEffect } from 'react';
@@ -15,11 +15,14 @@ import { LaboratoryAnalysisContainer } from '@/components/dashboard/laboratories
 import { SalesProjection } from '@/components/dashboard/SalesProjection';
 import { SelectedProductsList } from '@/components/dashboard/products/SelectedProductsList';
 import { SidebarLayout } from '@/components/layout/SidebarLayout';
+import { RdvLabosWelcomeScreen } from '@/components/dashboard/rdv/RdvLabosWelcomeScreen';
+import { useFirstLoad } from '@/hooks/useFirstLoad';
 
 export default function RdvLabosPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { isFilterActive } = useProductFilter();
+  const { isFirstLoad } = useFirstLoad();
 
   // Redirection si non authentifié
   useEffect(() => {
@@ -46,46 +49,60 @@ export default function RdvLabosPage() {
     <SidebarLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          
+          {/* Header avec titre */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Rendez-vous Laboratoires
             </h1>
             <p className="mt-2 text-gray-600 dark:text-gray-300">
-              Préparation des rendez-vous et analyse des performances
+              {isFirstLoad 
+                ? "Configurez vos paramètres et cliquez sur Appliquer pour préparer vos rendez-vous."
+                : "Préparation des rendez-vous et analyse des performances"
+              }
             </p>
           </div>
-          
-          {/* KPI Cards */}
-          <div className="my-8">
-            <KpiCards />
-          </div>
-          
-          {/* Analyse segmentation du laboratoire */}
-          <div className="mb-8">
-            <LaboratoryAnalysisContainer />
-          </div>
-          
-          {/* Panneaux d'analyse côte à côte (Stock et Marges) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
-            <ProductStockMonthsPanelFiltered />
-            <ProductMarginsPanelFiltered />
-          </div>
-          
-          {/* Panneaux d'analyse côte à côte (Évolution et Prix) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
-            <ProductEvolutionPanel />
-            <ProductPriceComparisonPanel />
-          </div>
-          
-          {/* Projection annuelle */}
-          <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <SalesProjection />
-          </div>
-          
-          {/* Liste des produits du laboratoire */}
-          <div className="mt-6">
-            <SelectedProductsList />
-          </div>
+
+          {/* Contenu conditionnel */}
+          {isFirstLoad ? (
+            /* Écran d'accueil pour la première utilisation */
+            <RdvLabosWelcomeScreen />
+          ) : (
+            /* Contenu normal après le premier chargement */
+            <>
+              {/* KPI Cards */}
+              <div className="my-8">
+                <KpiCards />
+              </div>
+              
+              {/* Analyse segmentation du laboratoire */}
+              <div className="mb-8">
+                <LaboratoryAnalysisContainer />
+              </div>
+              
+              {/* Panneaux d'analyse côte à côte (Stock et Marges) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                <ProductStockMonthsPanelFiltered />
+                <ProductMarginsPanelFiltered />
+              </div>
+              
+              {/* Panneaux d'analyse côte à côte (Évolution et Prix) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-6">
+                <ProductEvolutionPanel />
+                <ProductPriceComparisonPanel />
+              </div>
+              
+              {/* Projection annuelle */}
+              <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <SalesProjection />
+              </div>
+              
+              {/* Liste des produits du laboratoire */}
+              <div className="mt-6">
+                <SelectedProductsList />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </SidebarLayout>
