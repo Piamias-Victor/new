@@ -1,19 +1,27 @@
-// src/hooks/useFirstLoad.ts (Version simplifiée)
+// src/hooks/useFirstLoad.ts (Version affichage immédiat - corrigée)
 import { useDataLoading } from '@/contexts/DataLoadingContext';
 
 /**
  * Hook pour gérer l'état de première utilisation du dashboard
- * Retourne true tant que l'utilisateur n'a pas cliqué sur "Appliquer" au moins une fois
+ * L'écran d'accueil disparaît DÈS le premier clic sur "Appliquer"
  */
 export function useFirstLoad() {
-  const { hasEverTriggered } = useDataLoading();
+  const { hasEverTriggered, isGlobalLoading } = useDataLoading();
   
-  // Simple : on affiche l'écran d'accueil tant qu'on n'a jamais cliqué sur Appliquer
-  const isFirstLoad = !hasEverTriggered;
+  // 🔥 CORRECTION: L'écran d'accueil disparaît si :
+  // - On a déjà cliqué une fois OU on est en train de charger
+  const isFirstLoad = !hasEverTriggered && !isGlobalLoading;
   
-  console.log('🎯 useFirstLoad:', { hasEverTriggered, isFirstLoad });
+  // Mais on veut que ça disparaisse dès le clic, donc :
+  const shouldShowWelcome = !hasEverTriggered && !isGlobalLoading;
+  
+  console.log('🎯 useFirstLoad:', { 
+    hasEverTriggered, 
+    isGlobalLoading, 
+    shouldShowWelcome 
+  });
   
   return {
-    isFirstLoad
+    isFirstLoad: shouldShowWelcome
   };
 }
