@@ -1,5 +1,5 @@
+// src/hooks/useProductSearch.ts (Version corrigée)
 import { useState, useCallback } from 'react';
-import { usePharmacySelection } from '@/providers/PharmacyProvider';
 
 export interface SearchProduct {
   id: string;
@@ -33,7 +33,7 @@ export function useProductSearch() {
     error: null
   });
   
-  const { selectedPharmacyIds } = usePharmacySelection();
+  // 🔥 SUPPRESSION de la dépendance usePharmacySelection
   
   const searchProducts = useCallback(async (params: SearchParams) => {
     // Validation de base
@@ -52,6 +52,9 @@ export function useProductSearch() {
     try {
       let searchResults: SearchProduct[] = [];
       
+      // 🔥 UTILISER params.pharmacyIds au lieu de selectedPharmacyIds
+      const pharmacyIds = params.pharmacyIds || [];
+      
       if (params.type === 'name') {
         const queryParams = new URLSearchParams({
           name: params.term,
@@ -59,8 +62,8 @@ export function useProductSearch() {
         });
         
         // Ajouter les pharmacies sélectionnées
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
+        if (pharmacyIds.length > 0) {
+          pharmacyIds.forEach(id => {
             queryParams.append('pharmacyIds', id);
           });
         }
@@ -96,8 +99,8 @@ export function useProductSearch() {
         }
         
         // Ajouter les pharmacies sélectionnées
-        if (selectedPharmacyIds.length > 0) {
-          selectedPharmacyIds.forEach(id => {
+        if (pharmacyIds.length > 0) {
+          pharmacyIds.forEach(id => {
             queryParams.append('pharmacyIds', id);
           });
         }
@@ -151,8 +154,8 @@ export function useProductSearch() {
           }
           
           // Ajouter les pharmacies sélectionnées
-          if (selectedPharmacyIds.length > 0) {
-            selectedPharmacyIds.forEach(id => {
+          if (pharmacyIds.length > 0) {
+            pharmacyIds.forEach(id => {
               queryParams.append('pharmacyIds', id);
             });
           }
@@ -199,7 +202,7 @@ export function useProductSearch() {
         error: error instanceof Error ? error.message : 'Erreur lors de la recherche'
       });
     }
-  }, [selectedPharmacyIds]);
+  }, []); // 🔥 ARRAY VIDE - aucune dépendance
   
   // Fonction pour réinitialiser les résultats
   const clearResults = useCallback(() => {

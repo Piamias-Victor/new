@@ -1,7 +1,8 @@
 // src/hooks/useGroupingComparison.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
+import { useDataLoading } from '@/contexts/DataLoadingContext';
 
 interface PharmacyData {
   total_sellout: number;
@@ -86,85 +87,131 @@ export function useGroupingComparison(pharmacyId: string): ComparisonData {
       margin_percentage: 0,
       stock_percentage: 0
     },
-    isLoading: true,
+    isLoading: false,
     error: null
   });
   
+  // Contextes
   const { startDate, endDate } = useDateRange();
   const { selectedCodes, isFilterActive } = useProductFilter();
+  const { isReadyToLoad, createAbortSignal, incrementActiveRequests, decrementActiveRequests } = useDataLoading();
+  
+  // Référence pour éviter les appels multiples
+  const isLoadingRef = useRef(false);
   
   useEffect(() => {
-    async function fetchComparisonData() {
-      if (!pharmacyId || !startDate || !endDate) {
-        return;
-      }
-      
-      try {
-        setData(prev => ({ ...prev, isLoading: true, error: null }));
-        
-        // Déterminer si on doit utiliser POST ou GET
-        const shouldUsePost = isFilterActive && (selectedCodes.length > 20);
-        let response;
-
-        if (shouldUsePost) {
-          response = await fetch('/api/pharmacy/grouping-comparison', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              pharmacyId,
-              startDate,
-              endDate,
-              code13refs: isFilterActive ? selectedCodes : [],
-              includeTotals: true // Paramètre pour inclure les totaux
-            }),
-            cache: 'no-store'
-          });
-        } else {
-          const params = new URLSearchParams({
-            pharmacyId,
-            startDate,
-            endDate,
-            includeTotals: 'true'
-          });
-          
-          if (isFilterActive && selectedCodes.length > 0) {
-            selectedCodes.forEach(code => {
-              params.append('code13refs', code);
-            });
-          }
-          
-          response = await fetch(`/api/pharmacy/grouping-comparison?${params}`, {
-            cache: 'no-store'
-          });
-        }
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erreur lors de la récupération des données');
-        }
-        
-        const result = await response.json();
-        
-        setData({
-          pharmacy: result.pharmacy,
-          group: result.group,
-          isLoading: false,
-          error: null
-        });
-      } catch (error) {
-        console.error('Erreur dans useGroupingComparison:', error);
-        setData(prev => ({
-          ...prev,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Erreur inconnue'
-        }));
-      }
+    // Ne se déclenche QUE si isReadyToLoad est true
+    if (!isReadyToLoad) {
+      return;
+    }
+    
+    // Vérifier les prérequis
+    if (!pharmacyId || !startDate || !endDate) {
+      console.log('🔍 useGroupingComparison: Prérequis manquants, pas de chargement');
+      return;
+    }
+    
+    // Éviter les appels multiples simultanés
+    if (isLoadingRef.current) {
+      console.log('🔍 useGroupingComparison: Chargement déjà en cours, ignoré');
+      return;
     }
     
     fetchComparisonData();
-  }, [pharmacyId, startDate, endDate, selectedCodes, isFilterActive]);
+  }, [isReadyToLoad]); // IMPORTANT: Ne dépend QUE de isReadyToLoad
+  
+  const fetchComparisonData = async () => {
+    if (isLoadingRef.current) return;
+    
+    isLoadingRef.current = true;
+    incrementActiveRequests();
+    setData(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    console.log('🔍 useGroupingComparison: Début du chargement des données de comparaison');
+    
+    try {
+      const abortSignal = createAbortSignal();
+      
+      // Déterminer si on doit utiliser POST ou GET
+      const shouldUsePost = isFilterActive && (selectedCodes.length > 20);
+      let response;
+
+      if (shouldUsePost) {
+        response = await fetch('/api/pharmacy/grouping-comparison', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            pharmacyId,
+            startDate,
+            endDate,
+            code13refs: isFilterActive ? selectedCodes : [],
+            includeTotals: true // Paramètre pour inclure les totaux
+          }),
+          cache: 'no-store',
+          signal: abortSignal
+        });
+      } else {
+        const params = new URLSearchParams({
+          pharmacyId,
+          startDate,
+          endDate,
+          includeTotals: 'true'
+        });
+        
+        if (isFilterActive && selectedCodes.length > 0) {
+          selectedCodes.forEach(code => {
+            params.append('code13refs', code);
+          });
+        }
+        
+        response = await fetch(`/api/pharmacy/grouping-comparison?${params}`, {
+          cache: 'no-store',
+          signal: abortSignal
+        });
+      }
+      
+      // Vérifier si la requête a été annulée
+      if (abortSignal.aborted) {
+        console.log('🔍 useGroupingComparison: Requête annulée');
+        return;
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la récupération des données');
+      }
+      
+      const result = await response.json();
+      
+      setData({
+        pharmacy: result.pharmacy,
+        group: result.group,
+        isLoading: false,
+        error: null
+      });
+      
+      console.log('✅ useGroupingComparison: Données de comparaison chargées avec succès');
+      
+    } catch (error) {
+      // Ne pas traiter l'erreur si la requête a été annulée
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🔍 useGroupingComparison: Requête annulée par AbortController');
+        return;
+      }
+      
+      console.error('❌ useGroupingComparison: Erreur lors de la récupération des données:', error);
+      setData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      }));
+    } finally {
+      isLoadingRef.current = false;
+      decrementActiveRequests();
+    }
+  };
   
   return data;
 }

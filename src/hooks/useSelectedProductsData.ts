@@ -1,8 +1,9 @@
 // src/hooks/useSelectedProductsData.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useDateRange } from '@/contexts/DateRangeContext';
+import { useDataLoading } from '@/contexts/DataLoadingContext';
 
 export interface ProductDetailData {
   id: string;
@@ -25,58 +26,101 @@ export interface ProductDetailData {
 
 export function useSelectedProductsData() {
   const [products, setProducts] = useState<ProductDetailData[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Contextes
   const { selectedCodes, isFilterActive } = useProductFilter();
   const { selectedPharmacyIds } = usePharmacySelection();
   const { startDate, endDate, comparisonStartDate, comparisonEndDate } = useDateRange();
+  const { isReadyToLoad, createAbortSignal, incrementActiveRequests, decrementActiveRequests } = useDataLoading();
+  
+  // Référence pour éviter les appels multiples
+  const isLoadingRef = useRef(false);
   
   useEffect(() => {
-    async function fetchSelectedProductsData() {
-      // Si aucun produit n'est sélectionné, ne rien charger
-      if (!isFilterActive || selectedCodes.length === 0) {
-        setProducts([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const response = await fetch('/api/products/details', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code13refs: selectedCodes,
-            pharmacyIds: selectedPharmacyIds,
-            allPharmacies: selectedPharmacyIds.length === 0, // Flag pour indiquer toutes les pharmacies
-            startDate,
-            endDate,
-            comparisonStartDate,
-            comparisonEndDate
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des données produits');
-        }
-        
-        const data = await response.json();
-        setProducts(data.products || []);
-      } catch (err) {
-        console.error('Erreur dans useSelectedProductsData:', err);
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      } finally {
-        setIsLoading(false);
-      }
+    // Ne se déclenche QUE si isReadyToLoad est true
+    if (!isReadyToLoad) {
+      return;
+    }
+    
+    // Si aucun produit n'est sélectionné, ne rien charger
+    if (!isFilterActive || selectedCodes.length === 0) {
+      console.log('🔍 useSelectedProductsData: Aucun produit sélectionné, pas de chargement');
+      setProducts([]);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Éviter les appels multiples simultanés
+    if (isLoadingRef.current) {
+      console.log('🔍 useSelectedProductsData: Chargement déjà en cours, ignoré');
+      return;
     }
     
     fetchSelectedProductsData();
-  }, [selectedCodes, selectedPharmacyIds, isFilterActive, startDate, endDate, comparisonStartDate, comparisonEndDate]);
+  }, [isReadyToLoad]); // IMPORTANT: Ne dépend QUE de isReadyToLoad
+  
+  const fetchSelectedProductsData = async () => {
+    if (isLoadingRef.current) return;
+    
+    isLoadingRef.current = true;
+    incrementActiveRequests();
+    setIsLoading(true);
+    setError(null);
+    
+    console.log('🔍 useSelectedProductsData: Début du chargement des données produits sélectionnés');
+    
+    try {
+      const abortSignal = createAbortSignal();
+      
+      const response = await fetch('/api/products/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code13refs: selectedCodes,
+          pharmacyIds: selectedPharmacyIds,
+          allPharmacies: selectedPharmacyIds.length === 0, // Flag pour indiquer toutes les pharmacies
+          startDate,
+          endDate,
+          comparisonStartDate,
+          comparisonEndDate
+        }),
+        signal: abortSignal
+      });
+      
+      // Vérifier si la requête a été annulée
+      if (abortSignal.aborted) {
+        console.log('🔍 useSelectedProductsData: Requête annulée');
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des données produits');
+      }
+      
+      const data = await response.json();
+      setProducts(data.products || []);
+      
+      console.log('✅ useSelectedProductsData: Données produits sélectionnés chargées avec succès');
+      
+    } catch (err) {
+      // Ne pas traiter l'erreur si la requête a été annulée
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('🔍 useSelectedProductsData: Requête annulée par AbortController');
+        return;
+      }
+      
+      console.error('❌ useSelectedProductsData: Erreur lors de la récupération des données:', err);
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+    } finally {
+      isLoadingRef.current = false;
+      decrementActiveRequests();
+      setIsLoading(false);
+    }
+  };
   
   return { products, isLoading, error };
 }

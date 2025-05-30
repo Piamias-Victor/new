@@ -114,41 +114,78 @@ export function PharmacyProvider({ children }: PharmacyProviderProps) {
     }
   }, [session, selectedPharmacyIds]);
 
-  const refreshPharmacies = async () => {
-    setIsLoading(true);
-    setError(null);
+  // Ajoute ces logs temporaires dans ton PharmacyProvider existant
+// (Juste ajouter les console.log, pas remplacer tout le fichier)
+
+// Dans la fonction refreshPharmacies, ajoute ces logs :
+const refreshPharmacies = async () => {
+  console.log('🏥 PharmacyProvider: refreshPharmacies démarré');
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    console.log('🏥 PharmacyProvider: Appel API /api/pharmacies');
+    const response = await fetch('/api/pharmacies');
     
-    try {
-      const response = await fetch('/api/pharmacies');
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const loadedPharmacies = data.pharmacies || [];
-      setPharmacies(loadedPharmacies);
-      
-      // Vérifier la session actuelle (au moment de l'exécution)
-      const currentSession = session;
-      const isPharmacyUser = currentSession?.user?.role === 'pharmacy_user' && currentSession?.user?.pharmacyId;
-      
-      if (isPharmacyUser) {
-        // Si c'est un utilisateur de pharmacie, sélectionner sa pharmacie
-        setSelectedPharmacyIds([currentSession.user.pharmacyId as string]);
-        setTempSelectedPharmacyIds([currentSession.user.pharmacyId as string]);
-      } else {
-        // Pour les admins ou si pas de session, sélectionner toutes les pharmacies
-        const allPharmacyIds = loadedPharmacies.map(p => p.id);
-        setSelectedPharmacyIds(allPharmacyIds);
-        setTempSelectedPharmacyIds(allPharmacyIds);
-      }
-    } catch (err) {
-      console.error('Erreur lors du chargement des pharmacies:', err);
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-    } finally {
-      setIsLoading(false);
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+    const loadedPharmacies = data.pharmacies || [];
+    
+    console.log('🏥 PharmacyProvider: Pharmacies chargées', { 
+      count: loadedPharmacies.length,
+      first: loadedPharmacies[0]?.name || 'Aucune'
+    });
+    
+    setPharmacies(loadedPharmacies);
+    
+    // Vérifier la session actuelle
+    const currentSession = session;
+    const isPharmacyUser = currentSession?.user?.role === 'pharmacy_user' && currentSession?.user?.pharmacyId;
+    
+    console.log('🏥 PharmacyProvider: Session info', { 
+      userRole: currentSession?.user?.role,
+      pharmacyId: currentSession?.user?.pharmacyId,
+      isPharmacyUser 
+    });
+    
+    if (isPharmacyUser) {
+      // Si c'est un utilisateur de pharmacie, sélectionner sa pharmacie
+      const pharmacyId = currentSession.user.pharmacyId as string;
+      console.log('🏥 PharmacyProvider: Sélection pharmacie utilisateur', pharmacyId);
+      setSelectedPharmacyIds([pharmacyId]);
+      setTempSelectedPharmacyIds([pharmacyId]);
+    } else {
+      // Pour les admins ou si pas de session, sélectionner toutes les pharmacies
+      const allPharmacyIds = loadedPharmacies.map(p => p.id);
+      console.log('🏥 PharmacyProvider: Sélection toutes pharmacies', { count: allPharmacyIds.length });
+      setSelectedPharmacyIds(allPharmacyIds);
+      setTempSelectedPharmacyIds(allPharmacyIds);
+    }
+  } catch (err) {
+    console.error('❌ PharmacyProvider: Erreur chargement pharmacies:', err);
+    setError(err instanceof Error ? err.message : 'Erreur inconnue');
+  } finally {
+    console.log('🏥 PharmacyProvider: refreshPharmacies terminé');
+    setIsLoading(false);
+  }
+};
+
+// Dans le useEffect qui surveille les changements de selectedPharmacyIds :
+useEffect(() => {
+  console.log('🏥 PharmacyProvider: selectedPharmacyIds changé', { 
+    count: selectedPharmacyIds.length,
+    ids: selectedPharmacyIds.slice(0, 3)
+  });
+}, [selectedPharmacyIds]);
+
+// Dans le useEffect du chargement initial :
+useEffect(() => {
+  console.log('🏥 PharmacyProvider: useEffect initial déclenché');
+  refreshPharmacies();
+}, []);
 
   // Initialiser les valeurs temporaires lorsque les valeurs réelles changent
   useEffect(() => {

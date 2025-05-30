@@ -1,8 +1,9 @@
-// src/hooks/useRevenueWithFilter.ts
-import { useState, useEffect } from 'react';
+// src/hooks/useRevenueWithFilter.ts (Version contrôlée)
+import { useState, useEffect, useRef } from 'react';
 import { useDateRange } from '@/contexts/DateRangeContext';
 import { usePharmacySelection } from '@/providers/PharmacyProvider';
 import { useProductFilter } from '@/contexts/ProductFilterContext';
+import { useDataLoading } from '@/contexts/DataLoadingContext';
 
 interface RevenueData {
   totalRevenue: number;
@@ -53,76 +54,123 @@ export function useRevenueWithFilter() {
       }
     },
     isComparisonEnabled: true,
-    isLoading: true,
+    isLoading: false,
     error: null
   });
   
+  // Contextes
   const { startDate, endDate, comparisonStartDate, comparisonEndDate, isComparisonEnabled } = useDateRange();
   const { selectedPharmacyIds } = usePharmacySelection();
   const { selectedCodes, isFilterActive } = useProductFilter();
+  const { isReadyToLoad, createAbortSignal, incrementActiveRequests, decrementActiveRequests } = useDataLoading();
+  
+  // Référence pour éviter les appels multiples
+  const isLoadingRef = useRef(false);
   
   useEffect(() => {
-    async function fetchData() {
-      if (!startDate || !endDate) return;
-      
-      setData(prev => ({ ...prev, isLoading: true, error: null }));
-      
-      try {
-        const response = await fetch('/api/kpi/sell-out', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            startDate,
-            endDate,
-            comparisonStartDate: comparisonStartDate || startDate,
-            comparisonEndDate: comparisonEndDate || endDate,
-            pharmacyIds: selectedPharmacyIds,
-            // Ajouter cette ligne pour envoyer les codes EAN13 sélectionnés
-            code13refs: isFilterActive ? selectedCodes : undefined
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des données de vente');
-        }
-        
-        const jsonData = await response.json();
-        
-        // Calculer le nombre de jours dans la période
-        const startDateObj = new Date(startDate);
-        const endDateObj = new Date(endDate);
-        const daysInPeriod = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        
-        setData({
-          totalRevenue: jsonData.current.revenue,
-          totalMargin: jsonData.current.margin,
-          totalQuantity: jsonData.current.quantity,
-          marginPercentage: jsonData.current.marginPercentage,
-          uniqueReferences: jsonData.current.uniqueReferences,
-          comparison: jsonData.comparison,
-          isComparisonEnabled,
-          actualDateRange: {
-            min: jsonData.actualDateRange?.min || startDate,
-            max: jsonData.actualDateRange?.max || endDate,
-            days: jsonData.actualDateRange?.days || daysInPeriod
-          },
-          isLoading: false,
-          error: null
-        });
-      } catch (error) {
-        console.error('Erreur lors de la récupération des données:', error);
-        setData(prev => ({
-          ...prev,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Erreur inconnue'
-        }));
-      }
+    // Ne se déclenche QUE si isReadyToLoad est true
+    if (!isReadyToLoad) {
+      return;
+    }
+    
+    // Vérifier les prérequis
+    if (!startDate || !endDate) {
+      console.log('🔍 useRevenue: Dates manquantes, pas de chargement');
+      return;
+    }
+    
+    // Éviter les appels multiples simultanés
+    if (isLoadingRef.current) {
+      console.log('🔍 useRevenue: Chargement déjà en cours, ignoré');
+      return;
     }
     
     fetchData();
-  }, [startDate, endDate, comparisonStartDate, comparisonEndDate, selectedPharmacyIds, isComparisonEnabled, selectedCodes, isFilterActive]);
+  }, [isReadyToLoad]); // IMPORTANT: Ne dépend QUE de isReadyToLoad
+  
+  const fetchData = async () => {
+    if (isLoadingRef.current) return;
+    
+    isLoadingRef.current = true;
+    incrementActiveRequests();
+    setData(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    console.log('🔍 useRevenue: Début du chargement des données revenue');
+    
+    try {
+      const abortSignal = createAbortSignal();
+      
+      const response = await fetch('/api/kpi/sell-out', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate,
+          endDate,
+          comparisonStartDate: comparisonStartDate || startDate,
+          comparisonEndDate: comparisonEndDate || endDate,
+          pharmacyIds: selectedPharmacyIds,
+          code13refs: isFilterActive ? selectedCodes : undefined
+        }),
+        signal: abortSignal, // Ajout du signal d'abort
+      });
+      
+      // Vérifier si la requête a été annulée
+      if (abortSignal.aborted) {
+        console.log('🔍 useRevenue: Requête annulée');
+        return;
+      }
+      
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des données de vente');
+      }
+      
+      const jsonData = await response.json();
+      
+      // Calculer le nombre de jours dans la période
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      const daysInPeriod = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const newData = {
+        totalRevenue: jsonData.current.revenue,
+        totalMargin: jsonData.current.margin,
+        totalQuantity: jsonData.current.quantity,
+        marginPercentage: jsonData.current.marginPercentage,
+        uniqueReferences: jsonData.current.uniqueReferences,
+        comparison: jsonData.comparison,
+        isComparisonEnabled,
+        actualDateRange: {
+          min: jsonData.actualDateRange?.min || startDate,
+          max: jsonData.actualDateRange?.max || endDate,
+          days: jsonData.actualDateRange?.days || daysInPeriod
+        },
+        isLoading: false,
+        error: null
+      };
+      
+      setData(newData);
+      console.log('✅ useRevenue: Données chargées avec succès');
+      
+    } catch (error) {
+      // Ne pas traiter l'erreur si la requête a été annulée
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🔍 useRevenue: Requête annulée par AbortController');
+        return;
+      }
+      
+      console.error('❌ useRevenue: Erreur lors de la récupération des données:', error);
+      setData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      }));
+    } finally {
+      isLoadingRef.current = false;
+      decrementActiveRequests();
+    }
+  };
   
   return data;
 }
